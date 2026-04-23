@@ -1,0 +1,40 @@
+name: Build generated trees
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Regenerate cursor/rules and codex
+        run: |
+          bash scripts/build-cursor-rules.sh
+          bash scripts/build-codex-skills.sh
+
+      - name: Fail on drift (pull_request)
+        if: github.event_name == 'pull_request'
+        run: |
+          if ! git diff --quiet; then
+            echo "Generated trees are out of date. Run the build scripts locally and commit." >&2
+            git diff --stat
+            exit 1
+          fi
+
+      - name: Commit drift (push to main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add cursor/rules codex
+            git commit -m "chore: regenerate cursor/rules and codex"
+            git push
+          fi

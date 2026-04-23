@@ -1,0 +1,91 @@
+{
+  "exported_at": "2026-04-23T13:25:20.100Z",
+  "skill_count": 17,
+  "skills": [
+    {
+      "slug": "trigger-and-monitor-launch-deployments",
+      "title": "Trigger and Monitor Launch Deployments",
+      "product": "Launch"
+    },
+    {
+      "slug": "sync-launch-environment-variables-from-env-example",
+      "title": "Sync Launch environment variables from .env.example",
+      "product": "Launch"
+    },
+    {
+      "slug": "developer-hub-app-architect",
+      "title": "Developer Hub App Architect",
+      "product": "Developer Hub"
+    },
+    {
+      "slug": "contentstack-variants-personalization",
+      "title": "Variants & Personalization",
+      "product": "CMS"
+    },
+    {
+      "slug": "contentstack-tokens-authentication",
+      "title": "Tokens & Authentication",
+      "product": "CMS"
+    },
+    {
+      "slug": "contentstack-releases",
+      "title": "Releases",
+      "product": "CMS"
+    },
+    {
+      "slug": "contentstack-roles-permissions",
+      "title": "Roles & Permissions",
+      "product": "CMS"
+    },
+    {
+      "slug": "contentstack-webhooks",
+      "title": "Contentstack Webhooks",
+      "product": "CMS"
+    },
+    {
+      "slug": "contentstack-branches-aliases",
+      "title": "Branches & Aliases",
+      "product": "CMS"
+    },
+    {
+      "slug": "contentstack-localization",
+      "title": "Contentstack Localization",
+      "product": "CMS"
+    },
+    {
+      "slug": "contentstack-environments-publishing",
+      "title": "Contentstack Environments & Publishing",
+      "product": "CMS"
+    },
+    {
+      "slug": "contentstack-workflows",
+      "title": "Workflows & Publish Rules",
+      "product": "CMS"
+    },
+    {
+      "slug": "contentstack-taxonomy",
+      "title": "Contentstack Taxonomy",
+      "product": "CMS"
+    },
+    {
+      "slug": "contentstack-assets",
+      "title": "Contentstack Assets",
+      "product": "CMS"
+    },
+    {
+      "slug": "contentstack-entries",
+      "title": "Entries",
+      "product": "CMS"
+    },
+    {
+      "slug": "contentstack-live-preview-visual-builder-support-assistant",
+      "title": "Live Preview and Visual Builder Support Assistant",
+      "product": "Developer Experience"
+    },
+    {
+      "slug": "contentstack-data-modeling-best-practices",
+      "title": "Contentstack Data Modeling Best Practices",
+      "product": "CMS"
+    }
+  ]
+}
