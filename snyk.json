@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "vulnerabilities": [],
+  "dependencyCount": 0,
+  "packageManager": "none",
+  "projectName": "contentstack-agent-skills",
+  "summary": "No dependencies to scan. This repository contains shell scripts, markdown, and JSON configuration — no package manifest.",
+  "uniqueCount": 0
+}
