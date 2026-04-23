@@ -49,25 +49,25 @@ npx skills add <this-repo>@<skill-slug>
 
 ## Skills included
 
-| Slug                                                         | Title                                               | Product              |
-| ------------------------------------------------------------ | --------------------------------------------------- | -------------------- |
-| `trigger-and-monitor-launch-deployments`                     | Trigger and Monitor Launch Deployments              | Launch               |
-| `sync-launch-environment-variables-from-env-example`         | Sync Launch environment variables from .env.example | Launch               |
-| `developer-hub-app-architect`                                | Developer Hub App Architect                         | Developer Hub        |
-| `contentstack-variants-personalization`                      | Variants & Personalization                          | CMS                  |
-| `contentstack-tokens-authentication`                         | Tokens & Authentication                             | CMS                  |
-| `contentstack-releases`                                      | Releases                                            | CMS                  |
-| `contentstack-roles-permissions`                             | Roles & Permissions                                 | CMS                  |
-| `contentstack-webhooks`                                      | Contentstack Webhooks                               | CMS                  |
-| `contentstack-branches-aliases`                              | Branches & Aliases                                  | CMS                  |
-| `contentstack-localization`                                  | Contentstack Localization                           | CMS                  |
-| `contentstack-environments-publishing`                       | Contentstack Environments & Publishing              | CMS                  |
-| `contentstack-workflows`                                     | Workflows & Publish Rules                           | CMS                  |
-| `contentstack-taxonomy`                                      | Contentstack Taxonomy                               | CMS                  |
-| `contentstack-assets`                                        | Contentstack Assets                                 | CMS                  |
-| `contentstack-entries`                                       | Entries                                             | CMS                  |
-| `contentstack-live-preview-visual-builder-support-assistant` | Live Preview and Visual Builder Support Assistant   | Developer Experience |
-| `contentstack-data-modeling-best-practices`                  | Contentstack Data Modeling Best Practices           | CMS                  |
+| Slug | Title | Product |
+|------|-------|---------|
+| `cms-data-modeling-best-practices` | Contentstack Data Modeling Best Practices | CMS |
+| `cms-live-preview-visual-builder-support-assistant` | Live Preview and Visual Builder Support Assistant | Developer Experience |
+| `cms-entries` | Entries | CMS |
+| `cms-assets` | Contentstack Assets | CMS |
+| `cms-taxonomy` | Contentstack Taxonomy | CMS |
+| `cms-workflows` | Workflows & Publish Rules | CMS |
+| `cms-environments-publishing` | Contentstack Environments & Publishing | CMS |
+| `cms-localization` | Contentstack Localization | CMS |
+| `cms-branches-aliases` | Branches & Aliases | CMS |
+| `cms-roles-permissions` | Roles & Permissions | CMS |
+| `cms-releases` | Releases | CMS |
+| `cms-tokens-authentication` | Tokens & Authentication | CMS |
+| `cms-webhooks` | Contentstack Webhooks | CMS |
+| `launch-sync-environment-variables-from-env-example` | Sync Launch environment variables from .env.example | Launch |
+| `launch-trigger-and-monitor-launch-deployments` | Trigger and Monitor Launch Deployments | Launch |
+| `cms-variants-personalization` | Variants & Personalization | CMS |
+| `developer-hub-app-architect` | Developer Hub App Architect | Developer Hub |
 
 ## How it works
 
@@ -107,8 +107,8 @@ The GitHub Action in `.github/workflows/build.yml` runs these on every push to `
 ## Learn more about Contentstack
 
 - **[contentstack.com](https://www.contentstack.com)** — product, pricing, and platform overview
-- **[developers.contentstack.com](https://developers.contentstack.com)** — developer homepage: SDKs, CLIs, API references, and guides
-- **[contentstack.com/explorer](https://www.contentstack.com/explorer)** — start free
+- **[developers.contentstack.com](https://developers.contentstack.com)** — developer hub: SDKs, CLIs, API references, and guides
+- **[contentstack.com/explorer](https://www.contentstack.com/explorer)** — start free, no credit card — try Contentstack in your browser
 - **[contentstack.com/docs](https://www.contentstack.com/docs)** — full product documentation
 - **[contentstack.com/academy](https://www.contentstack.com/academy)** — training, certifications, and learning paths
 
