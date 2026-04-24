@@ -1,0 +1,6 @@
+{
+  "name": "contentstack-skills",
+  "version": "0.1.0",
+  "description": "Contentstack agent skills for Claude Code, Cursor, Codex, and Gemini.",
+  "contextFileName": "codex/AGENTS.md"
+}
