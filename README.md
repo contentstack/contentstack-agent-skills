@@ -1,10 +1,10 @@
 # Contentstack Skills
 
-A bundle of 17 ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools. Exported 2026-04-23.
+A bundle of 19 ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools, covering CMS implementation, delivery SDK development, Developer Hub app architecture, and Launch automation.
 
 ## What's in here?
 
-Each skill is a self-contained instruction set that teaches an AI coding agent how to accomplish a specific Contentstack task — querying content, migrating schemas, building scaffolds, integrating SDKs, and more. Drop this repo into your AI tool of choice and the agent will know when and how to apply each skill based on what you ask.
+Each skill is a self-contained instruction set that teaches an AI coding agent how to accomplish a specific Contentstack task: modeling content, querying entries, handling assets, configuring governance, integrating preview tooling, writing Delivery SDK code, building Developer Hub apps, automating Launch deployments, and more. Drop this repo into your AI tool of choice and the agent will know when and how to apply each skill based on what you ask.
 
 The same skills are packaged in four formats so you can use whichever tool fits your workflow:
 
@@ -49,25 +49,27 @@ npx skills add <this-repo>@<skill-slug>
 
 ## Skills included
 
-| Slug | Title | Product |
-|------|-------|---------|
-| `cms-data-modeling-best-practices` | Contentstack Data Modeling Best Practices | CMS |
-| `cms-live-preview-visual-builder-support-assistant` | Live Preview and Visual Builder Support Assistant | Developer Experience |
-| `cms-entries` | Entries | CMS |
-| `cms-assets` | Contentstack Assets | CMS |
-| `cms-taxonomy` | Contentstack Taxonomy | CMS |
-| `cms-workflows` | Workflows & Publish Rules | CMS |
-| `cms-environments-publishing` | Contentstack Environments & Publishing | CMS |
-| `cms-localization` | Contentstack Localization | CMS |
-| `cms-branches-aliases` | Branches & Aliases | CMS |
-| `cms-roles-permissions` | Roles & Permissions | CMS |
-| `cms-releases` | Releases | CMS |
-| `cms-tokens-authentication` | Tokens & Authentication | CMS |
-| `cms-webhooks` | Contentstack Webhooks | CMS |
-| `launch-sync-environment-variables-from-env-example` | Sync Launch environment variables from .env.example | Launch |
-| `launch-trigger-and-monitor-launch-deployments` | Trigger and Monitor Launch Deployments | Launch |
-| `cms-variants-personalization` | Variants & Personalization | CMS |
-| `developer-hub-app-architect` | Developer Hub App Architect | Developer Hub |
+| Slug | Title | Product | What it helps with |
+| --- | --- | --- | --- |
+| `cms-assets` | Contentstack Assets | CMS | Asset organization, image transformations, publishing lifecycle, CDN behavior, and asset limits. |
+| `cms-branches-aliases` | Branches & Aliases | CMS | Isolated content development, alias-based deployments, CI/CD integration, merge behavior, and rollback patterns. |
+| `cms-data-modeling-best-practices` | Contentstack Data Modeling Best Practices | CMS | Content type design, references, global fields, groups, modular blocks, JSON RTE, taxonomy, tags, and model simplification. |
+| `cms-entries` | Entries | CMS | Entry querying, localization, versioning, publishing, CDA usage, reference expansion, pagination, bulk operations, and Sync API patterns. |
+| `cms-environments-publishing` | Contentstack Environments & Publishing | CMS | Environment setup, publishing behavior, delivery and preview tokens, Sync API usage, CDN behavior, and publish queues. |
+| `cms-live-preview-visual-builder-support-assistant` | Live Preview and Visual Builder Support Assistant | Developer Experience | Live Preview and Visual Builder setup or debugging across CSR, SSR, SSG, middleware/BFF, and edit-tag flows. |
+| `cms-localization` | Contentstack Localization | CMS | Language setup, fallback chains, localized and unlocalized entries, non-localizable fields, and multi-locale publishing. |
+| `cms-releases` | Releases | CMS | Coordinated content deployment, release scheduling, staged deployment, webhook storm prevention, and CI/CD integration. |
+| `cms-roles-permissions` | Roles & Permissions | CMS | Built-in roles, custom roles, teams, permission merging, token capabilities, and least-privilege access design. |
+| `cms-taxonomy` | Contentstack Taxonomy | CMS | Hierarchical content classification, taxonomy vs tags or references, CDA taxonomy queries, localization, and import/export. |
+| `cms-tokens-authentication` | Tokens & Authentication | CMS | Authentication methods, token types, API keys, credential security, rate limits, and SSO considerations. |
+| `cms-variants-personalization` | Variants & Personalization | CMS | Audience-targeted content, variants vs separate entries, variant groups, A/B testing, and Personalize integration. |
+| `cms-webhooks` | Contentstack Webhooks | CMS | Webhook configuration, event channels, payload handling, signature verification, retries, and reliable receiver design. |
+| `cms-workflows` | Workflows & Publish Rules | CMS | Workflow stages, approval flows, transition restrictions, publish governance, automation hooks, and common pitfalls. |
+| `developer-hub-app-architect` | Developer Hub App Architect | Developer Hub | Developer Hub and Marketplace app planning, UI location choices, React/TypeScript scaffolding, setup, SDK, manifest, proxy, and publishing issues. |
+| `dx-delivery-sdk` | Delivery SDK | Developer Experience | Production-ready TypeScript with `@contentstack/delivery-sdk` for entries, assets, references, filters, sorting, pagination, locales, Live Preview, and Visual Builder. |
+| `dx-migrate-js-to-ts-sdk` | Migrate JS to TS SDK | Developer Experience | Migration from the JavaScript Contentstack SDK to the TypeScript Delivery SDK, including API mapping, rewrites, and unsupported pattern callouts. |
+| `launch-sync-environment-variables-from-env-example` | Sync Launch environment variables from .env.example | Launch | Comparing a local `.env.example` with Launch environment variables and patching missing keys without printing secrets. |
+| `launch-trigger-and-monitor-launch-deployments` | Trigger and Monitor Launch Deployments | Launch | Triggering Launch deployments, polling deployment status, retrieving failure logs, and summarizing likely causes and next steps. |
 
 ## How it works
 
