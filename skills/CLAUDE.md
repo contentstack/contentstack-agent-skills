@@ -4,6 +4,8 @@ Use the table below to route a user request to the right skill. Each row maps a 
 
 | When the user asks… | Skill |
 |----------------------|-------|
+| Use when a user wants to migrate Contentstack Delivery SDK code from JavaScript to TypeScript. | [dx-migrate-js-to-ts-sdk](./dx-migrate-js-to-ts-sdk/SKILL.md) |
+| Use when a user asks for Contentstack Delivery SDK code, query examples, helper functions, SDK setup, stack initialization, reference inclusion, filtering, sorting, pagination, typed entry fetching, asset fetching, Live Preview setup, Visual Builder support, SSR preview handling, or debugging SDK query chains. | [dx-delivery-sdk](./dx-delivery-sdk/SKILL.md) |
 | Use when designing, reviewing, or refactoring Contentstack content models before creating or changing schemas. | [Contentstack Data Modeling Best Practices](./cms-data-modeling-best-practices/SKILL.md) |
 | Use this skill when a user is implementing or debugging Contentstack Live Preview or Visual Builder, including blank preview panels, stale or published-only preview, lost preview context after navigation, shared SSR state, cache contamination, or edit-tag mapping failures. Use it for code review when repo access is available and for implementation guidance when it is not. | [Live Preview and Visual Builder Support Assistant](./cms-live-preview-visual-builder-support-assistant/SKILL.md) |
 | Use when developers ask about fetching entries, building CDA queries, handling localization, publishing workflows, versioning behavior, bulk operations, or entry-related performance issues. | [Entries](./cms-entries/SKILL.md) |
