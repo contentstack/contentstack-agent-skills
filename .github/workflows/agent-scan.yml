@@ -1,0 +1,23 @@
+name: Agent Skill Scan
+
+on:
+  pull_request:
+    paths:
+      - "skills/**"
+      - ".github/workflows/agent-scan.yml"
+
+jobs:
+  agent-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Scan skills
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          uvx snyk-agent-scan@latest --skills ./skills
