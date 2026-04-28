@@ -1,12 +1,12 @@
 # Contentstack Skills
 
-A bundle of 19 ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools, covering CMS implementation, delivery SDK development, Developer Hub app architecture, and Launch automation.
+A bundle of 20 ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools, covering CMS implementation, Brand Kit guidance, delivery SDK development, Developer Hub app architecture, and Launch automation.
 
 ## What's in here?
 
-Each skill is a self-contained instruction set that teaches an AI coding agent how to accomplish a specific Contentstack task: modeling content, querying entries, handling assets, configuring governance, integrating preview tooling, writing Delivery SDK code, building Developer Hub apps, automating Launch deployments, and more. Drop this repo into your AI tool of choice and the agent will know when and how to apply each skill based on what you ask.
+Each skill is a self-contained instruction set that teaches an AI coding agent how to accomplish a specific Contentstack task: modeling content, querying entries, handling assets, configuring governance, integrating preview tooling, applying Brand Kit guidance, writing Delivery SDK code, building Developer Hub apps, automating Launch deployments, and more. Drop this repo into your AI tool of choice and the agent will know when and how to apply each skill based on what you ask.
 
-The same skills are packaged in four formats so you can use whichever tool fits your workflow:
+The same skills are packaged in five formats so you can use whichever tool fits your workflow:
 
 - **Claude Code** — installable plugin (`.claude-plugin/`)
 - **Cursor** — rule files (`cursor/rules/`)
@@ -51,6 +51,7 @@ npx skills add <this-repo>@<skill-slug>
 
 | Slug | Title | Product | What it helps with |
 | --- | --- | --- | --- |
+| `brand-kit-assistant` | Brand Kit Assistant | Brand Kit | Brand Kit concepts, setup, governance, Voice Profiles, Knowledge Vault, on-brand AI generation, and API-task routing. |
 | `cms-assets` | Contentstack Assets | CMS | Asset organization, image transformations, publishing lifecycle, CDN behavior, and asset limits. |
 | `cms-branches-aliases` | Branches & Aliases | CMS | Isolated content development, alias-based deployments, CI/CD integration, merge behavior, and rollback patterns. |
 | `cms-data-modeling-best-practices` | Contentstack Data Modeling Best Practices | CMS | Content type design, references, global fields, groups, modular blocks, JSON RTE, taxonomy, tags, and model simplification. |
