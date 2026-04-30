@@ -20,4 +20,4 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
-          uvx snyk-agent-scan@latest --skills ./skills
+          uvx snyk-agent-scan==0.4.18 --skills ./skills
