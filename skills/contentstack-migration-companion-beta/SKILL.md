@@ -1,9 +1,9 @@
 ---
-name: contentstack-migration-companion-beta
+name: contentstack-migration-companion
 description: Migration companion for moving to Contentstack from another CMS. Guides content and application migration through a structured, step-by-step workflow. Currently supports migrations from Contentful, with additional source platforms planned. Use when users want to migrate, move, switch, port, or re-platform to Contentstack, including content models, content, assets, locales, application integrations, or website code. Trigger on requests such as "migrate to Contentstack", "move to Contentstack", "switch to Contentstack", "migrate from Contentful", "move my Contentful space", "port my CMS", or similar migration-related requests. The skill validates prerequisites, guides the migration process, provides progress checkpoints, and delivers a completion summary. Prefer this skill whenever a Contentstack migration is requested.
 ---
 
-# contentstack-migration-companion-beta
+# contentstack-migration-companion
 
 Guide a user through migrating a project from **Contentful** to **Contentstack** —
 first the **content** (content types, entries, assets, locales) via the Contentstack
@@ -33,14 +33,23 @@ Follow these throughout — they matter more than any single command:
   substitute the absolute path of the directory this `SKILL.md` was loaded from — i.e. the
   skill's own install directory. **Do not assume a fixed path.** The location differs by AI
   assistant, by OS, and by whether the skill was installed per-project or per-user — for example
-  it may be `<project>/.claude/skills/contentstack-migration-companion-beta`,
-  `~/.claude/skills/contentstack-migration-companion-beta`, or a Windows path like
-  `%USERPROFILE%\.claude\skills\contentstack-migration-companion-beta`. Determine the real path once
+  it may be `<project>/.claude/skills/contentstack-migration-companion`,
+  `~/.claude/skills/contentstack-migration-companion`, or a Windows path like
+  `%USERPROFILE%\.claude\skills\contentstack-migration-companion`. Determine the real path once
   (it is the folder you read this `SKILL.md` from; if unsure, search the workspace and home
-  directory for `*/contentstack-migration-companion-beta/SKILL.md`), and for shell commands set it as
+  directory for `*/contentstack-migration-companion/SKILL.md`), and for shell commands set it as
   a variable up front (`SKILL_DIR="<that absolute path>"`) so bundled scripts can be invoked as
   `"$SKILL_DIR/scripts/<name>"`. The bundled scripts self-locate their own siblings, so once you
   invoke them by absolute path they work regardless of your current directory.
+- **Pin the Node version for the whole session.** A machine often has several Node versions
+  (system, Homebrew, multiple nvm installs) and a non-interactive shell may resolve an old one
+  (e.g. `/usr/local/bin/node` v14) ahead of the user's nvm default. The Step 1 prereq checker
+  finds the **highest installed Node ≥ 20** and reports its directory as `node.bin_dir` in the
+  JSON. Record that value as a concrete literal `NODE_BIN_DIR` and **prefix every `csdx`, `npm`,
+  and `contentful` command for the rest of the migration** with it, e.g.
+  `PATH="<NODE_BIN_DIR>:$PATH" csdx migrate:create …`. This guarantees the CLI runs on the
+  Node the prereq check validated, not whatever an unconfigured shell picks first. If
+  `node.bin_dir` is absent (older check output), fall back to the plain command.
 - **One step at a time, and show the result.** After each command, surface the meaningful
   output to the user — the summary tables, the counts, the artifact path — not a wall of
   raw logs. The user is watching this like a progress bar; give them a clean status, then
@@ -69,7 +78,7 @@ Follow these throughout — they matter more than any single command:
   login in the browser, and simply wait for the command to return — do not try to script the
   browser or kill the command.
 - **Currently Contentful is the only supported source.** Do not ask the user which legacy
-  platform they're on; assume Contentful. (The CLI flag is `--legacy contentful`.)
+  platform they're on; assume Contentful. (The CLI flag is `--source contentful`.)
 - **If a step fails, stop and diagnose** rather than barrelling ahead. Most failures here are
   recoverable (expired token → re-login, missing content model → inform the user), and the
   relevant recovery is described in the step that can fail.
@@ -80,13 +89,13 @@ Follow these throughout — they matter more than any single command:
 
 ## The migration at a glance
 
-| #   | Step                       | Command (core)                             | Produces                               |
-| --- | -------------------------- | ------------------------------------------ | -------------------------------------- |
-| 1   | Prerequisites & inputs     | prereq check script                        | verified env + gathered inputs         |
-| 2   | Install migrate plugin     | `csdx plugins:link .` (or `plugins:add`)   | `csdx migrate:*` available             |
-| 3   | Content Migration          | `csdx migrate:create`                      | populated stack + bundle + credentials |
-| 4   | Code Migration             | detect → plan → rewrite → eval (13 checks) | rewritten data layer                   |
-| 5   | Welcome to Contentstack 🎉 | —                                          | celebration + next steps               |
+| # | Step | Command (core) | Produces |
+|---|------|----------------|----------|
+| 1 | Prerequisites & inputs | prereq check script | verified env + gathered inputs |
+| 2 | Install migrate plugin | `csdx plugins:link .` (or `plugins:add`) | `csdx migrate:*` available |
+| 3 | Content Migration | `csdx migrate:create` | populated stack + bundle + credentials |
+| 4 | Code Migration | detect → plan → rewrite → eval (13 checks) | rewritten data layer |
+| 5 | Welcome to Contentstack 🎉 | — | celebration + next steps |
 
 Work through them in order. The sections below give the exact commands, what to show the
 user, and what to carry forward.
@@ -156,13 +165,23 @@ $PYTHON_CMD "{SKILL_DIR}/scripts/check_prereqs.py"
 
 Parse the JSON result and carry every field forward as session state.
 
-**Hard blocker:** If the script exits with code 1, Node.js is missing or too old. Stop immediately
-and tell the user the exact problem:
+**Record the Node bin directory.** Capture `node.bin_dir` from the JSON as the concrete literal
+`NODE_BIN_DIR`. Per the "Pin the Node version" principle in the overview, prefix every later
+`csdx`, `npm`, and `contentful` command with `PATH="<NODE_BIN_DIR>:$PATH"` so the whole migration
+runs on the Node the checker validated — not whatever an unconfigured non-interactive shell would
+resolve first (the checker already picks the **highest installed Node ≥ 20**, scanning PATH and
+all nvm installs). If `node.bin_dir` is missing, fall back to the plain command.
 
-- `node.error == "not_installed"` → "Node.js is not installed. Install it via `nvm install 20`
+**Hard blocker:** If the script exits with code 1, Node.js is missing or too old. The reported
+`node.version`/`node.path` reflect the *best* Node found anywhere on the machine, so the message is
+accurate even when a newer Node exists but isn't on the default PATH. Stop immediately and tell the
+user the exact problem:
+
+- `node.error == "not_installed"` → "Node.js is not installed. Install it via `nvm install 22`
   or from nodejs.org, then try again."
-- `node.ok == false` (e.g. `node.version == "v18.x"`) → "Node `<version>` is too old — Node 20+
-  is required. Run `nvm install 20 && nvm use 20`, then try again."
+- `node.ok == false` (e.g. `node.version == "v18.x"`) → "The newest Node I can find is
+  `<version>`, but Node 20+ is required. Install a newer one with `nvm install 22 && nvm use 22`
+  (or upgrade your system Node), then try again."
 
 Do not continue past this point until Node 20+ is confirmed.
 
@@ -309,6 +328,8 @@ re-check the selection or switch to a Contentful account that has the right acce
 ### Eval — Verify Step 1 before proceeding
 
 ```bash
+# Use the Node the checker validated (NODE_BIN_DIR from the prereq JSON).
+export PATH="<NODE_BIN_DIR>:$PATH"
 $PYTHON_CMD --version   # must print Python 3.x
 node --version          # must print v20.x or higher
 csdx --version          # must print a version number
@@ -316,6 +337,9 @@ csdx auth:whoami        # must print a logged-in email
 contentful --version    # must print a version number
 contentful space list   # must return a list of spaces — not "You have to be logged in"
 ```
+
+(`export` only affects this one Eval block — shell state does not persist across commands, so
+later steps must still prefix `PATH="<NODE_BIN_DIR>:$PATH"` per the overview principle.)
 
 **Pass criteria:**
 
@@ -471,12 +495,12 @@ and is also saved for parsing:
 
 ```bash
 cd "$SESSION_DIR" && \
-csdx migrate:create --legacy contentful \
+csdx migrate:create --source contentful \
   --space-id "$SPACE_ID" \
-  --management-token "$CONTENTFUL_MANAGEMENT_TOKEN" \
+  --source-token "$CONTENTFUL_MANAGEMENT_TOKEN" \
   --org "$ORG_UID" \
   --download-assets \
-  -o "$SESSION_DIR" \
+  --output "$SESSION_DIR" \
   --workspace "$SESSION_DIR" \
   -y \
   2>&1 | tee "$SESSION_DIR/migrate-create.log"
@@ -484,10 +508,11 @@ csdx migrate:create --legacy contentful \
 
 Flag notes:
 
-- `--space-id` / `--management-token` — Contentful source (token resolved in 3.0)
+- `--space-id` / `--source-token` — Contentful source (token resolved in 3.0)
 - `--org` — the org UID captured in Step 1; a new stack is created here
+- `--source contentful` — declares Contentful as the migration source
 - `--download-assets` — include asset binaries in the migration
-- `-o "$SESSION_DIR"` — bundle written to `$SESSION_DIR/bundle/`
+- `--output "$SESSION_DIR"` — bundle written to `$SESSION_DIR/bundle/`
 - `--workspace "$SESSION_DIR"` — export JSON saved to `$SESSION_DIR/export.json`
 - `-y` — skip internal confirmation prompts (we already confirmed above)
 - `cd "$SESSION_DIR"` — ensures `logs/` and `_backup_*/` land in the session dir, not CWD
@@ -794,6 +819,7 @@ on prior knowledge where the doc is specific. Key map:
    section) → field-UID dependencies → risk notes. Show it and PAUSE before editing any file.
 
 4. **MIGRATE** per the doc, following the section matching each detected approach:
+
    - REST Delivery SDK: §1–§16. GraphQL: §17. Raw REST / framework plugins: §19.
    - Rich text / assets / locales / pagination: §9–§12.
      Make minimal, mechanical edits that match surrounding code style and the framework's existing
@@ -868,31 +894,31 @@ The migration is complete. Display the following message to the user — render 
 ╚══════════════════════════════════════════════════════════════════╝
 ```
 
-> _"The world's best digital experiences run on Contentstack."_
+> *"The world's best digital experiences run on Contentstack."*
 
 **🎊 Your migration is complete.**
 
 Your content, content types, assets, and website code have all successfully moved from Contentful to Contentstack. Here's a quick recap of what just happened:
 
-| ✅  | What was migrated                 |
-| --- | --------------------------------- |
-| 📦  | Content types & field definitions |
-| 🖼️  | Assets & media                    |
-| 📝  | Entries & localized content       |
-| 💻  | Website data-layer code           |
+| ✅ | What was migrated |
+|---|---|
+| 📦 | Content types & field definitions |
+| 🖼️ | Assets & media |
+| 📝 | Entries & localized content |
+| 💻 | Website data-layer code |
 
 ### 📂 Where to find your migrated files
 
 Using the exact paths captured during this session, fill in and display this table:
 
-| Artifact                          | Location                                               |
-| --------------------------------- | ------------------------------------------------------ |
-| 🗂️ **Contentful export**          | The `export.json` path in `$SESSION_DIR` (from Step 3) |
-| 📦 **Contentstack import bundle** | `$SESSION_DIR/bundle/` (from Step 3)                   |
-| 🔑 **Stack credentials**          | `$SESSION_DIR/bundle/metadata.json` (from Step 3)      |
-| 📋 **Import logs**                | The log directory printed by `migrate:create` (Step 3) |
-| 💻 **Migrated website code**      | The `repoPath` the user provided in Step 4             |
-| 🔍 **Code migration log**         | `<repoPath>/.migration/session.log`                    |
+| Artifact | Location |
+|---|---|
+| 🗂️ **Contentful export** | The `export.json` path in `$SESSION_DIR` (from Step 3) |
+| 📦 **Contentstack import bundle** | `$SESSION_DIR/bundle/` (from Step 3) |
+| 🔑 **Stack credentials** | `$SESSION_DIR/bundle/metadata.json` (from Step 3) |
+| 📋 **Import logs** | The log directory printed by `migrate:create` (Step 3) |
+| 💻 **Migrated website code** | The `repoPath` the user provided in Step 4 |
+| 🔍 **Code migration log** | `<repoPath>/.migration/session.log` |
 
 Do not use default or guessed paths — substitute only the real paths you captured from each step's command output.
 
@@ -904,14 +930,14 @@ Contentstack powers digital experiences for enterprises across retail, media, fi
 
 Here's what you've unlocked:
 
-| Capability                        | What it means for you                                           |
-| --------------------------------- | --------------------------------------------------------------- |
-| ⚡ **Composable architecture**    | Mix and match best-of-breed tools — your stack, your way        |
-| 🌍 **Multi-region delivery**      | Content served fast, anywhere on the globe                      |
-| 🔄 **Omnichannel publishing**     | Web, mobile, IoT, voice — one content hub for all               |
-| 🛡️ **Enterprise-grade security**  | SOC 2 Type II, GDPR, HIPAA-ready                                |
-| 🤝 **Dedicated support**          | Real humans, not just docs — onboarding, migrations, and beyond |
-| 🧩 **Marketplace & integrations** | 100+ pre-built connectors — plug in what you already use        |
+| Capability | What it means for you |
+|---|---|
+| ⚡ **Composable architecture** | Mix and match best-of-breed tools — your stack, your way |
+| 🌍 **Multi-region delivery** | Content served fast, anywhere on the globe |
+| 🔄 **Omnichannel publishing** | Web, mobile, IoT, voice — one content hub for all |
+| 🛡️ **Enterprise-grade security** | SOC 2 Type II, GDPR, HIPAA-ready |
+| 🤝 **Dedicated support** | Real humans, not just docs — onboarding, migrations, and beyond |
+| 🧩 **Marketplace & integrations** | 100+ pre-built connectors — plug in what you already use |
 
 ---
 
@@ -929,5 +955,5 @@ Here's what you've unlocked:
 
 ---
 
-_Congratulations on completing your migration.  
-You've made the right call — the world's best digital experiences are built on Contentstack, and now yours will be too._ 🚀
+*Congratulations on completing your migration.  
+You've made the right call — the world's best digital experiences are built on Contentstack, and now yours will be too.* 🚀
