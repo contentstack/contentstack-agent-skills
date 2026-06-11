@@ -1,6 +1,6 @@
 # Contentstack Skills
 
-A bundle of 20 ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools, covering CMS implementation, Brand Kit guidance, delivery SDK development, Developer Hub app architecture, and Launch automation.
+A bundle of 21 ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools, covering CMS implementation, Brand Kit guidance, delivery SDK development, migration workflows, Developer Hub app architecture, and Launch automation.
 
 ## What's in here?
 
@@ -71,6 +71,7 @@ npx skills add <this-repo>@<skill-slug>
 | `dx-migrate-js-to-ts-sdk` | Migrate JS to TS SDK | Developer Experience | Migration from the JavaScript Contentstack SDK to the TypeScript Delivery SDK, including API mapping, rewrites, and unsupported pattern callouts. |
 | `launch-sync-environment-variables-from-env-example` | Sync Launch environment variables from .env.example | Launch | Comparing a local `.env.example` with Launch environment variables and patching missing keys without printing secrets. |
 | `launch-trigger-and-monitor-launch-deployments` | Trigger and Monitor Launch Deployments | Launch | Triggering Launch deployments, polling deployment status, retrieving failure logs, and summarizing likely causes and next steps. |
+| `migration-companion` | Contentstack Migration Companion | Developer Experience | Guided Contentful-to-Contentstack migration workflow covering prerequisites, content migration, code migration, bundled validation scripts, and completion reporting. |
 
 ## How it works
 

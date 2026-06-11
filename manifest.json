@@ -1,6 +1,6 @@
 {
   "exported_at": "2026-04-28T08:27:32.000Z",
-  "skill_count": 20,
+  "skill_count": 21,
   "skills": [
     {
       "slug": "brand-kit-assistant",
@@ -101,6 +101,11 @@
       "slug": "launch-trigger-and-monitor-launch-deployments",
       "title": "Trigger and Monitor Launch Deployments",
       "product": "Launch"
+    },
+    {
+      "slug": "migration-companion",
+      "title": "Contentstack Migration Companion",
+      "product": "Developer Experience"
     }
   ]
 }
