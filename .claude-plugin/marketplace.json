@@ -1,5 +1,10 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "contentstack-skills",
+  "description": "Contentstack agent skills for Claude Code, Cursor, Codex, and Gemini.",
+  "owner": {
+    "name": "Contentstack"
+  },
   "plugins": [
     {
       "name": "contentstack-skills",
