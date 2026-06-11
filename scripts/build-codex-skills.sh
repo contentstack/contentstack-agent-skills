@@ -4,6 +4,7 @@
 # Emits:
 #   codex/AGENTS.md         — router, copied from skills/CLAUDE.md with link paths rewritten
 #   codex/<slug>/SKILL.md   — one per skill, frontmatter stripped, body only
+#   codex/<slug>/*          — bundled skill assets such as references/ and scripts/
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -29,6 +30,9 @@ for dir in "$SKILLS_DIR"/*/; do
     printf '# %s\n\n' "$title"
     awk 'BEGIN{fm=0} /^---$/{fm++; next} fm>=2{print}' "$skill_md"
   } > "$OUT_DIR/$slug/SKILL.md"
+
+  find "$dir" -mindepth 1 -maxdepth 1 ! -name "SKILL.md" ! -name "__pycache__" -exec cp -R {} "$OUT_DIR/$slug/" \;
+  find "$OUT_DIR/$slug" \( -name "__pycache__" -type d -o -name "*.pyc" -type f \) -prune -exec rm -rf {} +
 done
 
 echo "Wrote codex tree to $OUT_DIR"
