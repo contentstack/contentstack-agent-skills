@@ -15,7 +15,7 @@ When you want to migrate Delivery SDK code from JavaScript to TypeScript, compar
 
 ## What it covers
 
-- **Packages & imports**: install `@contentstack/delivery-sdk@latest`; switch imports; add `@contentstack/persistance-plugin` for cache and `@contentstack/utils` for utils.
+- **Packages & imports**: install `@contentstack/delivery-sdk@latest`; switch imports; add `@contentstack/persistence-plugin` for cache and `@contentstack/utils` for utils.
 - **Key API mappings**: `contentstack.stack(...)` (not `Stack(...)`); `stack.contentType(...).entry(...).asset(...).query().fetch().find()`, plus `paginate()`, `next()`, `previous()`, `locale()`, `includeReference()`, `includeEmbeddedItems()`, `includeContentType()`, `includeCount()`, and taxonomy methods.
 - **Typed results**: generics on `fetch<BlogEntry>()`.
 - **Cache**: install the persistence plugin and pass `cacheOptions` for policies other than `Policy.IGNORE_CACHE`.
