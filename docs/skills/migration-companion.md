@@ -21,7 +21,7 @@ When you want to migrate, move, switch, port, or re-platform to Contentstack: co
 | 2. Install migrate plugin | Installs/updates `@contentstack/cli-external-migrate`                                     | `csdx migrate:*` available             |
 | 3. Content migration      | `csdx migrate:create` exports, converts, and imports into a new stack                     | Populated stack + bundle + credentials |
 | 4. Code migration         | Detect → plan → rewrite → eval (13 checks)                                                | Rewritten data layer                   |
-| 5. Welcome                | :                                                                                         | Recap + next steps                     |
+| 5. Welcome                | —                                                                                         | Recap + next steps                     |
 
 ## What it covers
 
