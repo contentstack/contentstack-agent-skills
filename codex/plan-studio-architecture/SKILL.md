@@ -1,0 +1,218 @@
+# plan-studio-architecture
+
+
+## When to use
+
+Take a project's requirements and print an architecture plan — which pieces are Sections, which pages are Connected templates, which CTs + Global Fields, build order.
+
+Use when the user describes a project and asks "what should I build", "how should I structure this", "Section or Template", "what CTs do I need", "build order". Also defensively when `build-section`/`build-connected-template` is invoked without decomposing first. Do NOT use to actually build. Do NOT use before concept ladder is crisp (run `start-here-zero-knowledge`).
+
+# Plan the Studio architecture from project requirements
+
+## Purpose
+
+Given requirements, classify Sections, Connected templates, the content model, and build order. Planning-only; produces a printed plan and hands off to `byoc-end-to-end`.
+
+## Task
+
+### Step 1 — Parse the requirements into a list of pages and features
+
+Read the user's `requirements` and extract:
+
+- **Pages** — distinct URLs / routes the visitor sees (homepage, product detail, blog post, about, contact, category landing, etc.).
+- **Reusable structural blocks** — the parts that appear on multiple pages (header, hero, feature grid, testimonial strip, CTA, footer, related-items, etc.).
+- **Data sources** — content types the user already has (or wants), external data hints (Shopify, third-party API), pinned-query language ("show all products tagged X").
+
+Print the parsed list back; ask the user to confirm or correct.
+
+### Step 2 — Classify reusable structural blocks as Sections (NOT pages)
+
+**Golden rule — when a piece qualifies as a Section (build BEFORE touching a Template).** Skills sometimes jump straight to Template authoring and drop components + bindings directly on the Template. That's wrong whenever either of the two conditions below fires — the piece must be built as a Section first, then dropped on the Template.
+
+1. **Reuse across Templates.** A bound compound component that appears on more than one Template MUST become a Section. Otherwise every Template repeats the same drop-and-bind work, and any binding tweak has to be applied N times. If the component appears on exactly ONE Template and won't ever leave it, direct-drop on the Template is fine — but that's the exception, not the default.
+2. **Schema iteration with bindings.** Any Modular Block field, multi-Reference field, group with `multiple: true`, or otherwise-iterated collection whose items need bound rendering MUST become a **List Section** (Repeater + Condition Blocks) — not authored inline on the Template. The iteration wiring belongs at the Section layer where it's reusable and testable; putting it at Template level fragments it across every Template that needs the same iteration.
+
+If either condition is true → build the Section first (`build-section` for Simple, `build-repeating-section` for List) → THEN drop it on the Template. Only when both conditions are false is it correct to drop registered components directly on a Template.
+
+For each reusable structural block — header, hero, footer, feature grid, etc. — mark it as a **Section**. Sections aren't pages; they're units that pages assemble.
+
+For each Section, identify what it should bind to:
+
+- **Bound to a Global Field** if the same field set is reused across multiple CTs (e.g. a `card_meta` GF with title + image + cta — used by ProductCard, FeaturedCategoryCard, RelatedItemCard, etc.)
+- **Bound to a CT** if the Section is specific to one CT's shape (e.g. ProductCard bound to `product` CT)
+- **Bound to a Group / Modular Block / Reference field** on a parent CT if the Section renders the nested shape (these are usually child Sections that drop into a parent's Slot — see Path B in `build-section`)
+- **Atomic / static** if the Section is layout-only with no CMS bindings (rare; usually still has at least a brand-config reference)
+
+For any Section whose linked schema has Global Field / Modular Block / Group / Reference fields, flag those as **Slot candidates** (per the heuristic in `understand-section-slots`). Default to exposing a Slot; only inline when certain the nested shape is single-use.
+
+Also flag each Section's **`selectedField` decision** — Studio scopes Section data via `getScopedData(pageEntry, selectedField)`, and the set-vs-unset choice depends on the Section's data shape:
+
+- **One Repeater over one field** (e.g. Card Grid over `related_posts`) → set `selectedField = <that field>`. The Section reads `template` as the field's value directly.
+- **Multiple fields on the page entry** (e.g. Header reading `brand` + `nav_links` + `signin_label`) → leave `selectedField` unset. `template` becomes the whole page entry; keep original `template.<field>` paths.
+
+Setting `selectedField` on a multi-field Section loses access to everything outside the scoped path. See [`build-section`](../build-section/SKILL.md) § *How a Section gets its data* for the mechanism and [`author-composition-via-api`](../author-composition-via-api/SKILL.md) § *Decision rule* for the wire shapes.
+
+### Step 3 — Classify each page as a Connected template
+
+For every page (not a Section), pick the CT backing:
+
+```
+Q1. Does the page repeat per content item?
+    ("blog post detail", "product detail", "recipe page", "author profile")
+    YES → Connected template + multi-entry CT, URL pattern with {{entry.slug}} or similar
+    NO  → continue to Q2
+
+Q2. Does the page have a stable shape?
+    ("homepage", "about", "contact", "pricing", "category landing", any campaign with hero copy)
+    YES → Connected template + single-entry CT (or generic shape CT with one entry).
+          Even short-lived / campaign pages get a single-entry CT for their owned copy.
+```
+
+For each page, print one line:
+
+```
+<page name>  →  Connected
+  Backing:     <CT name + multi/single-entry>
+  URL pattern: <e.g. "/blog/{{entry.slug}}" for multi-entry, "/" for single-entry, etc.>
+  Reasoning:   <Q1 hit / Q2 hit>
+```
+
+If a page seems not to fit either Q1 or Q2, it almost certainly has some copy (hero title, CTA) that wasn't called out in the requirements; that copy IS content, and modelling it puts the page back on Q2 (single-entry CT).
+
+### Step 4 — Derive the content model
+
+From Steps 2–3, list every CT and Global Field needed:
+
+```
+Content model:
+  CT  <name>  <multi-entry | single-entry>   fields: <key fields, one line>
+  CT  ...
+  GF  <name>                                 fields: <key fields>
+                                             reused by: <CTs / Sections>
+```
+
+For each CT, check for Slot-candidate fields (Global Field / Modular Block / Group / Reference) and mark them.
+
+For each Global Field, name which CTs/Sections reuse it — they exist *because* a field set is shared.
+
+If 2+ CTs have identical or near-identical sub-shapes, propose extracting them as a Global Field.
+
+### Step 5 — Section inventory in build order
+
+List every Section from Step 2, ordered by **dependency**:
+
+- Child Sections (those that drop into a parent's Slot) come BEFORE the parent Sections that expose Slots for them.
+- Atomic / standalone Sections (no Slot interactions) can go in any order — group them at the start for quick wins.
+- Mark each Section's exposed Slots and which child Sections fill them.
+
+```
+Sections (build in this order):
+  1. ProductCard            bound to product CT          → standalone; no Slot
+  2. FeaturedCategoryCard   bound to card_meta GF        → standalone; no Slot
+  3. ProductGrid            bound to category.products   → exposes Slot, drop ProductCard
+  4. FeaturedCategories     bound to homepage.featured_categories → exposes Slot, drop FeaturedCategoryCard
+  5. Hero                   bound to homepage.hero group → standalone
+  6. Header / Footer        atomic; no CT binding
+```
+
+### Step 6 — Template inventory
+
+For each page (from Step 3):
+
+```
+Templates:
+  Connected /                       homepage CT (single)        → Hero + FeaturedCategories
+  Connected /category/{{slug}}      category CT                 → Hero + ProductGrid
+  Connected /product/{{slug}}       product CT                  → ProductDetailHero + ProductSpecsTable + RelatedProducts
+  Connected /blog/{{slug}}          blog_post CT                → BlogHeader + RichText + RelatedPosts
+```
+
+### Step 7 — Build order
+
+Print the full executable order:
+
+```
+Build order:
+  1. Create / update CTs and Global Fields  (in the Contentstack web app)
+  2. Register atomic React components       (lazy by default; layout-agnostic — see register-component)
+  3. Import design tokens                   (before any Section is authored — see import-design-tokens)
+  4. Build Sections in the order from Step 5
+  5. Build Templates in the order from Step 6  (one per Connected template)
+  6. Set up visitor render routes           (configure-csr-vs-ssr + setup-template-preview-routes)
+  7. Verify + deploy                        (verify-setup + deploy-studio-site)
+
+Run `byoc-end-to-end` to walk this in execution mode.
+```
+
+### Step 8 — Sanity checks before handoff
+
+Before printing the final plan, flag any of these at the top:
+
+- Anything with a URL listed as a Section (it's a Template).
+- Reusable block (header/hero/footer/grid) listed as a Template (it's a Section).
+- CT with GF/MB/Group/Reference field not exposed as a Slot.
+- Global Field shared by ≥2 CTs without its own Section.
+- Connected page without an identified backing CT.
+- Child Section whose linked schema doesn't match its parent Repeater's iterated CT.
+
+### Step 9 — Print the complete plan
+
+Use this exact structure (the user will copy-paste it as the build brief):
+
+```
+ARCHITECTURE PLAN — <project name>
+
+Sanity flags (reconsider before proceeding):
+  - <flag>: <one-line reason and pointer to the affected piece>
+  ... (or "None" if Steps 1–8 all clean)
+
+Content model:
+  <CT and GF listing from Step 4>
+
+Sections (build in this order):
+  <Section inventory from Step 5>
+
+Templates:
+  <Template inventory from Step 6>
+
+Build order:
+  <Step 7 listing>
+
+Next: run `byoc-end-to-end` to walk this plan in execution mode.
+```
+
+## Inputs needed from the user
+
+1. `requirements` — a paragraph or bullet list of pages, features, reusable blocks, data sources. Don't proceed without this; ask if the user only gives a one-liner.
+
+## Acceptance
+
+The skill succeeds when:
+
+- [ ] Every page in the requirements has been classified as Connected (multi-entry CT or single-entry CT), with the deciding Q1 / Q2 step printed.
+- [ ] The content model lists every CT and Global Field needed, with reuse notes.
+- [ ] The Section inventory is ordered by dependency (child Sections before parent Sections that use them).
+- [ ] Each Section's Slot-candidate fields are flagged.
+- [ ] The Template inventory names each page with its URL pattern and the Sections it stacks.
+- [ ] The build order is printed as a numbered, executable list.
+- [ ] Sanity flags are surfaced at the top of the plan (or "None").
+- [ ] The plan ends with the handoff to `byoc-end-to-end`.
+- [ ] No code was written and nothing was created in Studio — this skill is planning-only.
+
+## Common pitfalls
+
+| Pitfall | Why it bites | Right move |
+|---|---|---|
+| Calling a reusable block a "page" | Headers / heroes / footers aren't pages — they're Sections that pages assemble | Anything that doesn't have its own URL is a Section, not a Template |
+| Calling a per-content-item page (blog post, product detail) a separate Template per entry | Templates iterate via URL pattern — one Template renders N entries. Building N templates means N times the maintenance | Multi-entry CT + one Connected template with a `{{entry.slug}}`-style URL pattern. The Template renders unlimited entries. |
+| Skipping the content model step | Building Sections without knowing which CT backs them → discovering mid-build that the CT doesn't have the right field, looping back to remodel | Model the CT first. The Section authoring depends on it. |
+| Inlining a Modular Block / Group / Reference / Global Field instead of exposing a Slot | Locks the nested shape into the parent Section, throws away the reusability the field shape was set up to give you | Default to Slot. Override only when certain the nested shape is single-use. Global Field always deserves a Slot (it exists *because* of cross-CT reuse). |
+| Building parent Sections before their child Sections | Parent's Slot has nothing to drop in when you try to verify it | Order Section build by dependency in Step 5 — children before parents. |
+| Producing a plan without sanity flags | The user proceeds with a flawed model; rework cost is high | Step 8 is mandatory. Print "None" if clean; otherwise list flags at the top of the plan in red. |
+
+## See also
+
+- `start-here-zero-knowledge` — the conceptual prerequisite (run BEFORE this skill if the user is new)
+- `understand-templates`, `understand-sections`, `understand-section-slots`, `understand-linked-schemas`, `understand-auto-binding` — the concept ladder this skill assumes is internalised
+- `byoc-end-to-end` — the procedural macro that walks the plan in execution mode
+- `build-section`, `build-connected-template`, `build-repeating-section`, `use-section-slot` — the implementation skills the build order references

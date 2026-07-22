@@ -10,6 +10,21 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILLS_DIR="$ROOT/skills"
 OUT_DIR="$ROOT/cursor/rules"
 
+# Preserve existing slug->NN numbering so adding skills is additive (no renumber churn).
+SNAP="$(mktemp)"
+trap 'rm -f "$SNAP"' EXIT
+maxn=0
+if [ -d "$OUT_DIR" ]; then
+  for f in "$OUT_DIR"/*.mdc; do
+    [ -e "$f" ] || continue
+    base="$(basename "$f" .mdc)"
+    nn="${base%%-*}"; sl="${base#*-}"
+    [ "$sl" = "router" ] && continue
+    printf '%s %s\n' "$sl" "$nn" >> "$SNAP"
+    n=$((10#$nn)); [ "$n" -gt "$maxn" ] && maxn=$n
+  done
+fi
+
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
@@ -22,7 +37,7 @@ mkdir -p "$OUT_DIR"
   sed 's|](\./|](../../skills/|g' "$SKILLS_DIR/CLAUDE.md"
 } > "$OUT_DIR/00-router.mdc"
 
-i=1
+count=0
 for dir in "$SKILLS_DIR"/*/; do
   slug="$(basename "$dir")"
   skill_md="$dir/SKILL.md"
@@ -35,8 +50,10 @@ for dir in "$SKILLS_DIR"/*/; do
   [ -z "$description" ] && description="Contentstack skill: $slug"
   [ "$disable" = "true" ] && always="true" || always="false"
 
-  nn="$(printf '%02d' "$i")"
+  nn="$(awk -v s="$slug" '$1==s{print $2; exit}' "$SNAP")"
+  if [ -z "$nn" ]; then maxn=$((maxn + 1)); nn="$(printf '%02d' "$maxn")"; fi
   out="$OUT_DIR/$nn-$slug.mdc"
+  count=$((count + 1))
 
   {
     printf -- '---\n'
@@ -50,7 +67,6 @@ for dir in "$SKILLS_DIR"/*/; do
     awk 'BEGIN{fm=0} /^---$/{fm++; next} fm>=2{print}' "$skill_md"
   } > "$out"
 
-  i=$((i + 1))
 done
 
-echo "Wrote $((i - 1)) cursor rules to $OUT_DIR"
+echo "Wrote $count cursor rules to $OUT_DIR"

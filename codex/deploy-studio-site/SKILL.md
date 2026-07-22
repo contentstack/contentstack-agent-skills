@@ -1,0 +1,119 @@
+# deploy-studio-site
+
+
+## When to use
+
+Ship a Studio site to Vercel/Netlify — production env vars, composition Deploy, Live Preview gating, region/host config, cache and 401 gotchas.
+
+Use when deploying a Studio site, setting up Vercel/Netlify, configuring production env vars, wiring Live Preview only on preview deploys, or debugging "deployed but visitors see old content / blank page / Live Preview chrome in production / 401 from Delivery API". Two layers ship independently: composition (Save+Deploy in canvas) and host (env vars + build + push).
+
+# Deploy a Studio site
+
+## Context
+
+A Studio site ships in two independent layers, and both must be correct for the visitor URL to render the latest composition cleanly.
+
+- **Composition Deploy** — publishes the composition record through Contentstack's publishing workflow (canvas → target environment). See `docs/30-composition/save-vs-deploy-a-composition.md`.
+- **App host** — your React/Next app on Vercel/Netlify that renders `<StudioComponent />` and reads from the Delivery SDK (via `sdk.fetchCompositionData` on the server when using SSR composition-by-URL).
+
+The Delivery Token, Preview Token, and Environment are configured per-deploy: production deploys must NOT carry a Preview Token (otherwise visitors see Live Preview overlays), and preview deploys SHOULD carry one (otherwise authors lose the live edit-and-see-it loop).
+
+Goal state: visitor hits the production URL, gets the latest deployed composition rendered cleanly (no Studio chrome, no Live Preview overlays), and authors see real-time updates only in preview contexts. Match the success screenshot in `assets/screenshots/template-blog-post-full-stack.png`.
+
+## Task
+
+### A. Host the app
+
+1. **Confirm the build output type.** CSR (Vite/CRA → static) or SSR (Next/Remix). Vercel and Netlify both handle either; SSR needs a Node runtime, static needs nothing extra.
+
+2. **Set production env vars** in the host dashboard. Same names as `.env.local` per `docs/10-setup/app-prerequisites/install-the-delivery-sdk.md` — pick the prefix matching the framework (`NEXT_PUBLIC_`, `VITE_`, `REACT_APP_`, `PUBLIC_`, or plain `process.env` for Remix):
+   - `<PREFIX>_CONTENTSTACK_API_KEY` — stack API key (`blt…`)
+   - `<PREFIX>_CONTENTSTACK_DELIVERY_TOKEN` — `cs…`, scoped to the **production environment + branch**
+   - `<PREFIX>_CONTENTSTACK_ENVIRONMENT` — `<prodEnvironment>` (e.g. `production`)
+   - `<PREFIX>_CONTENTSTACK_DEFAULT_LOCALE` — e.g. `en-us`
+   - `<PREFIX>_CONTENTSTACK_PREVIEW_TOKEN` — **omit on the production deploy**; set only on preview deploys
+   - SSR composition-by-URL ONLY (server-only, no `PUBLIC` prefix): `STUDIO_COMPOSITION_CT_UID`, `CONTENTSTACK_DELIVERY_TOKEN`, `CONTENTSTACK_ENVIRONMENT`, `CONTENTSTACK_BRANCH` — see `docs/10-setup/app-prerequisites/ssr-composition-query.md`.
+
+3. **Per-environment scoping** in the host dashboard:
+   - **Production** deploy → `environment=<prodEnvironment>`, no preview token, Live Preview `enable: false`.
+   - **Preview** deploy (Vercel Preview / Netlify Deploy Preview) → `environment=<previewEnvironment>`, preview token set, Live Preview `enable: true`.
+
+4. **Gate Live Preview init** so it only runs when a preview token exists. Per `docs/10-setup/app-prerequisites/install-live-preview.md`:
+   ```ts
+   const previewToken = process.env.NEXT_PUBLIC_CONTENTSTACK_PREVIEW_TOKEN;
+
+   ContentstackLivePreview.init({
+     ssr: false,
+     enable: Boolean(previewToken),
+     stackDetails: { apiKey, environment },
+     editButton: { enable: Boolean(previewToken) },
+   });
+   ```
+   `editButton.enable` must be conditional too — otherwise visitors see Studio edit chrome in production.
+
+5. **Non-US regions.** Set the Live Preview `host` to the regional preview host (e.g. `eu-rest-preview.contentstack.com`) and the Delivery SDK `region` to match. Regional CDN hosts: `eu-cdn.contentstack.com`, `azure-na-cdn.contentstack.com`, `azure-eu-cdn.contentstack.com`, `gcp-na-cdn.contentstack.com`, `au-cdn.contentstack.com`. See `docs/10-setup/troubleshoot-common-studio-issues.md`.
+
+6. **Push to the host's main branch** (or `vercel --prod` / `netlify deploy --prod`). Confirm the build picks up env vars by grepping the deploy logs for the expected `<PREFIX>_*` injection. `NEXT_PUBLIC_*` (and equivalents) are inlined at build time — adding a var after the build does nothing until you redeploy.
+
+### B. Deploy the composition
+
+7. **Save** in the canvas. Save persists the draft. Deploy publishes whatever was last saved — see `docs/30-composition/save-vs-deploy-a-composition.md`.
+
+8. **Preview** in the canvas with Live Preview, switching the Preview Entry across a few real entries (for linked templates) to confirm bindings resolve. Repeater iteration bindings use `repeater.<field>` — verify each iteration renders the expected entry data.
+
+9. **Click Deploy** in the canvas toolbar (right cluster, next to Save). The Deploy modal opens — pick the target environments, decide "Send with References" vs "Send without References", confirm. The modal title says "Deploy Template" even for Sections; that's a label quirk, not a bug.
+
+10. **Publish connected entries to the same environment.** For linked templates, the template can deploy fine but the page renders blank if the connected entry isn't published to `<prodEnvironment>`. Publish each connected entry to the target environment.
+
+11. **Wait for publishing workflow.** If the stack has approvals or scheduling configured, the deploy is queued, not immediate. Check the Contentstack publish queue.
+
+## Inputs needed from the user
+
+In this order. Stop and ask if any required value is missing.
+
+1. `host` — `vercel` or `netlify`
+2. `framework` — needed to pick the env-var prefix
+3. `prodEnvironment` — Contentstack environment name for the production deploy
+4. `previewEnvironment` — Contentstack environment name for preview deploys (optional, skip if not using preview deploys)
+5. `region` — defaults to `us`
+6. `ssrCompositionByUrl` — yes/no; controls whether server-only env vars are required
+
+If the user doesn't know an environment name, send them to `app.contentstack.com` → Stack → Settings → Environments.
+
+## Acceptance
+
+This skill succeeds only when ALL of the following are true. If any fails, do not claim success — surface the failure and stop.
+
+- [ ] Production deploy has `<PREFIX>_CONTENTSTACK_ENVIRONMENT` set to `<prodEnvironment>` and **no** preview token set
+- [ ] Preview deploy (if configured) has `<PREFIX>_CONTENTSTACK_PREVIEW_TOKEN` set and `environment=<previewEnvironment>`
+- [ ] Live Preview `enable` and `editButton.enable` are gated on the preview token being present
+- [ ] If SSR composition-by-URL: server-only `STUDIO_COMPOSITION_CT_UID`, `CONTENTSTACK_DELIVERY_TOKEN`, `CONTENTSTACK_ENVIRONMENT`, `CONTENTSTACK_BRANCH` are set
+- [ ] Region/host pair matches the stack's region (non-US only)
+- [ ] Composition is Saved and Deployed to `<prodEnvironment>` via the canvas Deploy modal
+- [ ] All connected entries for linked templates are published to `<prodEnvironment>`
+- [ ] Visitor URL opened in an incognito session renders the composition with no Studio chrome, no Live Preview edit buttons
+- [ ] DevTools → Network shows Delivery API calls hitting `cdn.contentstack.io` (or the regional CDN), not the preview host
+- [ ] Preview deploy (if configured) updates live on entry edit without reload
+
+## Common pitfalls
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Deployed but visitors see old content | CDN / ISR / SSG cache | Lower TTL or trigger revalidation; for Next set `revalidate` or use on-demand revalidation |
+| Page renders blank post-deploy | Connected entry not published to target env | Publish the entry to `<prodEnvironment>` |
+| Visitors see Live Preview edit buttons / overlays | `enable: true` unconditional in prod build | Gate `enable` and `editButton.enable` on the preview token |
+| Preview deploy doesn't update live | `onEntryChange` not wired to refetch, or preview token mismatch | See `docs/10-setup/verify-end-to-end.md`; verify token matches the one in Contentstack |
+| `region` / `host` mismatch error | Non-US stack with US defaults | Set Delivery SDK `region` and Live Preview `host` to the region |
+| Deploy "succeeded" but composition didn't change | Pending approval / scheduled publish | Check Contentstack publish queue |
+| Build fails on host with missing env var | `<PREFIX>_*` only inlined at build time | Set vars in the host dashboard before triggering the build; redeploy after adding |
+| Delivery token returns 401 in production | Token scoped to wrong environment or branch | Generate a token scoped to the prod environment + branch; rotate in host env vars |
+| SSR composition-by-URL 500s | Missing server-only `STUDIO_COMPOSITION_CT_UID` / `CONTENTSTACK_BRANCH` | Add server-only vars per `docs/10-setup/app-prerequisites/ssr-composition-query.md` |
+
+## See also
+
+- `docs/30-composition/save-vs-deploy-a-composition.md` — Save vs Deploy semantics
+- `docs/10-setup/app-prerequisites/install-the-delivery-sdk.md` — env var names
+- `docs/10-setup/app-prerequisites/install-live-preview.md` — Live Preview init
+- `docs/10-setup/app-prerequisites/ssr-composition-query.md` — SSR composition-by-URL env vars + `sdk.fetchCompositionData`
+- `docs/10-setup/verify-end-to-end.md` — end-to-end smoke test
+- `docs/10-setup/troubleshoot-common-studio-issues.md` — regional host config

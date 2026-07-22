@@ -1,0 +1,136 @@
+---
+description: "Explain Section Slots — designated swap points inside a Section where a template author drops a different Section per instance without forking. Section-in-Slot, not raw component."
+alwaysApply: false
+---
+
+
+## When to use
+
+Explain Section Slots — designated swap points inside a Section where a template author drops a different Section per instance without forking. Section-in-Slot, not raw component.
+
+Use before `use-section-slot` when the user is new to Studio. Also when the user asks "what's a Section Slot?", "do I need a new Section for X?", or is stuck between forking a Section vs exposing a slot. Phrases — "what's a slot", "swap point", "drop zone". Do NOT use to actually create a slot — for that, run `use-section-slot`.
+
+# What is a Section Slot?
+
+## "Slot" lives at two layers — read this first
+
+Studio uses the word "Slot" at two different layers. They compose, but they're distinct mechanisms. This skill teaches the second one; you'll see references to the first one too.
+
+| Layer | Name | Where it's declared | Who declares it | Skill |
+|---|---|---|---|---|
+| **Component schema** | `slot`-typed prop | In `registerComponent({ props: { body: { type: "slot" } } })` | The engineer registering a component | `register-component` § 5a |
+| **Section composition** | **Section Slot** | A Smart Container element carved into a Section's tree | The author building a Section | This skill + `use-section-slot` |
+
+**They compose together.** Canonical pattern:
+1. An engineer registers a `Card` component with a `body: { type: "slot" }` prop (component-level extensibility).
+2. The section author carves a **Section Slot** *inside* that `body` region of the Card on the section canvas (section-level extensibility — see `use-section-slot` § *component-slot-prop placement*).
+3. Template authors drop another Section into the Section Slot at template-authoring time (per-template extensibility).
+
+Three layers of extensibility working together. If you just want to skim: most authoring decisions in this skill are about layer 2 (Section Slot). The component-level `slot` prop is a separate engineer-side concern documented in `register-component`.
+
+## The one-line answer
+
+**A Section Slot is a placeholder *inside* a Section that template authors can fill with a different component per template instance.** It's how you make one Section work for multiple template layouts without copy-pasting the Section N times.
+
+## A real example
+
+You have one Section called **"Hero Strip"** — a banner with a title and a CTA area on the right. You use it on three pages:
+
+- Marketing landing pages need a **Button** in the CTA area (`Get started →`)
+- Blog post pages need a **Subscribe form** in the CTA area (email input + submit)
+- Product detail pages need an **Add to cart** widget in the CTA area
+
+All three pages share the *same* Hero Strip layout (same title position, same background, same spacing) but want a *different* component on the right.
+
+Without slots: three separate Sections (`HeroStripWithButton`, `HeroStripWithSubscribe`, `HeroStripWithCart`) that drift apart over time.
+
+**With a Section Slot:** one Hero Strip Section with a slot called `cta`. Template authors drop a Button into the slot on the marketing template, a Subscribe form on the blog template, an Add to Cart on the product template. One Section, three template layouts.
+
+## The mental model
+
+A Section Slot is **a designated placeholder** in the composed React tree:
+
+```
+Section "HeroStrip"
+├── Title (bound to entry.title)
+├── Background image (bound to entry.background)
+└── Section Slot "cta"   ← template author drops a component here
+```
+
+When a template uses this Section, the slot is empty until the author drags something into the outlined region on the canvas. Drop a `Button` → Studio renders `Button` inside the slot for that template. The next template can drop something else.
+
+## What fills a Slot — a Section, not a raw component
+
+A Slot is filled at template-authoring time by **dropping another Section into it**, not a raw registered component. This matters because of how binding works:
+
+- A **Section** is already bound to its own linked schema. When it lands in a Slot, its bindings come along — the dropped Section knows what data it renders without the author touching any prop. Studio auto-binds the Section's linked schema to whatever data scope the Slot sits in (e.g. an iterated item if the Slot is inside a Repeater).
+- A **raw registered component** has only prop signatures — Studio has no way to know which field maps to which prop at the Slot location. The author would have to hand-bind every prop through the Data Picker. That's the wrong granularity for a Section Slot.
+
+So the recipe is: **build the child as its own Section**, with its own linked schema, then drop *that Section* into the parent's Slot. One drop, no per-prop binding clicks.
+
+In the Hero Strip example, the CTA-area variations are each their own Section — a "CTA Button" Section bound to a button content shape, a "Subscribe Form" Section bound to a subscription content shape, etc. The template author drops the appropriate Section into the `cta` slot, and Studio handles the wiring.
+
+## Slot vs Exposed Prop — when do I use which?
+
+
+| Section Slot | Exposed Prop |
+|---|---|
+| Swap a **child component** (Button vs Form vs Cart widget) | Override a **value on an existing prop** (button label = "Buy" vs "Get started") |
+| The *shape* of the inner UI changes | The *content* of an existing prop changes |
+| Template author drags a different component into the slot | Template author types a value in the right-panel Settings tab |
+| Adds a tree-shape variation point | Adds a per-template content override |
+
+Use **a slot** when the *kind* of thing varies per template. Use **an exposed prop** when only the *value* of an existing thing varies.
+
+## When to expose one — the Global Field / Modular Block / Group / Reference heuristic
+
+The strongest, most reliable signal that a Section should expose a Slot is the **shape of the CT it's bound to**. If your CT has any **Global Field**, **Modular Block**, **Group**, or **Reference** field, the corresponding Section should expose a Slot for it — those fields are inherently composable / reusable, and inlining them into the parent Section throws that reusability away.
+
+**Global Fields are the strongest candidate of all** — they exist *because* the same field set is meant to be reused across multiple content types. If a CT embeds a Global Field, that Global Field almost always deserves its own Section (built against the Global Field schema directly) which the parent Section then exposes as a Slot. Inlining a Global Field's children into the parent Section duplicates work every team that uses the same Global Field elsewhere will also have to do.
+
+Why the rest qualify: each of those field kinds already represents *another unit of structured content* that other Sections can be built against. A Modular Block can be filled with different block types per entry; a Group / Reference points at a nested shape that any compatible Section can render. Exposing them as Slots lets the parent Section be filled with a *different* child Section per usage — same parent layout, different inner content shape. Inlining them locks in one shape forever.
+
+**Rule of thumb:** for every Global Field / Modular Block / Group / Reference field on the CT, default to exposing a Slot in the Section. Override only when you are certain that nested shape is genuinely one-off and never going to vary — and even then, Global Fields rarely qualify for the override (their whole reason for existing is cross-CT reuse).
+
+## When to add a Slot to a Section
+
+Add a Section Slot when ALL three are true:
+
+1. **The same Section layout** is used on multiple templates.
+2. **One specific child component** needs to differ per template.
+3. The different components share enough role/space that they fit in the same outlined region (a Button and a Form both go in "CTA area"; a Button and a 600px-tall video grid don't).
+
+If only the *value* differs (button label, image URL), use an Exposed Prop instead — slots are heavier (they require the inner component to be droppable in Studio).
+
+If *every* template uses a different layout shape, the Sections probably aren't really the same — consider separate Sections.
+
+## What a Slot does NOT do
+
+| Misconception | Reality |
+|---|---|
+| "A slot binds to CMS data" | No — the slot itself doesn't have a binding. The Section dropped INTO the slot brings its own bindings (via its linked schema). |
+| "I drop a registered component into the slot and it just works" | No — raw components have no bindings; the author would have to hand-bind every prop through the Data Picker. Drop a **Section** into the slot instead — Sections come pre-bound to their linked schema, so Studio auto-binds at the Section level. |
+| "Slots have to be filled" | No — an empty slot just renders nothing. Templates that don't need the slot leave it empty. |
+| "I should add a slot everywhere just in case" | No — slots add authoring surface area and complexity. Add one only when you have a real per-template-component-variation need. |
+| "A slot is the same as the React children prop" | Conceptually similar, but a Section Slot is a *named* drop target in Studio's authoring UI — authors can find it by name in the canvas. The React `children` prop is the rendering mechanism underneath. |
+
+## How slots appear in Studio
+
+- **Inside the Section's canvas** (when you're authoring the Section), the slot shows as an outlined region with the slot name as a label.
+- **When the Section is dropped on a template**, the slot appears in the same outlined region — droppable, empty until filled.
+- **From the right-panel Layers tree**, the slot is a node you can select to inspect.
+- **Studio Slot vs Section Slot terminology:** they're the same thing. Studio's docs sometimes use "Section Slot" to disambiguate from React's `children` slot pattern.
+
+## Next steps
+
+| If you want to… | Skill to run |
+|---|---|
+| Add a Section Slot to an existing Section | `use-section-slot` |
+| Make a value tweakable per template instance (not a child swap) | `expose-section-props` |
+| Create the Section first | `build-section` |
+
+## See also
+
+- `docs/34-smart-containers/section-slots.md` — long-form reference
+- `understand-sections` — the parent concept (Sections themselves)
+- `use-section-slot` — actually add a slot after the concept is clear

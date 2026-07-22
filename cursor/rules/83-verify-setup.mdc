@@ -1,0 +1,246 @@
+---
+description: "Run a layered smoke test confirming Studio is wired correctly — Live Preview reachable, Visual Editor opens, Studio canvas loads the canvas-app fixture, and at least one composition renders."
+alwaysApply: false
+---
+
+
+## When to use
+
+Run a layered smoke test confirming Studio is wired correctly — Live Preview reachable, Visual Editor opens, Studio canvas loads the canvas-app fixture, and at least one composition renders.
+
+Use right after `install-studio` and `setup-template-preview-routes` to catch breakage before authoring. Also when a previously working setup regressed ("the canvas was working yesterday"). Phrases — "verify Studio setup", "smoke test", "is Studio working". Do NOT use as a creative authoring skill — purely diagnostic. Does NOT replace `troubleshoot-canvas` — verify tells you WHAT is broken; troubleshoot tells you WHY.
+
+# Verify Studio setup end-to-end
+
+## Context
+
+Studio sits on top of three other systems — Delivery SDK, Live Preview, Visual Editor. A canvas that won't load is almost always one of those failing underneath. Walk the stack layer-by-layer to find the lowest failing layer.
+
+The four layers, lowest-to-highest:
+
+1. **Delivery SDK** — can the app fetch an entry from Contentstack at all?
+2. **Live Preview** — does the iframe channel open between Contentstack and the app?
+3. **Visual Editor** — does the entry-form UI render fields with edit markers?
+4. **Studio** — does the canvas mount and render a composition with real bindings?
+
+If layer 1 fails, layers 2–4 will all fail and chasing them is wasted work. Always read failures bottom-up.
+
+Reference: `docs/10-setup/verify-end-to-end.md`, `docs/10-setup/troubleshoot-common-studio-issues.md`.
+
+## Task
+
+0. **Layer 0 — Stack-level Visual Experience setup.**
+   - Before testing any app-side wiring, ask the user to confirm ALL of:
+     - `Settings → Visual Experience → General → Live Preview → Enable Live Preview` checkbox is **checked + Save clicked**
+     - A `Default Preview Environment` is selected on the same page
+     - The `Preview URL` sub-tab has a `Custom Preview URL` set (and is NOT showing the *"Custom Preview URL Unavailable"* lockout banner)
+     - The Delivery Token in `.env` has a Preview Token generated (the **Create Preview Token** button on the token edit page must have been clicked at least once)
+     - **The environment your Studio project targets has a non-empty per-locale URL** for your locale (*Stack → Settings → Environments → `<env>` → URL for `<locale>`*). This is the canvas Base URL (origin); empty = blank canvas with an error that points at the wrong layer. For local dev it must equal your dev origin (e.g. `http://localhost:5173`).
+   - If any of these is unconfirmed (or the user is unsure), STOP and route them through `enable-visual-experience` (Live Preview) or `setup-section-preview` (the env Base URL). Re-run this skill after that completes.
+   - Catches the most common failure: app wired, stack-level flag off, runtime silently broken. Skipping makes Layer 2 failures look like SDK bugs when they're actually web-app toggles.
+
+1. **Layer 1 — Delivery SDK reachability.**
+   - Run: `npx tsx -e "import('@contentstack/delivery-sdk').then(async cs => { const stack = cs.default.stack({ apiKey: process.env.CS_API_KEY, deliveryToken: process.env.CS_DELIVERY_TOKEN, environment: process.env.CS_ENVIRONMENT || 'preview' }); const r = await stack.ctQuery('home_page', { limit: 1 }).find(); console.log('OK entries:', r.entries?.length ?? 0); })"`
+   - Or, programmatically, call any existing `stack.ctQuery(<a known CT>).find()` in the app.
+   - Pass: a query returns without throwing.
+   - Fail modes: 401 → Delivery Token wrong; 422 → environment name wrong; 404 → CT UID wrong; ECONNREFUSED → wrong region host.
+
+2. **Layer 2 — Live Preview iframe channel.**
+   - Open the host app at the Canvas URL in a browser.
+   - In the host app, attach a one-off `ContentstackLivePreview.onEntryChange(() => console.log('lp:update'))` (or rely on an existing one). Make a content edit in Contentstack.
+   - Pass: the callback fires within ~2s of the edit (you see `lp:update` in the host console).
+   - Fail modes: no callback fire → Preview Token wrong / not generated yet / Live Preview not enabled on the stack; CORS errors in console → app origin not allowed in the Custom Preview URL config (re-verify under Visual Experience → Preview URL). Don't inspect raw post-message event names — that's an internal channel that may change; the `onEntryChange` callback is the stable public surface.
+
+3. **Layer 3 — Visual Editor.**
+   - In Contentstack web UI, open any entry of a CT whose template is mounted at the Canvas URL.
+   - Click the "Preview" / eye icon → Visual Editor opens.
+   - Pass: the entry preview shows, fields have hover-edit highlights, clicking a field opens its edit panel.
+   - Fail modes: blank iframe → Canvas URL wrong; field highlights missing → `data-cslp` tags aren't being injected (the app isn't using `live-preview-utils` correctly).
+
+4. **Layer 4 — Studio canvas.**
+   - Open Studio at `studioUrl`. Pick the project. Open any composition.
+   - Pass: canvas iframe renders a non-empty `[data-composable-studio-id]` node tree within 10s.
+   - Fail modes:
+     - Canvas blank → the canvas iframe address is wrong. Check both halves: the **Canvas URL** (path) on the Studio project must match the mounted route, AND the **targeted environment's per-locale Base URL** (origin) must be non-empty and reachable. An empty env Base URL is the most common cause and surfaces as a "no base URL"-style error pointing at the Studio project, not the environment.
+     - "Component Loading Error" → section ref's `compositionUID` doesn't resolve (sections not preloaded or fetched from CDA — see F-018-style issues)
+     - "Authentication failed" → Delivery or Preview token in `.env` is wrong or revoked; re-copy from Stack → Settings → Tokens → open the token to view its current values, paste into `.env`, restart the dev server
+
+   ### Expected (not-a-failure) console messages when verifying
+
+   Two log lines are expected during verification and should NOT be interpreted as failures:
+
+   - **`[StudioCanvas] is editing-only and renders nothing outside Composable Studio. Mount it on a dedicated route…`** — logged when you open the canvas route directly in a normal browser tab (outside Studio's iframe). `<StudioCanvas />` intentionally renders nothing without a parent Studio host to drive it. The route is verified by opening it INSIDE Studio's canvas, not by hitting its URL directly. A blank standalone page + this warning is expected.
+   - **"SDK Not Initialized" tooltip inside Studio's canvas** — expected until step 3 of `install-studio` (bootstrap) has run + the browser can reach the canvas-app's origin. If you see it AFTER install: check that `studioSdk.init()` runs on the canvas route (the module holding init must be imported by that route's module tree) AND that the browser can reach the canvas-app (no mixed-content, no PNA block).
+
+5. **Layer 5 — New-user trap smoke tests** (runs after Layer 4 passes; catches the gaps that previously bit fresh installs).
+
+   - **5a. Single-React check** (defends against the dual-React trap):
+     ```bash
+     <pm> ls react
+     ```
+     Pass: exactly one tree entry on `18.x`. Fail mode: more than one entry (a peer dep pulled a second copy) → see `analyze-project-fit` and `install-studio` React-pin step. (React 19 is blocked at install time by the SDK's `^18.0.0` peerDep — you shouldn't see it here.)
+
+     **Caveat:** even with one React in `node_modules`, the canvas can see two React instances at *runtime* via Vite's dev optimizer pre-bundling the SDK with a separately-loaded React (different `?v=` hash). Fix is environmental — see 5a-bis.
+
+   - **5a-bis. Canvas is served from a prod build, not the dev server.** Visit your `canvasAppUrl` in DevTools → Network tab. Hard-reload. Check the first JS responses:
+     - Pass: file names look like `assets/<chunkname>-<hash>.js` (Rollup output). One `react.js` bundle, no `?v=` query strings.
+     - Fail: file names include `?v=<hash>` query strings (Vite dev-optimizer signature). Two or more separate React bundles → confirmed dual-React at runtime → switch the canvas target from `vite` (dev) to `vite preview` (prod build). See `install-studio` step 9 and `setup-section-preview` for the config.
+
+   - **5b. Local HTTPS reachability** (only if `canvasAppUrl` is `https://localhost*`):
+     ```bash
+     curl -I -sS --max-time 5 ${canvasAppUrl} 2>&1 | head -3
+     ```
+     Pass: `HTTP/2 200` (or `HTTP/1.1 200`) without any `self signed certificate` or `unable to get local issuer certificate` warning. Fail: untrusted cert → run `setup-local-https-canvas` (mkcert). HTTP scheme on a Studio iframe → mixed content; switch to HTTPS.
+
+   - **5c. iframe-allowed headers**:
+     ```bash
+     curl -I -sS --max-time 5 ${canvasAppUrl} | grep -iE 'content-security-policy|access-control-allow-origin'
+     ```
+     Pass: `Content-Security-Policy: frame-ancestors *` AND `Access-Control-Allow-Origin: *` present. Fail: missing → see `setup-section-preview` for the Vite/Next config block. The Studio iframe will silently fail to embed without these.
+
+   - **5d. Arity ≥ 1 on every registered component**:
+     ```bash
+     grep -nE "registerComponent\(\{" -A 5 src/ lib/ | grep "component:" | head -20
+     ```
+     Manually inspect: every `component:` should either be a named component declared with at least one parameter (e.g. `function Hero(props) {…}`) or a wrapped form `(props) => createElement(Comp, props)`. Fail: any `component: Foo` where `Foo` is declared as `function Foo() {…}` (no parameter) → arity-0 trap, will throw React #321 at render. See `register-component` arity rule. <!-- style-lint: allow -->
+
+   - **5e. Connected-template URL match** (only if any connected templates exist):
+     - Open any connected template in Studio. Confirm the canvas iframe renders (not "SDK Not Initialized").
+     - If it fails, immediately apply the section-test diagnostic: open a section composition. If the section renders, the SDK is fine; the failure is the connected template's URL match. See `troubleshoot-composition-resolution` (entry `url` field needs leading slash; composition `url` must contain a `{{entry.x}}` pattern).
+     - Also verify the env base URL scheme: `GET /v3/environments/<env>` → `urls[].url` must be HTTPS if the canvas-app is HTTPS.
+
+6. **Layer 6 — Preview Token authenticates with the CDA preview API** (behavior-based, project-agnostic — does NOT assume any specific env file path or env var name).
+
+   The most common silent failure on a fresh setup: the **Preview Token** passed to the Delivery SDK / Live Preview SDK is invalid or empty, the CDA preview API returns 401 without CORS headers, and the browser surfaces a misleading "CORS error" instead of "401 Unauthorized." Hours of CORS chasing for a token paste. Verify the token authenticates **before** opening Studio.
+
+   **The check is project-agnostic.** Don't grep `.env.local`, don't assume `VITE_*` / `NEXT_PUBLIC_*` / `REACT_APP_*` env var names — every framework / project layout differs. Just ask the user for the three runtime values and curl-verify them directly. If you (the agent) can read the project's config to discover them, fine; otherwise ask.
+
+   Inputs:
+   - `stackApiKey` — the stack's API key the canvas-app uses
+   - `previewToken` — the Preview Token value the canvas-app currently passes to `@contentstack/live-preview-utils` / Delivery SDK at runtime, wherever it's loaded from (env file, runtime config, secrets manager, fetched-from-API, hardcoded — doesn't matter)
+   - `previewHost` — region-dependent: `rest-preview.contentstack.com` (NA prod), `eu-rest-preview.contentstack.com` (EU prod), `azure-na-rest-preview.contentstack.com`, etc. (see `install-studio` § *Regional host map*). For non-prod / custom-cloud, use the host the user explicitly tells you (e.g. `dev11-rest-preview.csnonprod.com`).
+   - One `<CT>`, `<env>`, `<locale>` from the project to query against — pick any content type the user knows has at least one entry in that environment.
+
+   Run:
+   ```bash
+   curl -is "https://${previewHost}/v3/content_types/${CT}/entries?environment=${env}&locale=${locale}&limit=1" \
+     -H "api_key: ${stackApiKey}" \
+     -H "preview_token: ${previewToken}"
+   ```
+
+   Outcomes:
+   - **HTTP 200** + JSON `entries` array → ✅ Preview Token authenticates. CORS headers WILL be present (`access-control-allow-origin: *`). Done. <!-- style-lint: allow -->
+   - **HTTP 400** + `"Please provide live preview hash in request"` → ✅ Still a PASS. Token authenticated; the 400 is just because curl didn't send the `live_preview` hash header the canvas-app SDK provides automatically at runtime.
+   - **HTTP 401** + `"errors":{"preview_token":["is not valid."]}` → ❌ FAIL. Preview Token is bad. Common causes: literal string `"undefined"` from a provisioning script that couldn't mint via CMA; revoked (paired Delivery Token deleted); truncated copy-paste; wrong stack. Direct user to `troubleshoot-canvas` § *CORS error on the CDA preview host* row, plus `enable-visual-experience` Step 4 to mint / re-mint.
+   - **HTTP 403** → ❌ Token is valid but lacks scope for that CT / environment. Direct user to Settings → Tokens to broaden scope.
+   - **HTTP 422** → ❌ Environment or locale name typo.
+   - **No CORS header on a 401 response** is normal Contentstack behavior — that's WHY the browser misattributes it as "CORS." Layer 6 sidesteps the browser entirely.
+
+7. **Layer 7 — Section scoping resolves correctly via the SSR cold-load** (only if the project has section compositions placed on any template). The most reliable headless check for section binding — bypasses the editor entirely.
+
+   Section compositions are data-less standalone (their own canvas has no data — see `author-composition-via-api` § *Authoring a Section composition*). The editor canvas can't confirm a section's scope is correct. The SSR cold-load does: `await sdk.fetchCompositionData({ url, searchQuery })` runs the full data-collection + scoping pipeline and attaches `spec.data.section_scoped_data` — one entry per section instance — with the resolved `selectedField` and the actual scoped `template` slice.
+
+   Inputs:
+   - `previewUrl` — any visitor URL that resolves to a Connected Template that has sections placed on it (e.g. `https://localhost:3006/products/some-product`, `https://your-staging-site/blog/some-post`). The canvas-app must be running and reachable at this URL.
+
+   Run (as a one-off Node script using the canvas-app's already-installed SDK):
+
+   ```js
+   import contentstack from "@contentstack/delivery-sdk";
+   import { studioSdk } from "@contentstack/studio-react";
+
+   // Replicate the canvas-app's stack init (whatever credentials it uses at runtime)
+   const stack = contentstack.stack({
+     apiKey:        process.env.STACK_API_KEY,
+     deliveryToken: process.env.DELIVERY_TOKEN,
+     environment:   process.env.ENV_NAME,
+     live_preview:  { preview_token: process.env.PREVIEW_TOKEN, enable: true, host: process.env.PREVIEW_HOST },
+   });
+
+   const sdk = studioSdk.init({
+     contentTypeUid: process.env.COMPOSITIONS_CT,   // whatever the project's compositions CT is
+     stackSdk: stack,
+   });
+
+   const spec = await sdk.fetchCompositionData({ url: process.env.PREVIEW_URL });
+   const scoped = (spec?.data ?? {}).section_scoped_data ?? {};
+
+   for (const [instanceUid, data] of Object.entries(scoped)) {
+     const tmpl = data.template;
+     const len = Array.isArray(tmpl) ? tmpl.length : (tmpl ? 1 : 0);
+     console.log(JSON.stringify({
+       instanceUid,
+       selectedField: data.selectedField,
+       parentRepeaterUID: data.parentRepeaterUID,
+       templateKind: Array.isArray(tmpl) ? "array" : typeof tmpl,
+       templateLen: len,
+       sample: Array.isArray(tmpl) ? tmpl.slice(0, 2).map(t => t?.title ?? t?.uid ?? "<no-title-or-uid>") : null,
+     }));
+   }
+   ```
+
+   `section_scoped_data[<instanceUid>]` carries:
+   - `template` — the scoped slice the section actually renders against
+   - `selectedField` — the resolved selectedField (from `sectionBindingOverride` → `metadata.selectedField` → `linked_schemas` default, in that priority order)
+   - `parentRepeaterUID` — null at top level, set when the section was placed inside a Repeater
+   - `contentstack`, `contentstack_queries`, `static_value`, `page`, `repeater`, `uidRemapping`, `componentPropsFallback` — full resolved data the section gets
+
+   Per-instance pass/fail:
+
+   | Outcome | What it means | Pass? |
+   |---|---|---|
+   | `selectedField` is set + `template` is an array of resolved entries with `templateLen > 0` | Section is correctly scoped to an iterated field, has data to render | ✅ |
+   | `selectedField` is unset/empty + `template` is the whole page entry (object, `templateKind: "object"`) | Whole-entry section (per P25's multi-field decision) — correct for sections that read multiple page fields | ✅ |
+   | `selectedField` is set but `template` is `undefined` / null / empty array | Scope resolution failed. Reasons: `selectedField` points at a field that doesn't exist on the page CT; the field is empty on this preview entry; `data_sources.resolvedReferences` is missing for a reference path (see `author-composition-via-api` § Recipe — Repeat over a multi-reference). | ❌ |
+   | `selectedField` is set to one value but you EXPECTED another | The `linked_schemas` vs `sectionBindingOverride` paths disagree, OR the section's `linked_schemas` was dropped by the compositions CT (the linked_schemas-as-reference trap — P23). Compare both paths; both must agree. | ❌ |
+   | `Object.keys(scoped).length === 0` but the template HAS section nodes in its `ui` | The composition's `linked_sections` reference field isn't populated (P27 territory — API-placed sections need this reference set even though SSR walks the `section-composition` nodes itself). | ❌ |
+
+   Direct user to `author-composition-via-api` § *Authoring a Section composition — scoping rules* for fix paths on any ❌.
+
+8. **Report.** Print each layer with ✅ or ❌ + the exact failing call. If everything passes, print "All seven layers green. Canvas URL: <canvasAppUrl>". If anything fails, name the LOWEST failing layer and suggest invoking `troubleshoot-canvas` (or for Layer 7, `author-composition-via-api`) with that symptom.
+
+## Inputs needed from the user
+
+1. `canvasAppUrl` — used in Layer 2 (open in browser) + Layer 4 (compare against Studio project config).
+2. `studioUrl` — used in Layer 4.
+3. `stackApiKey` — used in Layer 6 (curl against preview API).
+4. `previewToken` — used in Layer 6. Whatever value the canvas-app currently passes to the Delivery / Live Preview SDK at runtime — wherever the project loads it from (env file, runtime config, secrets manager, hardcoded). If unsure, ask the user to read it from their project's config layer; do NOT assume an env file path or variable name.
+5. `previewHost` — used in Layer 6. Region-dependent (see `install-studio` § *Regional host map*); for non-prod / custom-cloud, the explicit host the user gives you (e.g. `dev11-rest-preview.csnonprod.com`).
+6. One `<CT>`, `<env>`, `<locale>` triple — used in Layer 6 as a known-good probe target. Any content type the user knows has at least one entry in that environment.
+7. `previewUrl` — used in Layer 7. Any visitor URL on the canvas-app that resolves to a Connected Template with sections placed on it (e.g. `http://localhost:3006/products/some-product` for local dev). Skip Layer 7 if the project has no section compositions placed on any template yet.
+
+If `.env` exists in the project, read `CANVAS_APP_BASE_URL` and `STUDIO_BASE_URL` as defaults for the first two before asking. Do NOT auto-read `previewToken` from any env file — its location is project-specific.
+
+## Acceptance
+
+This skill succeeds only when Layer 0 + ALL seven downstream layers were attempted (Layer 7 may be skipped if the project has no section compositions placed on any template) and a clear pass/fail recorded for each.
+
+- [ ] Layer 0 confirmed (Enable Live Preview checked + Default Preview Environment set + Custom Preview URL set + Preview Token created on the Delivery Token + targeted environment has a non-empty per-locale Base URL).
+- [ ] Layer 1 result reported (delivery SDK call result or HTTP status code).
+- [ ] Layer 2 result reported (live-preview event seen / not seen within timeout).
+- [ ] Layer 3 result reported (entry preview opens / fails / can't even open the entry).
+- [ ] Layer 4 result reported (canvas DOM tree present in the iframe / not present / specific error string).
+- [ ] Layer 5 smoke tests reported: single-React, local HTTPS, iframe-allowed headers, arity-of-registered-components, connected-template URL match (where applicable). Any ❌ flagged with the skill to invoke next.
+- [ ] Layer 6 reported: Preview Token authenticated against the CDA preview host (HTTP 200 or HTTP 400-with-live-preview-hash-message = PASS; HTTP 401/403/422 = FAIL with the specific fix path identified). Behavior-based check — project-specific env layout was NOT assumed.
+- [ ] Layer 7 reported (or skipped with explicit reason: "no section compositions placed on any template"): for every section instance in `spec.data.section_scoped_data`, the resolved `selectedField` and `template` shape match expectations. Any ❌ instance is named with the specific failure class (undefined template, wrong selectedField, missing linked_sections, etc.) and routed to `author-composition-via-api` for the fix.
+- [ ] If any layer failed: the LOWEST failing layer is named, not the highest visible symptom.
+- [ ] If everything passed: the all-clear message + canvas URL is printed.
+
+## Common pitfalls
+
+| Pitfall | Why it bites | Fix |
+| --- | --- | --- |
+| Reporting "Studio canvas is broken" when Layer 1 is failing | Layer 4 failures are downstream of every layer below — Studio gets blamed for SDK auth issues | Always report the LOWEST failing layer, not the most visible symptom |
+| Confusing Live Preview enable on the stack vs Live Preview install in the app | The stack-level flag controls if the channel exists; the app must also install `@contentstack/live-preview-utils` | Both must be true. Stack flag is at Stack → Settings → Visual Experience → General. App install is in `package.json`. |
+| Confusing Canvas URL (project-level, Studio) with the Custom Preview URL (stack-level, Visual Editor) | Two different settings; setting one doesn't set the other | Canvas URL is in Studio → Project → Settings. Custom Preview URL is in Stack → Settings → Visual Experience. |
+| Treating Canvas URL as a full origin (e.g. `http://localhost:5173/canvas`) | Canvas URL is the **path only** (`/canvas`); the origin is the environment's per-locale Base URL. A full URL here breaks the composed iframe address. | Canvas URL = path. Origin = Stack → Settings → Environments → `<env>` → URL for `<locale>`. |
+| Skipping Layer 1 because "the credentials worked yesterday" | Delivery / Preview tokens can be revoked or rotated — and the failure is silent until the next request | Always re-run Layer 1; it takes 2 seconds |
+| Marking Layer 4 as "fail" when the canvas is blank because nothing has been authored yet | Empty canvas is normal for a new composition | Check Layers panel: empty Layers = unauthored, fine. Non-empty Layers + blank canvas = real failure. |
+
+## See also
+
+- `docs/10-setup/verify-end-to-end.md` — the layered smoke-test reference
+- `docs/10-setup/troubleshoot-common-studio-issues.md` — common failures + fixes
+- `troubleshoot-canvas` — invoke after this skill if any layer fails
+- `install-studio` — Layer 1 and Layer 2 install steps
+- `setup-template-preview-routes` — Layer 3 / Layer 4 route mounting

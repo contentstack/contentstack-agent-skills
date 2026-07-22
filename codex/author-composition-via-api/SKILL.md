@@ -1,0 +1,1097 @@
+# author-composition-via-api
+
+
+## When to use
+
+Author Studio compositions by writing composition JSON via the CMA — the manual contract Studio's Data Picker hides. For headless / scripted / seed-pipeline projects, not interactive UI authors.
+
+Use when authoring compositions programmatically via CMA — seed pipelines, scripted provisioning, migration scripts, debugging via diff. Phrases — "compositions from JSON", "API author composition", "seed compositions", "headless author", "bulk import". Do NOT use for UI authoring — the Data Picker handles every shape this skill describes. For UI use `build-section` / `build-connected-template`.
+
+# Author a composition by API (the manual contract)
+
+## When to use this — and when NOT to
+
+Studio's Data Picker writes every binding shape this skill describes **automatically**. UI authors never need to know about `data_sources.resolvedReferences`, the `repeaterUID` discriminator, or any of the binding types — Studio's runtime resolves them under the hood.
+
+**Use this skill ONLY** when bypassing the Data Picker:
+- A seed pipeline that creates compositions programmatically (a docs / demo project's bootstrap, an automated stack provisioner)
+- Migrating compositions between stacks
+- Bulk-authoring compositions from another source (an existing CMS, a generator)
+- Debugging — capture a working UI-authored composition, decode it, diff against your broken one
+
+For interactive authoring, use Studio's UI. The Data Picker is the **source of truth** for these shapes. If your manually-written shape disagrees with what the Data Picker emits, the picker is right; your manual shape is wrong.
+
+## Prerequisite — the project, the compositions CT, the credentials
+
+This skill assumes:
+- A Studio project exists, bound to a stack
+- That stack has a compositions CT (the CT the project's `contentTypeUid` points at) with the required field schema — see `provision-studio-project`
+- You have a CMA auth token + the stack API key with permission to create entries on that CT
+- For headless verification later: a Delivery Token + paired Preview Token (`enable-visual-experience` Step 4)
+
+If any of these is missing, this skill is the wrong starting point.
+
+> **MCP-authed path (optional).** If `CONTENTSTACK_MCP_READY` (from [`install-contentstack-mcp`](../install-contentstack-mcp/SKILL.md)), the entry write + publish run as MCP tool calls — `create_an_entry` / `update_an_entry` / `publish_an_entry` — with no pasted `authtoken`. The composition **shape** is unchanged: you still build the `ui` (`zlib:<base64>`), `data_sources`, `static_value`, and `composable_uid` (= entry uid) exactly as below; the MCP only replaces the raw CMA transport. **Shell-corruption caveat on the MCP path:** `create_an_entry` takes `entry_data` as an **inline JSON object — there is no file-path param**, so the temp-file / `curl -d @file` guard does NOT apply. Instead **build the entire `entry_data` object programmatically and hand it to the tool — never hand-transcribe the `ui` blob into the arguments** — and assert the `"children"` count in the tree before the call (see the shell-corruption pitfall). If hand-assembly is unavoidable, keep the raw `curl -d @file` path for the write. No flag → raw curl.
+
+## The composition entry — what you actually write to the CMA
+
+A composition is a single entry on the compositions CT. The fields (see § *Complete example* below for a real published Freeform composition):
+
+| Field | Type | Holds |
+|---|---|---|
+| `title` | string | Display name in the Compositions list |
+| `url` | string | URL pattern (e.g. `/products/{{entry.slug}}` for Connected; a fixed path like `/campaigns/spring-2026` for Freeform). Populated for both kinds |
+| `composable_uid` | string | Composable identity for the composition. Must be **unique across the compositions CT**. Studio's canvas links to compositions by entry uid but the runtime resolves by `composable_uid` — a human-readable slug (`"spring_2026_landing"`) or the entry uid both work. Mismatch → "Composition Not Found" |
+| `connected_content_type` | string | The CT this template binds to (Connected only). Empty string `""` for Freeform / sections |
+| `place_composition_as` | string | `"page"` for a template composition (Connected or Freeform). `"section"` for a section composition. `"template"` also legal but not what Studio writes for the top-level template composition — the Compositions tab lists `"page"` entries under Templates |
+| `schema_version` | string | Composition schema version stamped by Studio (`"1.0.0"`, `"1"`, `"2"`, …) — a **string**, not a number |
+| `ui` | string | The compressed composition tree — `zlib:<base64>` (see `troubleshoot-canvas` § *Diagnostic tooling*) |
+| `data_sources` | JSON string | The stringified `resolvedReferences` map + pinned data-source list — wire shape is `"[]"` when empty, not `[]` |
+| `static_value` | group | Per-key literal store — every `binding.type: "static_value"` on a node references a **key** here; the actual literal lives in `static_value.<subtype>[]` under that key. See § *How `static_value` binding resolves* below |
+| `url_metadata` | group | `url_source` (`content_type_url_pattern` / `user_specified_pattern`), `url_queries` — omitted when unused |
+| `linked_schemas` | **group-multiple** | Sections only — declares parent CT + `selectedField` the section scopes to. `[]` for templates / freeform |
+| `linked_sections` | reference (multiple) | Template's references to section-composition entries placed in its `ui` tree. `[]` for freeform / sections |
+
+After write, publish the entry. Studio queries by `composable_uid` + published status; an unpublished entry won't appear in the project's Compositions list or load in the canvas.
+
+### How `static_value` binding resolves — two-level lookup
+
+**Not obvious from the binding shape** — the literal ISN'T on the node. The `binding.value` on a `static_value` binding is a lookup key into the composition entry's `static_value.<subtype>[]` bucket:
+
+1. The node's prop binding stores a **key string** in `binding.value` (e.g. `"mHjnXsgKbBlj_PZ-headline"`), NOT the literal.
+2. The literal lives in the composition entry's top-level `static_value.<subtype>[]` array under that key: `{ "key": "mHjnXsgKbBlj_PZ-headline", "value": "Welcome to Studio" }`.
+3. The SDK resolves by keying into `entry.static_value` with that key at render time.
+
+Consequences for API authoring:
+
+- **You must write to TWO places** for every static-value prop: `props.<name>.binding.value = "<key>"` on the node AND `entry.static_value.<subtype>` (matching the prop's declared `type` — `text` / `textarea` / `href` / `imageurl` / `number` / `choice` / `boolean` / `json_rte` / `array` / `object` / `any` / `datestring` / `html_rte`) with an entry `{ key, value }` pair.
+- **Key uniqueness matters** — the resolver looks up the key against the whole `static_value.<subtype>` bucket. Reuse the same key across multiple nodes to share a literal; use unique keys to keep them independent.
+- **Widget → subtype pairing.** The node's `props.<name>.type` (`"string"` / `"number"` / `"href"` / `"imageurl"` / `"choice"` / …) determines which sub-bucket the SDK looks in. If you write the key to the wrong subtype array, the resolver misses and the prop renders as the schema default.
+- **Convention Studio uses:** keys are `<node-uid>-<propName>` (e.g. `mHjnXsgKbBlj_PZ-headline`). Not required but stable and readable.
+
+## Binding types — the full set
+
+The SDK defines **7 binding `type` values**. Each type is available in a specific composition context; picking one that doesn't fit the context is the most common trap.
+
+| `type` | Available in | Configured in Studio via | Shape |
+|---|---|---|---|
+| `static_value` | Connected + Freeform + Sections (always) | Right panel — Settings → type the literal into the prop input | `{ type: "static_value", value: "<key>" }` — where `<key>` looks up `entry.static_value.<subtype>[]`. See § *How `static_value` binding resolves* |
+| `template` | Connected templates + Sections placed on Connected templates | Right panel — Data Picker → pick a field on the connected entry | `{ type: "template", value: { path: {…} } }` |
+| `repeater` | Anywhere inside a Repeater | Right panel — Data Picker under the Repeater's scope; auto-picked | `{ type: "repeater", value: { repeaterUID: "<uid>", path: {…} } }` |
+| `contentstack` | **Freeform only** — Data tab → **Additional Entry Data** (Pinned Entries) | Data tab → pin an entry, then Data Picker binds to its fields | `{ type: "contentstack", value: { uid, _content_type_uid, path: {…} } }` |
+| `contentstack_queries` | **Freeform only** — Data tab → **Queries** (Pinned Queries) | Data tab → save a query, then Repeater `items` picks it | `{ type: "contentstack_queries", value: { queryUID: "<uid>", path: {…} } }` |
+| `component_props` | Anywhere — component's registered `defaultValue` OR Data tab → **External Data** | Registration path (`registerComponent`) or Data tab External Data | `{ type: "component_props", value: "<propName>" }` |
+| `symbol_props` | Symbols only (advanced) | Symbol authoring | `{ type: "symbol_props", value: "<propName>" }` |
+
+`path` is a nested-object leaf structure: `{ products: { 0: { url: {} } } }` reads `products.0.url`. The path is flattened at resolution; `{ products: {} }` and `{ products: { "": {} } }` are equivalent.
+
+### Authoring UX — the same for every binding kind
+
+**No inline click-to-edit exists on the canvas for any binding kind.** Every value edit happens in the right panel:
+
+- **Static bindings** — edited in the **Settings** tab. Type into the prop input; the literal writes to `binding.value`.
+- **Template bindings** — edited via the **Data Picker** in Settings (pick a different field on the connected entry). The rendered value itself is read-only — to change the underlying content, edit the connected entry in the CMS.
+- **Pinned bindings** (`contentstack`, `contentstack_queries`) — the pin itself is set up in the **Data** tab (Freeform only). Once pinned, bindings reference it through the Data Picker in Settings. Rendered values are read-only from Studio's perspective; edit the source entry in the CMS to change them.
+
+### Context mismatches — the real trap
+
+Picking a binding type that doesn't fit the composition's context is silent — the shape is valid, but resolution returns `undefined` at render:
+
+| Mismatch | Symptom | Fix |
+|---|---|---|
+| `template` binding in a **Freeform** template | Binding never resolves — Freeform has no page-level entry to source from | Use `contentstack` (pinned entry) or `contentstack_queries` (pinned query) via the Data tab, or `static_value` for a literal |
+| `contentstack` / `contentstack_queries` binding in a **Connected** template | The binding works, but it bypasses the connected entry — you've hard-pinned data that should come from the page. Usually a mistake | Use `template` with a path into the connected entry's schema |
+| `repeater` binding used on a node NOT inside a Repeater | `repeaterUID` refers to a scope that doesn't exist above the node — resolves to `undefined` | Place the node inside the referenced Repeater's `slots`, or switch to a `template`/`contentstack` binding matching the current scope |
+
+## Node anatomy — where bindings and children actually live in the `ui` tree
+
+Node shape (canonical Repeater example, binding wrapper included):
+
+```jsonc
+{
+  "type": "<node-type>",          // "repeater" / "condition-block" / a registered component type
+  "uid": "<unique-id>",
+  "metadata": {                   // node-level metadata
+    "mode": "preview"             //   - Repeater: "preview" vs implicit Design Mode
+    // "condition": { ... }       //   - Condition Block: discriminator (see below)
+  },
+  "props": {                      // bindings live HERE — one per prop
+    "<propName>": {
+      "binding": { "type": "<one of the 7 binding types>", "value": { /*…*/ } },
+      "value": "<static fallback if any>"
+    }
+  },
+  "slots": {                      // children go HERE, grouped by slot uid (NOT a flat `children` array)
+    "<slot-uid>": [
+      { /* child node */ }
+    ]
+  }
+}
+```
+
+Three things to internalize:
+
+1. **Bindings are at `props.<propName>.binding`.** Not directly on the node, not in a flat `bindings` map.
+2. **Children are in `slots.<slot-uid>: [...]`.** Not a `children` array. Each slot has a uid; child nodes live inside the array under that uid.
+3. **Discriminators live in `metadata`.** Condition Block's `condition` and Repeater's `mode` are both `metadata.<key>`, not top-level node fields.
+
+### Built-in node `type` values
+
+These are the built-in `type` strings the SDK ships with; anything else must be a component you registered via `registerComponent`.
+
+| Group | `type` values (palette label → `type` string) |
+|---|---|
+| System | `page` |
+| Basic — text | `header` · `plain-text` · `collapsible-text` · `rich-text` · `text` · `number` · `json-rte` |
+| Basic — button/link | `button` · `link` · `link-container` |
+| Media | `image` · `video` · `embed` |
+| Container / layout | `section` · `box` · **`hstack`** (palette: Columns) · **`vstack`** (palette: Rows) · `fragment` |
+| Composition primitives | `symbol` · `condition-block` · `section-slot` |
+| Iteration | `repeater` |
+| HTML | `html-element` · `style-sheet` |
+
+Palette labels are author-facing; `type` strings are what appear in the `ui` tree. **Non-obvious pairings:** palette *Columns* → `hstack`, palette *Rows* → `vstack`. Inspect a UI-authored composition (decode `ui`, see [`troubleshoot-canvas`](../troubleshoot-canvas/SKILL.md) § *Diagnostic tooling*) to confirm the exact `type` string before hand-authoring a node of that kind.
+
+None of these support inline click-to-edit on the canvas — all value edits go through the right panel (both built-ins and BYOC — see [`build-section`](../build-section/SKILL.md) § *Basic field components vs custom registered components*).
+
+## Recipe — Repeat a card over a multi-reference field
+
+The canonical pattern. Requires FIVE shapes in concert; missing any one yields a silently-empty repeater or — worse — an all-items-identical render (the `template`-at-`.0.` trap below).
+
+Scenario: a `category` template (Connected to the `category` CT). Each category entry has a `products` multi-reference field. We want to render one card per referenced product.
+
+### 1. Composition-level: `data_sources.resolvedReferences`
+
+The reference-resolution map. Tells the SDK "when bindings resolve through this reference path, materialize each stub into a real entry":
+
+```jsonc
+"data_sources": [
+  {
+    "uid": "template",
+    "data": null,
+    "resolvedReferences": {
+      "template": ["products"]
+    }
+  }
+]
+```
+
+Example — a section (Card Grid) that iterates `related_posts`:
+
+```json
+"data_sources": "[{\"uid\":\"template\",\"data\":null,\"resolvedReferences\":{\"template\":[\"related_posts\"]}}]"
+```
+
+**Wire format quirk:** on the CMA `data_sources` is stored as a **JSON-encoded string** (`"[]"`, `"[{…}]"`), not the parsed array. Serialize before write; parse after read.
+
+**Key semantics:** the KEY of `resolvedReferences` is an opaque label — Studio uses `"template"` for template-scope references. The SDK flattens `Object.values(resolvedReferences)` and treats the union as the reference paths to include, so the key content doesn't affect resolution. Values are the field paths on the parent entry.
+
+Without this, reference fields are just `[{uid, _content_type_uid}, …]` stubs at runtime. The iteration sees no items.
+
+### 2. Repeater node's `items` binding — at `props.items.binding`, type `template`
+
+The Repeater consumes its iteration source through its `items` prop:
+
+```jsonc
+{
+  "type": "repeater",
+  "uid": "R1",
+  "props": {
+    "items": {
+      "binding": {
+        "type": "template",
+        "value": { "path": { "products": {} } }
+      }
+    }
+  },
+  "metadata": { "mode": "preview" },
+  "slots": { /* see step 4 */ }
+}
+```
+
+For a section whose `selectedField` is the reference itself (`build-section`'s scope-aware sections / P22-P24), the path collapses to scope-root `{ "path": {} }` — the section's `dataSources.template` is already the resolved array.
+
+### 3. Repeater node's `metadata.mode: "preview"`
+
+On the same Repeater node, in `metadata` (parallel to `props`). Per `use-repeater`'s two-mode model — Design Mode (default) renders one placeholder; Preview Mode renders N real iterations. UI authors toggle this in Properties → Configuration; API authors set the metadata directly. See the Repeater node shape in step 2 above for placement.
+
+### 4. Condition Block as the immediate child of the Repeater (under `slots`)
+
+Required by Studio's composition schema for reference iteration (single-CT AND multi-CT — `use-condition-block`). Narrows the iteration item to a specific content type before child bindings resolve.
+
+The Condition Block lives under a slot of the Repeater. Its discriminator is in `metadata.condition`:
+
+```jsonc
+{
+  "type": "repeater",
+  "uid": "R1",
+  // …props / metadata as above…
+  "slots": {
+    "<repeater-slot-uid>": [
+      {
+        "type": "condition-block",
+        "uid": "CB1",
+        "metadata": {
+          "condition": { "type": "reference", "value": "product" }
+        },
+        "slots": {
+          "<cb-slot-uid>": [
+            /* card subtree here — step 5 */
+          ]
+        }
+      }
+    ]
+  }
+}
+```
+
+For modular-block iteration: `metadata.condition.type: "modular_block"`, `value: "<block-uid>"`.
+
+### 5. Card prop bindings — type `repeater`, with `repeaterUID`
+
+⛔ **The "all cards identical" trap:** Do NOT use `template` bindings indexed at `.0.<field>` (e.g. `products.0.title`). A fixed `.0.` index does NOT get substituted by the iteration — every iteration renders item 0. This is what bit P19.
+
+Use repeater-scope bindings — `type: "repeater"`, with `repeaterUID` naming the parent Repeater node, and a path relative to the iteration item (NO index). The card node lives inside the Condition Block's slot:
+
+```jsonc
+{
+  "type": "site-product-card",     // the registered component's type
+  "uid": "CARD1",
+  "props": {
+    "title": {
+      "binding": {
+        "type": "repeater",
+        "value": {
+          "repeaterUID": "R1",
+          "path": { "title": {} }
+        }
+      }
+    },
+    "image": {
+      "binding": {
+        "type": "repeater",
+        "value": {
+          "repeaterUID": "R1",
+          "path": { "images": { "0": { "url": {} } } }
+        }
+      }
+    },
+    "price": {
+      "binding": {
+        "type": "repeater",
+        "value": { "repeaterUID": "R1", "path": { "price": {} } }
+      }
+    }
+  }
+}
+```
+
+The `repeaterUID` ("R1" here) tells the SDK at render time which Repeater's current item this binding reads from. The path is on the iteration item itself.
+
+### Assembled
+
+```
+Composition entry
+├── composable_uid: "<15-char>" (= CMA entry uid)
+├── data_sources: [{ uid:"template",
+│                    resolvedReferences:{ "template":["products"] } }]
+└── ui (zlib-inflated tree)
+    └── Section "ProductGrid"
+        └── Box  (grid layout — register-component § Layout contract)
+            └── { type:"repeater", uid:"R1",
+                  metadata:{ mode:"preview" },
+                  props:{ items:{ binding:{ type:"template",
+                                            value:{ path:{ products:{} } } } } },
+                  slots:{ "<R1-slot>":[
+                    { type:"condition-block", uid:"CB1",
+                      metadata:{ condition:{ type:"reference", value:"product" } },
+                      slots:{ "<CB1-slot>":[
+                        { type:"site-product-card", uid:"CARD1",
+                          props:{
+                            title:{ binding:{ type:"repeater",
+                                              value:{ repeaterUID:"R1", path:{ title:{} } } } },
+                            image:{ binding:{ type:"repeater",
+                                              value:{ repeaterUID:"R1", path:{ images:{ 0:{ url:{} } } } } } },
+                            price:{ binding:{ type:"repeater",
+                                              value:{ repeaterUID:"R1", path:{ price:{} } } } }
+                          } }
+                      ] } }
+                  ] } }
+```
+
+Five shapes — composition `resolvedReferences` + Repeater `props.items.binding` + Repeater `metadata.mode` + Condition Block in slot with `metadata.condition` + repeater-scope card bindings. Any one missing → empty render or all-identical render.
+
+## Recipe — Repeat a card over a GROUP-MULTIPLE field
+
+Sibling to the multi-reference recipe above, but **simpler**: group-multiple values are inline on the parent entry, so no reference resolution is needed.
+
+Scenario: a `category` entry has a `features` field of type `group` + `multiple: true` (a list of inline objects, each with sub-fields like `headline`, `body`, `icon`). Render one card per feature.
+
+### What's different vs the multi-reference case
+
+| Shape | Multi-reference | **Group-multiple** |
+|---|---|---|
+| Composition `data_sources.resolvedReferences` | **Required** — reference stubs need resolving | **NOT needed** — values are inline on the parent entry |
+| Condition Block as Repeater's immediate child | **Required** — references are polymorphic (any allowed CT); the block narrows | **NOT needed** — group-multiple has one shape, not polymorphic |
+| Repeater `props.items.binding` | `type: "template"`, path at the multi-ref field | (same) `type: "template"`, path at the group-multiple field |
+| Repeater `metadata.mode: "preview"` | Required for canvas iteration | (same) Required |
+| Card prop bindings | `type: "repeater"`, `repeaterUID`, no index | (same) `type: "repeater"`, `repeaterUID`, no index |
+
+So group-multiple drops to **THREE shapes** (Repeater items binding + Repeater metadata.mode + repeater-scope card bindings). No composition-level resolved-references map. No Condition Block.
+
+### Group-multiple Repeater + card, assembled
+
+```
+Composition entry
+├── composable_uid: "<15-char>" (= CMA entry uid)
+├── data_sources: [/* no resolvedReferences entry needed */]
+└── ui (zlib-inflated tree)
+    └── Section "FeatureList"
+        └── Box  (flex / grid layout — register-component § Layout contract)
+            └── { type:"repeater", uid:"R2",
+                  metadata:{ mode:"preview" },
+                  props:{ items:{ binding:{ type:"template",
+                                            value:{ path:{ features:{} } } } } },
+                  slots:{ "<R2-slot>":[
+                    /* card goes here directly — no Condition Block wrapper */
+                    { type:"site-feature-card", uid:"FC1",
+                      props:{
+                        headline:{ binding:{ type:"repeater",
+                                              value:{ repeaterUID:"R2", path:{ headline:{} } } } },
+                        body:{     binding:{ type:"repeater",
+                                              value:{ repeaterUID:"R2", path:{ body:{} } } } },
+                        icon:{     binding:{ type:"repeater",
+                                              value:{ repeaterUID:"R2", path:{ icon:{ url:{} } } } } }
+                      } }
+                  ] } }
+```
+
+The card sits **directly inside the Repeater's slot** — no Condition Block in between, because the iteration item has one shape (the group's sub-fields). Each card prop reads from the iteration item via `repeaterUID:"R2"` + the field path on the item.
+
+### Decision rule — which recipe to use
+
+Look at the field's `data_type` on the source CT:
+
+| Field shape | Recipe to use |
+|---|---|
+| `data_type: "reference"`, `field_metadata.ref_multiple: true` (multi-reference) | Multi-reference recipe — needs `resolvedReferences` + Condition Block |
+| `data_type: "reference"`, `field_metadata.ref_multiple: false` (single reference) | Multi-reference recipe minus the Repeater (a single Section drop, not iteration). The reference still needs `resolvedReferences`. |
+| `data_type: "group"`, `multiple: true` (group-multiple) | Group-multiple recipe — no `resolvedReferences`, no Condition Block |
+| `data_type: "blocks"` (Modular Block) | Multi-reference recipe shape, but Condition Block discriminator is `metadata.condition.type: "modular_block"`, value is the block UID |
+| `data_type: "file"`, `multiple: true` (multi-file) | Multi-reference recipe minus `resolvedReferences` (files don't need resolution); minus Condition Block (one shape). Like group-multiple. Path uses `.0.url` etc. inside each iteration. |
+| `data_type: "<any scalar list>"` (array of strings, numbers, etc.) | Group-multiple recipe shape — each iteration is one scalar; the card might be a single component reading the scalar via repeater scope |
+
+The OPEN doc's P19 captures exactly the group-multiple vs reference split: same iteration shape, different prerequisites (`resolvedReferences` + Condition Block) depending on the source.
+
+## Recipe — Nested Repeaters (a list inside each iterated item)
+
+A Repeater inside another Repeater's iteration — e.g. a footer with multiple **columns**, each column having its own **links** list. The outer Repeater iterates columns; the inner Repeater iterates each column's links. The trick is the inner Repeater's `items` binding: it must reach into the **outer iteration's current item** to find that column's `links` array — which means `type: "repeater"` (with the outer's `repeaterUID`), not `type: "template"`.
+
+### The two binding shifts
+
+| Node | `items` binding `type` | `value` | What it resolves to at runtime |
+|---|---|---|---|
+| **Outer Repeater** (`R-outer`) | `template` | `{ path: { footer_columns: {} } }` | `dataSources.template.footer_columns` (the array on the parent entry) |
+| **Inner Repeater** (`R-inner`) | **`repeater`** | `{ repeaterUID: "R-outer", path: { links: {} } }` | `dataSources.repeater.R-outer.context.links` (each outer iteration's `links` field) |
+| **Inner card props** | `repeater` | `{ repeaterUID: "R-inner", path: { label: {} } }` | `dataSources.repeater.R-inner.context.label` (each link's `label`) |
+
+Repeater-scoped bindings resolve as `dataSources.repeater.<repeaterUID>.context.<path>`. So the inner Repeater's items binding correctly reads the outer iteration's current `links`, and the inner card's bindings read each link inside that.
+
+### Assembled
+
+```jsonc
+{ "type": "repeater", "uid": "R-outer",
+  "metadata": { "mode": "preview" },
+  "props": { "items": { "binding": {
+    "type": "template",
+    "value": { "path": { "footer_columns": {} } }
+  } } },
+  "slots": { "<R-outer-slot>": [
+    /* outer iteration body — one column */
+    { "type": "site-column-header", "uid": "CH1",
+      "props": { "title": { "binding": {
+        "type": "repeater",
+        "value": { "repeaterUID": "R-outer", "path": { "heading": {} } }
+      } } } },
+    { "type": "repeater", "uid": "R-inner",
+      "metadata": { "mode": "preview" },
+      "props": { "items": { "binding": {
+        "type": "repeater",                                      // ← NOT template
+        "value": { "repeaterUID": "R-outer",                     // ← outer's UID
+                   "path": { "links": {} } }                     // ← path on outer's iteration item
+      } } },
+      "slots": { "<R-inner-slot>": [
+        { "type": "site-footer-link", "uid": "L1",
+          "props": {
+            "label": { "binding": { "type": "repeater",
+                       "value": { "repeaterUID": "R-inner", "path": { "label": {} } } } },
+            "href":  { "binding": { "type": "repeater",
+                       "value": { "repeaterUID": "R-inner", "path": { "href": {} } } } }
+          } }
+      ] } }
+  ] } }
+```
+
+### Source-type combos
+
+| Outer source | Inner source | Extra prerequisites |
+|---|---|---|
+| group-multiple (e.g. `footer_columns`) → group-multiple (`column.links`) | (nothing extra) — inline values both ways |
+| group-multiple → multi-reference (e.g. column.related_entries) | Add `data_sources.resolvedReferences` for the nested reference path (e.g. `"root.footer_columns.0.related_entries": ["footer_columns.related_entries"]`). Add Condition Block as immediate child of `R-inner`. |
+| multi-reference → group-multiple (e.g. category.products[].images) | `resolvedReferences` for the outer reference (`root.products`); Condition Block as child of `R-outer`. Inner iteration is over the (inline) `images` group-multiple — no extra prerequisites for `R-inner`. |
+| multi-reference → multi-reference | `resolvedReferences` entries for BOTH the outer reference AND each inner reference path. Condition Block in both Repeaters. |
+
+The decision tree from the single-level recipes (group-multiple vs reference) applies per Repeater independently — outer's source determines what `R-outer` needs; inner's source determines what `R-inner` needs.
+
+### The key pitfall
+
+⛔ Setting the inner Repeater's `items` binding to `type: "template"` with path `{ footer_columns: { 0: { links: {} } } }` is the **nested-`.0.` trap** — same family as the "all cards identical" trap from #14/P19, but one level up. A fixed index doesn't substitute. Inner repeater would always read column-0's links, so every outer iteration's links list is identical. Use `type: "repeater"` with the outer UID instead.
+
+## Authoring a Section composition — scoping rules (P22-P25)
+
+So far the recipes have been about page-level compositions (Templates). Authoring **Section** compositions via API has its own contract — sections have **no data of their own**, so how they get the right scope at runtime is non-obvious.
+
+### How a Section gets data when placed on a Template — `selectedField` (P22)
+
+A Section composition is data-less when authored standalone (its own canvas has nothing to bind against). It only gets data when **placed inside a Template** — the Template hands it a scoped slice of the page entry.
+
+The SDK's scoping pipeline:
+
+```
+Section's dataSources.template = <scoped slice of pageEntry at selectedField, with references resolved>
+```
+
+- **`selectedField` empty/absent** → section's `template` = the **whole page entry** (with any reference following). Use this when a section reads multiple fields off the page.
+- **`selectedField` = "products"** → section's `template` = the **`products` field's value** (an array, with references resolved). Use this when a section iterates one field.
+- **`selectedField` = "hero.cta"** (dotted path) → traverses; each segment can drill into nested groups or follow references.
+
+This means the section's own canvas always shows **one empty placeholder** (no data exists standalone). That's not a bug; the section only fills out at template-rendering time. (See `build-section` for the UI-side framing.)
+
+### Where `selectedField` is read from — three sources, in priority order (P23)
+
+`collect-data-needs.ts` (runtime) and `sectionInstanceBindings.ts` (editor) BOTH read in this order:
+
+1. **`node.metadata.sectionBindingOverride.selectedField`** — set on the template's `section-composition` node when API-placing the section
+2. **`node.metadata.selectedField`** — legacy fallback on the same node
+3. **The section's `linked_schemas` default** — declared on the section composition itself: `[{ content_type_uid: "<page-ct>", selected_field: "<field>" }]`
+
+The Studio web UI sets all three correctly when you drag a section onto a template. API authors set them explicitly.
+
+### The `linked_schemas`-as-reference trap (P23)
+
+The compositions CT's `linked_schemas` MUST be a **group-multiple** field, NOT a reference field. If it's a reference field, the CMA **silently drops** any `{content_type_uid, selected_field}` object you `PUT` to it — every read comes back `linked_schemas: []`. The editor reads `linked_schemas` to derive the `UPDATE_SECTION_CONTEXTS` push that scopes each placed section instance; an empty `linked_schemas` means an empty scope push, meaning the editor canvas shows blank repeaters even though `fetchCompositionData` (runtime) renders correctly via the override.
+
+Two outcomes from this:
+
+- **Proper fix:** model `linked_schemas` as a group-multiple on the compositions CT — see `provision-studio-project` for the CT field schema. This makes every UI-driven path work without manual overrides.
+- **Runtime escape hatch (if you can't change the CT shape right now):** set `metadata.sectionBindingOverride` on each template's `section-composition` node:
+  ```jsonc
+  {
+    "type": "section-composition",
+    "uid": "INST-1",
+    "metadata": {
+      "compositionUID": "<the-section-composition's-composable_uid>",
+      "sectionBindingOverride": { "selectedField": "products" }
+    }
+  }
+  ```
+  This makes the runtime/SSR path correct (`collect-data-needs.ts` honors it). The editor canvas will still show blank repeaters until `linked_schemas` is also populated. So this escape hatch covers production rendering but doesn't unblock editor authoring — both must agree.
+
+### The editor vs runtime asymmetry (P23, in detail)
+
+| Path | What it reads | Source file |
+|---|---|---|
+| **Runtime / SSR** (`sdk.fetchCompositionData`) | `sectionBindingOverride.selectedField` → `metadata.selectedField` → `linked_schemas` default | `collect-data-needs.ts` |
+| **Editor canvas** (live editing in Studio web app) | `UPDATE_SECTION_CONTEXTS` push from the Studio web app, derived from the section's `linked_schemas` field. `sectionBindingOverride` is also honored as an override on top. | `sectionInstanceBindings.ts` + Studio web app messaging |
+
+So you can have a section that renders perfectly on the deployed site (runtime path uses the override) yet shows empty repeaters in the editor (editor path's `linked_schemas` is empty). Both metadata paths must point to the same `selectedField` for editor + runtime to agree.
+
+### Recipe — section iterates one field on the page (P24)
+
+When a section's `selectedField` is set to the iterated field (e.g. `selectedField: "products"` and the section's job is to render one card per product), the section's `dataSources.template` IS the products array. **A top-level Repeater inside the section must bind to scope-root, NOT to `{ path: { products: {} } }`**:
+
+```jsonc
+{
+  "type": "repeater",
+  "uid": "R-section-products",
+  "metadata": { "mode": "preview" },
+  "props": {
+    "items": {
+      "binding": {
+        "type": "template",
+        "value": { "path": {} }      // ← scope-root, NOT { products: {} }
+      }
+    }
+  },
+  "slots": {
+    "<R-slot>": [
+      // ConditionBlock + card here, per the multi-reference recipe;
+      // card bindings still use type:"repeater" with repeaterUID
+    ]
+  }
+}
+```
+
+`getBindingStringForCS` flattens `{path: {}}` to `""`, so the binding resolves to `dataSources.template` directly. With `selectedField: "products"`, that IS the products array. A path of `{products: {}}` would resolve to `dataSources.template.products` — undefined when the section's template IS the array, not an object containing one.
+
+Reference iterations still need `data_sources.resolvedReferences` on the composition — key `"template"`, value is the array of field paths on the parent entry (e.g. `"template": ["products"]`). The runtime resolves these along the `selectedField` path; you set them on the parent (template) composition, not the section composition.
+
+### Decision rule — single-field repeater section vs whole-entry section (P25)
+
+| Section's job | `selectedField` | Repeater binding (if any) | When to use |
+|---|---|---|---|
+| One repeater over one field of the page (a card grid, a feature list) | Set to that field (`"products"`) | Scope-root `{ path: {} }` | Most reusable sections — Editions list, Features grid, Card grid |
+| A custom component reading several fields off the page entry (header reading brand + nav_links + signin_label; hero reading the `hero` group) | **Leave unset** — section's `template` is the whole page entry | Original `template.<field>` paths work verbatim | Single-purpose sections with no iteration — Header, Hero, static 3D block |
+
+The choice is data-shape-driven: one field iterated → `selectedField` + scope-root; many fields read → whole-entry, original paths.
+
+### Verifying a section's scope headlessly (P26 preview)
+
+The section's own canvas can't confirm binding correctness (no data exists standalone). Use the SSR cold-load instead:
+
+```js
+const spec = await sdk.fetchCompositionData({ url: "/<some-page-using-the-section>" });
+console.log(JSON.stringify(spec.data.section_scoped_data["<instance-uid>"], null, 2));
+//   → { selectedField: "products", parentRepeaterUID: null,
+//       template: [<resolved entry 1>, <resolved entry 2>, ...] }
+```
+
+`spec.data.section_scoped_data[<instance-uid>]` is the runtime resolution — `selectedField` + the actual scoped `template` array. If `template` shows the right array length and right entry sample, the section's scope is correct. If it's `undefined` or wrong-shaped, the bindings won't work.
+
+## Authoring a Template — populate `linked_sections` for every API-placed section (P27)
+
+Sibling concern to P22-P25 (which were section-side). When a Template's `ui` tree contains `section-composition` nodes that were placed via API, the template's **`linked_sections` reference field** ALSO has to be populated — even though SSR walks the nodes directly. Same editor-vs-runtime asymmetry as P23 but at the template layer.
+
+### The asymmetry
+
+| Path | How it discovers placed sections |
+|---|---|
+| **Editor canvas** (template open in Studio web app) | Loads the template with `?include[]=linked_sections` (resolves the references inline), builds `spec.sectionCompositions` from the resolved `linked_sections` field. If empty → no section specs → **"Template Did Not Load"** |
+| **SSR / runtime** (`sdk.fetchCompositionData`) | Walks the template's `ui` tree looking for `section-composition` nodes; reads each node's `metadata.compositionUID`; fetches each section composition separately |
+
+So a template can render perfectly on the deployed site (SSR walks the nodes) yet refuse to open in the editor (`linked_sections` is empty, editor has no specs to resolve the nodes against). **"Template Did Not Load"** in the editor + a passing SSR render = empty `linked_sections`.
+
+### Recipe — populate `linked_sections` when API-placing sections
+
+When your composition-authoring script writes `section-composition` nodes into a template's `ui`, ALSO populate the template entry's `linked_sections` field with a reference per placed section's composition entry:
+
+```jsonc
+// Template composition entry (CMA write)
+{
+  "title": "Product Page",
+  "url": "/products/{{entry.title}}",
+  "composable_uid": "product_page_template",
+  "connected_content_type": "product",
+  "place_composition_as": "page",
+  "ui": "zlib:<base64 of the ui tree containing section-composition nodes>",
+  "linked_sections": [
+    {
+      "uid": "<section-A composition entry uid>",
+      "_content_type_uid": "<compositions-CT-uid>"     // the project's compositions CT
+    },
+    {
+      "uid": "<section-B composition entry uid>",
+      "_content_type_uid": "<compositions-CT-uid>"
+    }
+    // …one reference per distinct placed section. Dedupe: a section placed
+    // multiple times in the same template only needs one entry here.
+  ]
+}
+```
+
+The references can be bare `{uid, _content_type_uid}` stubs — the CMA stores them; the editor's `?include[]=` resolves them inline when loading. There's no UI-only metadata to mirror (unlike P23's `selectedField`).
+
+Then **publish the template entry**. The editor reads from the published entry; an unpublished update won't show up.
+
+### Pre-flight check for an API-authored template
+
+Before you mark a template as ready, verify both paths agree:
+
+```bash
+# 1. Editor path — does linked_sections resolve to actual sections?
+curl -s "https://<cdn-host>/v3/content_types/<compositions-CT-uid>/entries/<template-entry-uid>?include[]=linked_sections" \
+  -H "api_key: <stack-api-key>" -H "access_token: <delivery-token>" \
+  | jq '.entry.linked_sections | length, .entry.linked_sections[0].uid'
+
+# 2. SSR path — does fetchCompositionData find the same sections?
+#    (Use verify-setup Layer 7's script and dump section_scoped_data; the key count
+#     should equal the count of distinct section-composition nodes in the template's ui.)
+```
+
+Both must agree:
+- If editor path returns 0 sections but SSR path returns N → `linked_sections` not populated; populate per the recipe above.
+- If editor returns N sections but SSR returns 0 → `linked_sections` is set but the `ui` tree has no `section-composition` nodes (probably a separate authoring bug).
+- If both return matching N → both paths are wired correctly.
+
+## `section-slot` node shape — the one legitimate empty-slots node
+
+The built-in `section-slot` type declares a **placeholder** inside a section's `ui`; the template that embeds this section then fills the slot via a `section-composition` node (see next recipe — Pattern B). Non-obvious shape:
+
+```jsonc
+{
+  "type": "section-slot",
+  "uid": "SS1",
+  "props": {},
+  "slots": { "SS1": [] }        // ← key is the node's OWN uid; value is [] until filled
+}
+```
+
+Two things that trip API authors:
+
+1. **`slots.<own-uid>: []` is required** — the section-slot's own uid appears as the slot key, with an empty array. This is the ONE legitimate exception to the preflight rule "no empty slot arrays". Omitting the entry (no `slots` at all, or `slots: {}`) → the template can't target the slot when composing.
+2. **The slot is filled by the TEMPLATE, not the section.** In the section's authored tree the slot stays empty; the template's `section-composition` node carries a `sectionSlotCompositions` map (Pattern B recipe below) that pairs each section-slot uid with the composable_uid of the fill section.
+
+Section slots typically sit inside a Repeater + Condition Block on the wrapper section (Pattern B for reference / MB iteration) or directly under the section root (Pattern B for a simpler single-slot section).
+
+## Recipe — Pattern B (wrapper + `section-slot`, filled by a Simple Section)
+
+Sibling to the multi-reference recipe. Same iteration outcome (one card per reference / MB item), but the leaf content lives in a **separate section composition** rather than in the wrapper's own `ui`. Verified end-to-end for references (Case 8) and modular blocks (Case 9) in `docs/api/sections.md`.
+
+**When to prefer Pattern B over Pattern A (self-contained):**
+- Leaf content is reused across multiple wrappers (e.g. an author card shown in blog lists AND author-page hero).
+- Leaf content varies per CT and you want each CT's binding tree in its own composition entry.
+- You want to swap the fill section per template instance without editing the wrapper.
+
+**Shape overview:**
+
+| Composition | Kind | Role |
+|---|---|---|
+| Wrapper section | **List Section** — Repeater at root + CB per CT/block, CB slot holds a `section-slot` node | Iterates the reference/MB, emits one slot per item |
+| Fill section (one per branch) | **Simple Section** — no root Repeater, `linked_schemas.selected_field` scoped to the reference target CT (or block) | Binds leaf fields |
+| Template | Has a `section-composition` node embedding the wrapper; its `sectionSlotCompositions` pairs the wrapper's section-slot uid with each fill section's `composable_uid` | Wires slot ↔ fill |
+
+### Wrapper section — Repeater + CB + section-slot
+
+```jsonc
+// ui tree of the wrapper section
+{
+  "type": "repeater", "uid": "R1",
+  "metadata": { "mode": "preview" },
+  "props": { "items": { "binding": { "type": "template", "value": { "path": {} } } } },
+  "slots": { "<R1-slot>": [
+    { "type": "condition-block", "uid": "CB1",
+      "metadata": { "condition": { "type": "reference", "value": "author" } },
+      "slots": { "<CB1-slot>": [
+        { "type": "section-slot", "uid": "SS1",
+          "slots": { "SS1": [] } }
+      ] } }
+  ] } }
+```
+
+Wrapper section entry also declares `linked_schemas: [{ content_type_uid: "<parent-CT>", selected_field: "<ref-or-mb-field>" }]` (group-multiple field — see P23).
+
+### Fill section — Simple Section per branch
+
+One fill section per allowed CT (references) or block (MB). No root Repeater; its top-level node is the leaf component. `linked_schemas.selected_field` names the reference target CT (or block schema path) so the SDK scopes each iteration's item into the section's `dataSources.template`.
+
+```jsonc
+// ui tree of the fill section (e.g. author-card)
+{
+  "type": "author-card", "uid": "AC1",
+  "props": {
+    "name":  { "binding": { "type": "template", "value": { "path": { "name": {} } } } },
+    "photo": { "binding": { "type": "template", "value": { "path": { "photo": { "url": {} } } } } }
+  }
+}
+```
+
+Note the fill section's bindings use `type: "template"` (NOT `type: "repeater"`) — the wrapper's SDK scoping already unwraps the iteration item into the fill section's `template` scope.
+
+### Template — `section-composition` node + `sectionSlotCompositions`
+
+The template's `section-composition` node embedding the wrapper carries a `sectionSlotCompositions` map keyed by section-slot uid → fill section's `composable_uid`:
+
+```jsonc
+{
+  "type": "section-composition",
+  "uid": "INST-1",
+  "metadata": {
+    "compositionUID": "<wrapper-section's composable_uid>",
+    "sectionSlotCompositions": {
+      "SS1": { "compositionUID": "<author-fill-section's composable_uid>" }
+      // add one entry per CB branch when references allow multiple CTs; each
+      // branch's section-slot gets its own uid, each paired with its own fill
+    }
+  }
+}
+```
+
+Also populate the template's `linked_sections` (P27) with references to BOTH the wrapper section entry AND every distinct fill section entry.
+
+### Assembled — reference-iterating wrapper filled by an author fill
+
+```
+Wrapper section  linked_schemas: [{ ct: "blog_post", selected_field: "primary_author" }]
+  ui: Repeater(items:{path:{}}, mode:"preview")
+        └── ConditionBlock(condition:{type:"reference", value:"author"})
+              └── section-slot uid:"SS1" slots:{"SS1":[]}
+
+Author fill section  linked_schemas: [{ ct: "blog_post", selected_field: "primary_author" }]
+  ui: author-card
+        ├── name:  binding template path:{name:{}}
+        └── photo: binding template path:{photo:{url:{}}}
+
+Template (blog_post)
+  data_sources: [{ uid:"template", resolvedReferences:{ "template":["primary_author"] } }]
+  linked_sections: [wrapper-entry-ref, author-fill-entry-ref]
+  ui: page → … → section-composition uid:"INST-1"
+                    metadata.compositionUID: "<wrapper composable_uid>"
+                    metadata.sectionSlotCompositions.SS1.compositionUID: "<author-fill composable_uid>"
+```
+
+MB variant (Case 9): swap the CB discriminator to `{ type: "modular_block", value: "<block-uid>" }`; wrapper's `selected_field` names the MB field; fill section's `selected_field` names the same MB path plus the block key; leaf bindings inside the fill section still use `type: "template"`.
+
+## Recipe — Exposed section props (per-instance override)
+
+Some sections need to expose a prop the **template** can override per drop instance — a Card Grid whose column count is set by the page, or a Hero whose tone changes per template. Verified end-to-end (Case 14 in `docs/api/sections.md`).
+
+**Two-sided shape** — section declares the exposure; template supplies the per-instance value.
+
+### Section side — `ui.metadata.sectionExposedProps` at the ui ROOT
+
+The exposed-props declaration lives on the section's `ui.metadata` (NOT on the individual node). Each entry names one prop on one node, gives it a stable exposure `uid`, and captures the binding at expose time as a fallback:
+
+```jsonc
+{
+  "type": "page",
+  "uid": "<page-uid>",
+  "metadata": {
+    "sectionExposedProps": [
+      {
+        "nodeUid": "CARD1",                    // the node inside the section that owns the prop
+        "propKey": "tone",                     // the prop being exposed
+        "uid": "exp-tone-1",                   // stable identifier — templates reference this
+        "displayName": "Card tone",            // label shown on the template's right panel
+        "propType": "choice",                  // the widget kind — matches props.<key>.type
+        "bindingAtExposeTime": {               // fallback binding if the template doesn't override
+          "type": "static_value",
+          "value": "CARD1-tone"
+        }
+      }
+    ]
+  },
+  "slots": { /* … normal section ui … */ }
+}
+```
+
+`sectionExposedProps` is on the section's `ui` **ROOT node's `metadata`**, not on the composition entry, and not on the individual node the prop lives on. Getting the placement wrong (on the node, or on the entry) → the template's right panel doesn't render the field.
+
+### Template side — `section-composition.props.<exposed-uid>` per instance
+
+The template's `section-composition` node carries a `props` map keyed by the exposure `uid`:
+
+```jsonc
+{
+  "type": "section-composition",
+  "uid": "INST-1",
+  "metadata": {
+    "compositionUID": "<section's composable_uid>",
+    "sectionBindingOverride": { "selectedField": "…" }   // (P23 — separate concern)
+  },
+  "props": {
+    "exp-tone-1": {                            // keyed by section's exposure uid
+      "type": "choice",                        // must match section's propType
+      "binding": {
+        "type": "static_value",
+        "value": "INST-1-tone-override"        // static_value key on the TEMPLATE entry
+      }
+    }
+  }
+}
+```
+
+Two things to internalize:
+
+1. **Per-instance uid** — the same section dropped twice on one template = two `section-composition` nodes with **different `uid`s**. Each carries its own `props.<exposed-uid>` map, so each drop can have a different override value.
+2. **Static-value keys live on the template entry**, not the section entry. When the override is a static_value, the `binding.value` key is looked up in the **template**'s `static_value.<subtype>[]` bucket (per the two-level lookup rule earlier).
+
+### Fallback resolution
+
+For each exposed prop the SDK resolves in this order at render time:
+
+1. Template's `section-composition.props.<exposure-uid>.binding` — if present, use it.
+2. Section's `ui.metadata.sectionExposedProps[…].bindingAtExposeTime` — fallback.
+3. Node's own `props.<propKey>.binding` in the section's `ui` — final fallback.
+
+So a section can drop with no override (fallback to expose-time binding) OR with a per-instance override (template controls it). Leaving all three unset → the prop renders as the component's `defaultValue`.
+
+### Verifying an exposed prop
+
+Same as sections generally — SSR cold-load and dump `spec.data.section_scoped_data[<instance-uid>]`. The resolved override appears as the concrete `props.<propKey>` value on the section instance. If it's the fallback, either the template didn't provide an override or the `exposure-uid` doesn't match.
+
+## Never pass the compressed `ui` inline via a shell variable
+
+Silent-corruption trap. The `zlib:<base64>` blob is binary-ish; interpolating it into a `curl -d "..."` string via a shell variable mutates one byte and the SDK renders a blank canvas with **no error anywhere** — `hasSpec: true`, spec present, SSR looks fine, and every child slot silently resolves empty because the key `"children"` was corrupted to `"c1ildren"` (or similar) throughout the tree. Background colours still paint (from `responsiveStyles`), masking the bug until you inspect the raw HTML.
+
+Always write the full payload to a temp file and POST with `-d @file`:
+
+```bash
+python3 -c "import json,zlib,base64; \
+  raw = json.dumps(ui_tree); \
+  assert '\"c1ildren\"' not in raw, 'corrupt key'; \
+  assert raw.count('\"children\"') >= <expected slot count>, 'children count wrong'; \
+  compressed = 'zlib:' + base64.b64encode(zlib.compress(raw.encode())).decode(); \
+  open('/tmp/entry.json','w').write(json.dumps({'entry': {'ui': compressed, ...}}))"
+
+curl -X POST "<cma-host>/v3/content_types/<uid>/entries" \
+  -H "api_key: ..." -H "authtoken: ..." \
+  -H "Content-Type: application/json" \
+  -d @/tmp/entry.json
+```
+
+The count-assert catches shell corruption **before** compression — once the tree is zlib+base64'd, the corruption is opaque.
+
+**Non-prod hosts + Python.** Against `*.csnonprod.com` (e.g. dev11), Python's `urllib`/`requests` fail SSL verification (`SSLCertVerificationError: unable to get local issuer certificate`) — the non-prod chain isn't in the default Python CA store, but `curl` reads the system keychain and succeeds. Rule: use `curl` for the CMA POST/PUT itself; use Python only to build/assert the payload. If Python HTTP is unavoidable (dev tooling only, never app code), pass a permissive SSL context: `ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE; urllib.request.urlopen(req, context=ctx)`.
+
+## Complete example — a real Freeform composition body
+
+Every field below is what Studio actually stores for a real Freeform composition; use this shape verbatim when hand-authoring one. The tree is a single `page` root → `doc-hero` component → `doc-product-card` in the hero's `"Actions"` slot, all bound with `static_value` keys.
+
+### The `ui` tree (inflated, before `zlib+base64`)
+
+```json
+{
+  "uid": "mZfkYLfEsk28cuV",
+  "type": "page",
+  "attrs": {},
+  "metadata": {},
+  "styles": {},
+  "props": {
+    "children": { "type": "slot", "slot": "lW5KA7MYsHQxdHC" }
+  },
+  "slots": {
+    "lW5KA7MYsHQxdHC": [
+      {
+        "uid": "mHjnXsgKbBlj_PZ",
+        "type": "doc-hero",
+        "attrs": {},
+        "metadata": { "slotNames": { "7Opc3nDCi1wwpyy": "Actions" } },
+        "styles": { "default": { "classes": [""], "responsiveStyles": { "default": {} } } },
+        "props": {
+          "headline": { "type": "string",   "binding": { "type": "static_value", "value": "mHjnXsgKbBlj_PZ-headline" } },
+          "subhead":  { "type": "string",   "binding": { "type": "static_value", "value": "mHjnXsgKbBlj_PZ-subhead"  } },
+          "cover":    { "type": "imageurl", "binding": { "type": "static_value", "value": "mHjnXsgKbBlj_PZ-cover"    } },
+          "ctaLabel": { "type": "string",   "binding": { "type": "static_value", "value": "mHjnXsgKbBlj_PZ-ctaLabel" } },
+          "ctaHref":  { "type": "href",     "binding": { "type": "static_value", "value": "mHjnXsgKbBlj_PZ-ctaHref"  } },
+          "children": { "type": "slot", "slot": "7Opc3nDCi1wwpyy" }
+        },
+        "slots": {
+          "7Opc3nDCi1wwpyy": [
+            {
+              "uid": "Wo-7Ly0xHXWsOXQ",
+              "type": "doc-product-card",
+              "attrs": {},
+              "metadata": {},
+              "styles": { "default": { "classes": [""], "responsiveStyles": { "default": {} } } },
+              "props": {
+                "title":   { "type": "string",   "binding": { "type": "static_value", "value": "Wo-7Ly0xHXWsOXQ-title"   } },
+                "image":   { "type": "imageurl", "binding": { "type": "static_value", "value": "Wo-7Ly0xHXWsOXQ-image"   } },
+                "price":   { "type": "number",   "binding": { "type": "static_value", "value": "Wo-7Ly0xHXWsOXQ-price"   } },
+                "badge":   { "type": "choice",   "binding": { "type": "static_value", "value": "Wo-7Ly0xHXWsOXQ-badge"   } },
+                "ctaHref": { "type": "href",     "binding": { "type": "static_value", "value": "Wo-7Ly0xHXWsOXQ-ctaHref" } }
+              },
+              "slots": {}
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+```
+
+Notes on the tree that aren't in the recipe examples above:
+- Every node carries `attrs`, `metadata`, `styles`, `props`, `slots` — even when empty (`{}`). Studio writes them; you should too.
+- The root's `type` is `"page"` — the built-in Page system component. Freeform / Connected templates wrap their content in this root.
+- `props.children.type: "slot"` + `props.children.slot: "<slot-uid>"` — declares that this node's children live in the matching key inside `slots`. Same pattern on nested slot-owning components.
+- `metadata.slotNames.<slot-uid>: "<author-visible name>"` — components with named slots (like `doc-hero`'s `"Actions"` slot) register the label here so the canvas shows it.
+- Each `props.<name>.type` (`"string"`, `"imageurl"`, `"number"`, `"href"`, `"choice"`) is the widget kind. It **must match** the sub-bucket of `entry.static_value` the resolver looks in (see the two-level-lookup rule above).
+
+### The full CMA POST body
+
+The `ui` value on the wire is the tree above, JSON-stringified, `zlib.compress`ed, base64-encoded, and prefixed with `zlib:`. The rest of the entry:
+
+```json
+{
+  "entry": {
+    "title": "Spring 2026 Landing",
+    "composable_uid": "spring_2026_landing",
+    "connected_content_type": "",
+    "url": "/campaigns/spring-2026",
+    "place_composition_as": "page",
+    "schema_version": "1.0.0",
+    "data_sources": "[]",
+    "linked_schemas": [],
+    "linked_sections": [],
+    "static_value": {
+      "text": [
+        { "key": "mHjnXsgKbBlj_PZ-headline", "value": "Welcome to Studio" },
+        { "key": "mHjnXsgKbBlj_PZ-ctaLabel", "value": "" },
+        { "key": "Wo-7Ly0xHXWsOXQ-title",    "value": "Studio Pro" }
+      ],
+      "textarea": [
+        { "key": "mHjnXsgKbBlj_PZ-subhead", "value": "Visual composition for content teams — using the React components your engineering already built." }
+      ],
+      "imageurl": [
+        { "key": "mHjnXsgKbBlj_PZ-cover",  "value": "" },
+        { "key": "Wo-7Ly0xHXWsOXQ-image", "value": "" }
+      ],
+      "href": [
+        { "key": "mHjnXsgKbBlj_PZ-ctaHref", "value": "" },
+        { "key": "Wo-7Ly0xHXWsOXQ-ctaHref", "value": "https://example.com" }
+      ],
+      "number": [
+        { "key": "Wo-7Ly0xHXWsOXQ-price", "value": 49 }
+      ],
+      "choice": [
+        { "key": "Wo-7Ly0xHXWsOXQ-badge", "value": [] }
+      ],
+      "array":     [],
+      "boolean":   [],
+      "any":       [],
+      "datestring":[],
+      "json_rte":  [],
+      "html_rte":  [],
+      "object":    [],
+      "ui": "zlib:eNqtlFtvgjAUgP9L…"
+    }
+  }
+}
+```
+
+Studio-generated `_metadata.uid` on each `static_value.*` entry is added by the CMA on write — do not populate it yourself.
+
+### Python builder — produces the exact body above
+
+Paste into a `.py` file, fill the two `<…>` placeholders, run against a fresh entry uid:
+
+```python
+import base64, json, urllib.parse, zlib
+
+UI_TREE = { ...the tree from § "The ui tree" above... }
+COMPOSITION_ENTRY_UID = "<15-char CMA entry uid you'll POST to>"   # optional if using composable_uid slug
+
+raw = json.dumps(UI_TREE, separators=(",", ":"))
+assert raw.count('"children"') >= 2, "children key corrupted before compression"
+compressed = "zlib:" + base64.b64encode(zlib.compress(raw.encode())).decode()
+
+body = {
+  "entry": {
+    "title": "Spring 2026 Landing",
+    "composable_uid": "spring_2026_landing",
+    "connected_content_type": "",
+    "url": "/campaigns/spring-2026",
+    "place_composition_as": "page",
+    "schema_version": "1.0.0",
+    "data_sources": "[]",
+    "linked_schemas": [],
+    "linked_sections": [],
+    "static_value": {
+      "text":     [{"key": "mHjnXsgKbBlj_PZ-headline", "value": "Welcome to Studio"}, ...],
+      "textarea": [{"key": "mHjnXsgKbBlj_PZ-subhead",  "value": "…"}],
+      "imageurl": [{"key": "mHjnXsgKbBlj_PZ-cover",    "value": ""}, ...],
+      "href":     [{"key": "mHjnXsgKbBlj_PZ-ctaHref",  "value": ""}, ...],
+      "number":   [{"key": "Wo-7Ly0xHXWsOXQ-price",    "value": 49}],
+      "choice":   [{"key": "Wo-7Ly0xHXWsOXQ-badge",    "value": []}],
+      "array": [], "boolean": [], "any": [], "datestring": [],
+      "json_rte": [], "html_rte": [], "object": [],
+    },
+    "ui": compressed,
+  }
+}
+
+open("/tmp/entry.json", "w").write(json.dumps(body))
+```
+
+Then POST with `curl -d @file` (never `-d "..."` — see § *Never pass the compressed `ui` inline*):
+
+```bash
+curl -X POST "https://<cma-host>/v3/content_types/documentation_compositions/entries" \
+  -H "api_key: <stack-api-key>" -H "authtoken: <cma-authtoken>" \
+  -H "Content-Type: application/json" \
+  -d @/tmp/entry.json
+```
+
+Publish the entry after create — see § *Sanity-check the output* below.
+
+## Preflight — validate the `ui` tree before publishing
+
+The SDK's runtime renderer walks the composition node tree and throws on certain malformed shapes; an unpublishable error reaches the editor BEFORE you see it (`TypeError: Cannot read properties of undefined (reading 'slots')` + `Cannot find a descendant at path [...] in node`), and the entire composition's render aborts — every section after the throw goes blank. The most common cause is an empty Section Slot. Skill's duty is to **never emit one** in the first place.
+
+Before calling `POST /v3/.../entries` (or `PUT` on update), walk the inflated `ui` tree and assert:
+
+- [ ] **Every `slots[<slot_uid>]` value is a non-empty array** — no `{ "<uid>": [] }` entries. Either populate the slot with at least one node, OR remove the slot from the parent's `slots` object entirely.
+- [ ] **No node references a removed descendant** — every uid mentioned in a parent's `slots` array maps to an actual node in the tree. (Common when refactoring: removing a node but leaving its uid in a parent's slot array.)
+- [ ] **Every Repeater has `metadata.mode: "preview"` AND a Condition Block child (for reference / modular block iteration).** Missing either silently renders zero iterations.
+- [ ] **Every Section Slot inside the iteration has its child Section's node in place** — see `build-repeating-section` § *Step 6*.
+
+Cross-check matches the renderer-side symptom row in [`troubleshoot-canvas`](../troubleshoot-canvas/SKILL.md) (the "Whole composition renders blank or partially blank" row). The runtime crash should never reach the user — that's a Studio bug, but emitting a clean tree avoids it deterministically.
+
+If publishing through a script, gate the publish call behind these assertions and fail loudly. A composition with an empty slot is invalid; do not emit one.
+
+## Acceptance
+
+This skill succeeds only when ALL are true.
+
+- [ ] The composition entry was created with `composable_uid` = the entry uid, published.
+- [ ] `data_sources.resolvedReferences` is set per reference field the composition iterates.
+- [ ] Every Repeater node has `metadata.mode: "preview"` (for canvas iteration).
+- [ ] Every Repeater iterating a reference or modular block has a Condition Block as its immediate child.
+- [ ] Card / iteration child bindings use `type: "repeater"` with `repeaterUID` — NOT `type: "template"` with `.0.<field>` fixed-index paths.
+- [ ] **Preflight passed** — every `slots[<uid>]` is a non-empty array (exception: `section-slot` nodes carry `slots: { "<own-uid>": [] }` by design); no orphan descendant references in the tree.
+- [ ] **Pattern B (if used)** — wrapper section has `section-slot` node with `slots:{"<own-uid>":[]}`; fill section's leaf bindings use `type:"template"` (NOT `repeater`); template's `section-composition` node has `metadata.sectionSlotCompositions.<slot-uid>.compositionUID`; template's `linked_sections` includes BOTH wrapper and fill entries.
+- [ ] **Exposed section props (if used)** — `sectionExposedProps` array on section's `ui` ROOT `metadata`; template's `section-composition.props` map keyed by each exposure's `uid`; per-instance override values use distinct static_value keys.
+- [ ] The composition resolves at runtime — verified by either curl against the CDA preview API (returns 200 + entries body, see `troubleshoot-canvas` § *CORS error on the CDA preview host*) OR a SSR cold-load `await sdk.fetchCompositionData({ url })` returning `spec.data.section_scoped_data[<instance>]` with the expected `template` array (P26-style verification).
+
+## Common pitfalls
+
+| Pitfall | Symptom | Fix |
+|---|---|---|
+| Missing `data_sources.resolvedReferences` | Repeater renders 0 items — reference stubs never materialise | Add the resolution map entry — `{ uid:"template", resolvedReferences: { "root.<refField>": ["<refField>"] } }` |
+| Card prop bindings use `template` type at `<refField>.0.<field>` (fixed `.0.` index) | EVERY iteration renders item 0 — all cards identical (the worst kind: looks "correct" with a single-item list, fails as soon as the list grows) | Use `repeater` type with `repeaterUID`, path relative to the iteration item, no index |
+| Repeater node missing `metadata.mode: "preview"` | Canvas shows 1 placeholder iteration; production still renders N | Set `metadata.mode: "preview"` on the Repeater node |
+| Missing Condition Block child of Repeater (reference / modular-block iteration) | Iteration silently fails to resolve child bindings | Insert a Condition Block per allowed type (CT for refs, block UID for modular blocks) |
+| `composable_uid` not equal to the CMA entry uid | "Composition Not Found" — canvas link uses entry uid, resolution uses `composable_uid` | Set `composable_uid` = the entry uid before publishing |
+| Authored composition is unpublished | Not visible in compositions list; can't load in canvas | Publish the entry; Studio queries by `composable_uid` AND published state |
+| `linked_schemas` modeled as a reference field on the compositions CT instead of group-multiple | Section's `selectedField` derived from `linked_schemas` is always empty → section scope is unset → blank repeaters in the editor (P23). Runtime may still work via `sectionBindingOverride`. | Ensure compositions CT models `linked_schemas` as a group-multiple — see `provision-studio-project` |
+| Treating this skill as a UI-authoring guide | Wastes time; introduces shape inconsistencies | Use only for headless / scripted / seed / migration work. For interactive authoring, the Data Picker writes every shape correctly. |
+| Placing bindings directly on the node instead of `props.<propName>.binding` | The SDK can't find the binding → prop renders with `defaultValue` or empty | Always wrap: `"props": { "<propName>": { "binding": { type:…, value:{…} } } }`. |
+| Using `children: [...]` instead of `slots: { <slot-uid>: [...] }` for child nodes | Children invisible to the renderer; canvas renders the parent as empty | Use `slots`; each slot has a uid. See node anatomy above. |
+| Placing Condition Block's discriminator on the node as `condition: {...}` instead of `metadata: { condition: {...} }` | Discriminator ignored; iteration item's type can't be narrowed; bindings inside fail to resolve | Put `condition` inside `metadata`. Same pattern as Repeater's `metadata.mode`. |
+| Adding `resolvedReferences` for a group-multiple iteration | No harm (the SDK ignores it for non-references), but creates noise + makes the composition look more complex than it is | Skip `resolvedReferences` for group-multiple, multi-file, and scalar-list iteration. Only references need it. |
+| Adding a Condition Block for group-multiple iteration | The block has no discriminator to apply; runtime behavior may be inconsistent | Skip the Condition Block for group-multiple. Place the iteration child directly in the Repeater's slot. |
+| Using `uid` instead of `queryUID` in a `contentstack_queries` binding value | Pinned-query result never resolves | Use `queryUID: "<pinned-query-uid>"`. |
+| Inner Repeater's `items` binding uses `type: "template"` with a nested-`.0.` path (e.g. `{ footer_columns: { 0: { links: {} } } }`) | Every outer iteration's inner-repeater reads column-0's links — all inner lists identical. The nested-`.0.` family of the P19 trap, one level up. | Inner Repeater's `items` MUST use `type: "repeater"` with `repeaterUID: "<outer-uid>"` and path `{ <field-on-outer-iteration>: {} }`. Then inner card bindings use the inner Repeater's UID. |
+| Compositions CT models `linked_schemas` as a reference field instead of group-multiple (P23) | CMA silently drops the `{content_type_uid, selected_field}` object on every `PUT` — `linked_schemas` reads back as `[]` — editor canvas shows blank repeaters on placed sections even though runtime works correctly | Model `linked_schemas` as a group-multiple on the compositions CT (see `provision-studio-project`). As a temporary runtime-only fix, set `sectionBindingOverride.selectedField` on each `section-composition` node — but the editor canvas won't render correctly until `linked_schemas` is also fixed. |
+| A section iterates `selectedField` and its top-level Repeater binds `{ path: { <field>: {} } }` instead of scope-root `{ path: {} }` (P24) | Repeater renders nothing — `dataSources.template` IS the array (re-scoped via selectedField); `template.<field>` is undefined | Use scope-root `{ path: {} }` for the top-level Repeater inside a `selectedField`-scoped section. Leaf bindings inside still use `repeater` type with `repeaterUID`. |
+| Setting `selectedField` on a section that reads multiple page fields (Header reading brand + nav_links + signin_label; Hero reading the `hero` group) | Section loses access to the fields outside the scoped one — they resolve to undefined | Leave `selectedField` unset for multi-field sections — `template` becomes the whole page entry; original `template.<field>` paths work verbatim. |
+| Authoring a section by API and expecting its own canvas to confirm scope | Section canvas has no data; one empty placeholder is normal | Verify via SSR cold-load — `await sdk.fetchCompositionData({ url })` then dump `spec.data.section_scoped_data[<instance-uid>]`. That's the runtime truth. |
+| API-placing a section in a template's `ui` without populating the template's `linked_sections` field (P27) | **"Template Did Not Load"** in the Studio editor, BUT the deployed site renders the template correctly via SSR — the editor needs the `?include[]=linked_sections` resolution to build `spec.sectionCompositions`; SSR walks the section-composition nodes directly so it works either way | When writing `section-composition` nodes into a template's `ui`, also populate the template entry's `linked_sections` field with `[{ uid: "<section-comp-entry-uid>", _content_type_uid: "<compositions-CT-uid>" }, …]` — one entry per distinct placed section (dedupe — a section placed multiple times needs only one reference). Publish the template entry. |
+| Passing the compressed `ui` inline via a shell variable in `curl -d "..."` | Blank canvas, no error — spec present, `hasSpec: true`, but every slot resolves empty because shell interpolation mutated `"children"` → `"c1ildren"` throughout the tree | Write payload to a temp file, POST with `-d @file`; assert `raw.count('"children"') >= <expected>` before compressing. See § *Never pass the compressed `ui` inline* above. |
+| Using Python `urllib`/`requests` for CMA calls against `*.csnonprod.com` (dev11 etc.) | `SSLCertVerificationError: unable to get local issuer certificate` — the non-prod chain isn't in Python's default CA store; `curl` reads the system keychain and works | Use `curl` for the HTTP call; keep Python for payload build + assertions only. If Python HTTP is unavoidable (dev tooling), pass a permissive `ssl.create_default_context()` with `check_hostname=False` + `verify_mode=CERT_NONE`. Never do this in app code |
+| `section-slot` node written without `slots: { "<own-uid>": [] }` (empty-array entry keyed by the node's own uid) | Template's `sectionSlotCompositions` has no target to fill — canvas renders the wrapper with no slot placeholder; SSR resolves the slot as absent | Every `section-slot` node needs `slots: { "<own-uid>": [] }` — the one legitimate empty-array exception to the preflight rule. See § *`section-slot` node shape* |
+| Pattern B fill section's leaf bindings use `type: "repeater"` with the wrapper's `repeaterUID` | Bindings resolve to `undefined` — the wrapper's SDK scoping already unwraps the iteration item into the fill section's `template`; the wrapper's repeater scope isn't visible inside the fill section | Fill section's leaf bindings use `type: "template"` with paths relative to the reference target CT / block schema. Only the WRAPPER section uses repeater-scope bindings inside its own tree |
+| Pattern B template drops the section-composition without a `sectionSlotCompositions` map | Wrapper renders its Repeater + CB but each iteration's section-slot has no fill — placeholder shows blank | Populate `metadata.sectionSlotCompositions.<section-slot-uid>.compositionUID` with each fill section's `composable_uid` on the template's `section-composition` node. Add the fill section entry to the template's `linked_sections` |
+| Exposed-prop declaration placed on the individual node's `metadata.sectionExposedProps` or on the composition entry, instead of `ui.metadata.sectionExposedProps` at the ui ROOT | Template's right panel doesn't render the field; overrides never get read | Place `sectionExposedProps` on the section's `ui` ROOT node's `metadata` (the top-level `page` node). It's an array of `{nodeUid, propKey, uid, displayName, propType, bindingAtExposeTime}` — one entry per exposure. See § *Recipe — Exposed section props* |
+| Template's `section-composition.props.<uid>` key uses the section's node uid or prop key instead of the exposure `uid` | Override never matches — SDK looks up by exposure `uid`; unmatched → falls back to `bindingAtExposeTime` → looks like the section is ignoring the template | Key the template's `section-composition.props` map by the `uid` field from the section's `sectionExposedProps` entry (e.g. `"exp-tone-1"`), NOT by nodeUid or propKey |
+| Same section dropped twice on a template shares one override value | Both instances render with the same override — user expected per-instance control | Each drop is a separate `section-composition` node with its own `uid`; each carries its own `props.<exposure-uid>` map. Static-value keys should also differ per instance (e.g. `INST-1-tone`, `INST-2-tone`) so the template's `static_value.<subtype>` bucket stores each independently |
+| API-authoring a `json_rte` embedded-entry `reference` node with `attrs` missing `locale` | CMA rejects with `"Reference must contain content-type-uid, entry-uid, locale and display-type."` at write time. SDK read path doesn't need `locale` (derived from context) so this only surfaces on POST/PUT | Every embed reference node needs `attrs: { type: "entry", "entry-uid": "…", "content-type-uid": "…", "display-type": "block"\|"inline"\|"link", "locale": "en-us" }`. Applies to both node-level `json_rte` prop values and `static_value.json_rte[*].value` embeds. See [`register-json-rte`](../register-json-rte/SKILL.md) pitfall row |
+
+## Sanity-check the output
+
+After authoring, verify by ONE of:
+
+1. **CDA preview API curl** — confirm the composition is returned. See `troubleshoot-canvas` § *CORS error on the CDA preview host* for the curl shape. Status 200 + JSON entries body = the contract resolves.
+2. **SSR cold-load** — `await sdk.fetchCompositionData({ url })` from a throwaway server route. Dump `spec.data.section_scoped_data[<instance>]` to verify each section's `selectedField` + scoped `template` arrives correctly. The most reliable check.
+3. **Decode the stored `ui`** — the read-only `zlib`-inflate snippet in `troubleshoot-canvas` § *Diagnostic tooling*. Diff your composition's node tree against a known-working UI-authored one to spot any shape mismatch. Useful for debugging.
+
+## See also
+
+- `troubleshoot-canvas` § *Diagnostic tooling — inspecting a stored composition's ui* — the zlib decoder
+- `troubleshoot-canvas` § *CORS error on the CDA preview host* — preview-token verification curl shape
+- `use-repeater` — UI authoring side; the Preview Mode toggle the API directly sets via `metadata.mode`
+- `use-condition-block` — the Condition Block schema requirement for reference / modular-block iteration
+- `build-section` — section's `selectedField` scoping (the parent of most API-authored sections)
+- `understand-auto-binding` — the UI mechanism that writes these shapes for UI authors
+- `provision-studio-project` (planned) — compositions CT field schema, including `linked_schemas` as group-multiple
+- `troubleshoot-data-binding` — the "registered as lazy but not loaded yet" error class

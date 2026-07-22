@@ -1,0 +1,149 @@
+---
+description: "End-to-end orchestrator for the BYOC arc — chains register-component (lazy) → import-design-tokens → build-section → use-section-slot → build-connected-template → configure-csr-vs-ssr → setup-template-preview-routes → verify-setup."
+alwaysApply: false
+---
+
+
+## When to use
+
+End-to-end orchestrator for the BYOC arc — chains register-component (lazy) → import-design-tokens → build-section → use-section-slot → build-connected-template → configure-csr-vs-ssr → setup-template-preview-routes → verify-setup.
+
+Use when an engineer wants to bring their own component library into a Studio-backed app end-to-end. Walks register → section → template → publish. Phrases — "BYOC", "use my components in Studio", "Studio with my design system". Do NOT use for one-off component registration (`register-component`) or once components already exist in Studio.
+
+# BYOC end-to-end — from registered components to a rendered Template
+
+BYOC ("Bring Your Own Components") chains the ~8 sub-skills that take registered React components → rendered Template. This orchestrator only names + orders them; it doesn't replace any sub-skill.
+
+## Prerequisite — concepts first
+
+If the user can't crisply define Section, linked schema, Template, and `<StudioCanvas />` vs `<StudioComponent />` in one sentence each → run `start-here-zero-knowledge` first.
+
+## Task
+
+Print the plan below, customised for the user's `projectShape` and `renderMode`. Don't execute the sub-skills automatically — name them, and let the user invoke each one in turn.
+
+### Phase 0a — Architecture planning (run BEFORE Preflight)
+
+- **`plan-studio-architecture`** — requirements → printed architecture plan (Sections, Connected pages, content model, build order). Skip only if the user already has a written plan.
+
+Gate: printed plan with classified pages, content model, ordered Section + Template inventory, build order, sanity flags acknowledged.
+
+### Phase 0 — Preflight (run once)
+
+- **`analyze-project-fit`** — confirm React 18, single React instance, no peer override forcing 19. Catches the most common install foot-guns.
+- **`install-studio`** — install SDK packages, pin React 18, wire `ContentstackLivePreview.init`, set env Base URL pre-flight. Output: SDK installed + env Base URL for target locale is non-empty.
+- **`enable-visual-experience`** — confirm stack-level Live Preview is on (commonly missed; silently blocks the canvas).
+- **`setup-section-preview`** — create the `/canvas` route mounting `<StudioCanvas />`. Set the Canvas URL in Studio Project Settings.
+
+Gate: open Studio, open any composition (even an empty one). Canvas iframe loads cleanly (no blank frame, no Component Loading Error). If not → `troubleshoot-canvas` before continuing.
+
+### Phase 1 — Register components (lazy by default)
+
+- **`register-component`** — for each component the user wants Studio to surface in the palette. Default to the LAZY shape: `component: () => import("./Foo").then(m => ({ default: m.Foo }))`. Eager only when the component is tiny and on a hot path where Suspense fallback is unacceptable.
+- **`register-breakpoints`** (optional) — if the site needs custom responsive breakpoints registered for Studio's responsive editor.
+- **`register-json-rte`** (optional) — only if the site uses JSON-RTE-bound props.
+- **`import-design-tokens`** — register the customer's design system. Do this BEFORE building any Section; tokens here drive visual fidelity of every later canvas preview.
+
+Detour: `component: Hero` where `Hero` is `function Hero() { ... }` (no `props` arg) → "Invalid hook call". Back to `register-component`, read the arity rule. The lazy shape avoids the trap.
+
+Gate: open the canvas. Switch the palette to **Registered Components**. Every component the user expects to see is present, with a non-blank preview (defaults populated).
+
+### Phase 2 — Build the first Section
+
+- **`build-section`** — pick a linked schema (Content Type / Global Field / Group / Modular Block / Block / Reference). The picker only offers structural shapes; no scalar fields. **Default to Global Field as the section anchor** unless a different shape fits better.
+- **Mid-step: scan for Slot candidates.** Inside `build-section` step 4, the user is told to inspect the linked CT for **Global Field / Modular Block / Group / Reference** fields. For each one, decide:
+  - Expose as a Slot (the preferred default) → run `use-section-slot` for that field.
+  - Bind inline (rare) → only when the shape is genuinely one-off.
+  - Global Field is the strongest Slot candidate of all four — build a separate Section against the Global Field's schema and expose it as a Slot in the parent.
+- **`expose-section-props`** — for any prop the user wants overridable per Section-drop (e.g. background colour, layout variant). Do this WHILE building the Section, not later.
+- **`wire-component-default-data`** (optional) — for components whose defaults aren't representable as static `defaultValue:` literals.
+
+Gate: the Section appears in the Studio Sections tab. Open it on the canvas → bindings render real data from a sample entry. If not → `troubleshoot-data-binding`.
+
+### Phase 3 — Repeat Phase 2 for every Section the site needs
+
+- Most pages need 3–6 Sections (Header, Hero, Feature Grid, Testimonial, CTA, Footer, etc.).
+- Build them ONE AT A TIME and verify each before moving on.
+- Cross-references: if a Section iterates a list (Modular Block, multi-Reference, multi-Group), use **`build-repeating-section`** — the dedicated guide for the parent-with-Slot + child-Section pattern, which composes `use-repeater` + `use-section-slot` + `use-condition-block` into one flow. Don't drop raw cards into a repeating Slot; build the card as its own Section and let the parent's Slot accept it.
+- Discoverability: run `discover-sections` periodically to see what's already been built — avoids accidentally rebuilding a Section that already exists.
+
+### Phase 4 — Choose Template flavor + assemble
+
+- **`build-connected-template`** — assemble the Sections from Phase 3 into the Template. Templates compose Sections; they don't model fields directly. If the user hasn't built any Sections yet, back to Phase 2.
+
+Gate: the Template renders on the canvas with the expected Section stack. Switching the preview entry updates the rendered content. If not → `troubleshoot-composition-resolution`.
+
+### Phase 5 — Visitor render path (CSR vs SSR vs RSC)
+
+- **`configure-csr-vs-ssr`** — the canonical decision skill. For `renderMode = unsure`, this skill picks based on the host framework (Next App Router → RSC default; Vite + React Router → CSR; Remix → SSR). Output: a clear recommendation and the per-route shape to use.
+- **`setup-template-preview-routes`** — create the visitor route(s) mounting `<StudioComponent />`. Either a catch-all `[[...slug]]` (recommended for most projects) or per-template routes (more control, more boilerplate). The route(s) here serve BOTH real visitors AND Studio's template-preview iframe — same code path.
+
+Gate: open `<env Base URL>` + `<Template URL>` directly in a browser (not through Studio). The Template renders with real data. Open the same Template in Studio's Templates tab → the iframe shows the same render, with edit overlays.
+
+### Phase 6 — Verify + ship
+
+- **`verify-setup`** — 5-layer smoke test (Delivery SDK reachability, Live Preview channel, Visual Editor, Studio canvas, new-user trap smoke). ALL FIVE layers must pass before deploying.
+- **`troubleshoot-ssr-rendering`** (if needed) — for SSR-specific failures (RSC client-reference boundaries, hydration mismatches, lazy-not-loaded race when `fetchSpec` isn't awaited).
+- **`deploy-studio-site`** — production checklist (env Base URL points at the deployed origin, Canvas URL still `/canvas`, prod build serves the right CSP headers for the iframe).
+
+Gate: deployed site renders a real Template at a real URL. Studio's preview of the same Template (inside Studio) shows the same content.
+
+## Branch: brownfield (`projectShape = existing`)
+
+Insert `migrate-page-to-studio` between Phase 0 and Phase 1 — pick one small existing page (not the homepage). In Phase 5, mount the new visitor route side-by-side with the old one; redirect after verification.
+
+## Branch: greenfield (`projectShape = new`)
+
+Phase 0 includes project bootstrap. Recommended: Next.js App Router (RSC default, catch-all route) or Vite + React Router (CSR). React 18.3.1 exactly. Canvas-app and visitor-app are the SAME app — one `package.json`, two route trees.
+
+## Common detours, and the step to back to
+
+| Symptom | Detour | Back to |
+|---|---|---|
+| Component throws "Invalid hook call" the moment the canvas renders it | The component was registered eagerly with arity 0 (e.g. `function Header() {...}` with no `props` arg) | `register-component` — switch to the lazy shape, OR add a `props` arg |
+| Studio canvas blank, no console error | env Base URL empty, or Canvas URL set to a full URL instead of a path | `setup-section-preview` + `understand-canvas-url` |
+| Components don't show up in the palette | Registration file isn't imported at app startup | `register-component` — `import "./register-components"` from the app entry |
+| Sections panel is empty even after Phase 2 finished | Wrong project selected in Studio top-bar | switch project, OR re-run `provision-studio-project` if it was provisioned against a different stack |
+| "Internal components missing: page" on the visitor route | SDK is pre-PR-#851 build | `upgrade-studio-sdk` — bump to the patch that ships the visitor-path auto-register |
+| Template renders in Studio but not on the live route | The visitor route isn't mounting `<StudioComponent />`, OR is mounting `<StudioCanvas />` by mistake | `understand-canvas-vs-component` + `setup-template-preview-routes` |
+| "registered as lazy but hasn't been loaded yet" | `fetchSpec` / `fetchCompositionData` wasn't awaited before `<StudioComponent />` mounted | `configure-csr-vs-ssr` — the SSR / RSC patterns show the right await placement |
+| `useData()` warning in dev console only | Benign — basic component hit the SSR pass before `DataCtxProvider` attached. Disappears post-hydration. | `troubleshoot-ssr-rendering` — confirm it's a warning, not an error |
+
+## Inputs needed from the user
+
+1. `projectShape` — `existing` or `new`. Used to insert the `migrate-page-to-studio` branch at the right point.
+2. `renderMode` — `csr` / `ssr` / `rsc` / `unsure`. Used by `configure-csr-vs-ssr` in Phase 5; `unsure` is acceptable — that skill picks based on the host framework.
+
+## Acceptance
+
+This orchestrator succeeds when:
+
+- [ ] The user sees the full BYOC path on one page, with every sub-skill named.
+- [ ] Each phase has an explicit gate (the signal that says "ready for the next phase").
+- [ ] The plan is customised to their `projectShape` (existing vs new) and `renderMode`.
+- [ ] Common detours are flagged WITH the step to back to — not just "something went wrong."
+- [ ] The plan ends at "deployed + verified," not at "Template renders."
+
+## Common pitfalls
+
+| Pitfall | Why it bites | Right move |
+|---|---|---|
+| Treating this orchestrator as a sub-skill replacement | The orchestrator doesn't author Sections or Templates — it points at the skills that do. Running it doesn't accomplish any phase. | Use this to see the whole path. Invoke the named sub-skill for each phase. |
+| Skipping the concept gate at the top | User registers components, builds a "Section" that's actually unwrapped components on a route, ships a one-off page, loses all reuse benefit | If the user can't define Section + Template + linked schema crisply, RUN `start-here-zero-knowledge` first. Five minutes of concepts saves weeks of rework. |
+| Running phases out of order | E.g. building a Section before importing design tokens — the Section's canvas preview looks wrong; the user thinks the Section is broken; rebuilds it; same problem because tokens are still missing | Tokens before Sections. Sections before Templates. Templates before visitor routes. Verify before deploy. The order is load-bearing. |
+| Building all Sections in one big batch before verifying any of them | If something is wrong with the SDK / registry / Live Preview channel, the user discovers it after 4 hours of building, then has to debug across all Sections at once | Build ONE Section, verify it on the canvas, move to the next. Catch breakage when the surface area is small. |
+| Forgetting Phase 6 ("verify + ship") | Template renders on the canvas → user assumes prod will be fine → CSP headers blocking the iframe in prod, env Base URL pointing at localhost in prod, etc. | `verify-setup` and `deploy-studio-site` are mandatory phases, not optional. The plan doesn't end at "renders on canvas." | <!-- style-lint: allow -->
+
+## See also
+
+- `start-here-zero-knowledge` — the conceptual prerequisite (run BEFORE this skill if the user is new)
+- `plan-studio-architecture` — Phase 0a, the requirements→architecture planner that runs before this skill
+- `analyze-project-fit` — Phase 0 gate
+- `install-studio`, `setup-section-preview`, `setup-template-preview-routes` — wiring
+- `register-component`, `import-design-tokens`, `register-breakpoints`, `register-json-rte` — registration
+- `build-section`, `use-section-slot`, `expose-section-props`, `use-repeater`, `use-condition-block` — Section authoring
+- `build-repeating-section` — the dedicated end-to-end recipe for parent-with-Slot + child Section iteration (composes the four skills above)
+- `build-connected-template` — Template authoring
+- `configure-csr-vs-ssr`, `troubleshoot-ssr-rendering` — render modes
+- `verify-setup`, `deploy-studio-site` — ship
+- `migrate-page-to-studio` — brownfield branch

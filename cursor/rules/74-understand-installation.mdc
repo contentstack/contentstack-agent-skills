@@ -1,0 +1,70 @@
+---
+description: "Explain what installing Contentstack Studio adds to a project — three SDKs (delivery / live-preview / studio-react), one shared init, two component mounts (StudioCanvas + StudioComponent). Concept on-ramp before `install-studio`."
+alwaysApply: false
+---
+
+
+## When to use
+
+Explain what installing Contentstack Studio adds to a project — three SDKs (delivery / live-preview / studio-react), one shared init, two component mounts (StudioCanvas + StudioComponent). Concept on-ramp before `install-studio`.
+
+Use when a new user asks "what does installing Studio do", "what packages are added", "which SDKs do I need", "what's StudioCanvas vs StudioComponent", or is about to run `install-studio` without context. Concept only — for the actual install run `install-studio`. Do NOT use to fix an install (use `troubleshoot-canvas` or `verify-setup`). Do NOT use for component registration (use `register-component`).
+
+# What installing Studio adds to your project
+
+## The three SDKs
+
+Installing Studio adds **three packages** to your app — they're effectively one install. Each owns a distinct piece:
+
+| Package | What it does | Whose credentials |
+|---|---|---|
+| `@contentstack/delivery-sdk` | Reads published content from Contentstack's CDA. | Stack API Key + Delivery Token |
+| `@contentstack/live-preview-utils` | Real-time edit channel — Studio's iframe pushes edits to your running app within ~1s. | Preview Token (paired with the Delivery Token) |
+| `@contentstack/studio-react` | The Studio bridge: `studioSdk` (init), `<StudioCanvas />` (canvas mount), `<StudioComponent />` (visitor + template-preview mount), plus hooks like `useCompositionData`. | (uses the other two via `studioSdk.init({ stackSdk })`) |
+
+You don't install one without the others — install-studio wires all three.
+
+## The two React components, and where each goes
+
+This is the single most-confused part of the install:
+
+- **`<StudioCanvas />`** mounts on **ONE canvas route** (e.g. `/canvas`). It's the surface Studio's iframe uses to author Sections. Visitors never hit this route. Set the Canvas URL in Project Settings to the path you mount it on. See [`setup-section-preview`](../setup-section-preview/SKILL.md).
+- **`<StudioComponent />`** mounts on **ONE catch-all route** (`app/[[...slug]]/page.tsx` for Next App Router, `<Route path="*">` for React Router). Studio resolves EVERY visitor URL through this one mount via `sdk.fetchCompositionData({ url })`. No per-template routes. See [`setup-template-preview-routes`](../setup-template-preview-routes/SKILL.md).
+
+Two mounts. Total. The install does not add per-template routes.
+
+## What gets wired at install time
+
+After `install-studio` completes:
+
+1. **Three SDK packages** in `package.json`.
+2. **`src/lib/contentstack.ts`** (or framework equivalent) — the single bootstrap module. Exports `stack`, `sdk`, optionally `ContentstackLivePreview`. This is where `studioSdk.init({ stackSdk, contentTypeUid })` happens.
+3. **A side-effect import** at the app shell so the bootstrap runs once. Next App Router needs a `"use client" StudioInit` boundary; Vite / Pages Router / Remix import directly.
+4. **`.env.local`** with the five credentials.
+
+The two route mounts are SEPARATE skills — `setup-section-preview` adds the canvas route; `setup-template-preview-routes` adds the catch-all visitor route. `install-studio` deliberately stops before them so each route is an explicit decision.
+
+## What install does NOT do
+
+- Does NOT register any of your components — that's [`register-component`](../register-component/SKILL.md).
+- Does NOT configure the Studio project (Environment, Canvas URL) — that's [`configure-studio`](../configure-studio/SKILL.md), done in `app.contentstack.com`.
+- Does NOT enable Live Preview at the stack level — that's [`enable-visual-experience`](../enable-visual-experience/SKILL.md), done in Stack settings BEFORE the app-side install.
+
+## The expected install order
+
+1. [`analyze-project-fit`](../analyze-project-fit/SKILL.md) — preflight, picks greenfield vs minimal-add path.
+2. [`enable-visual-experience`](../enable-visual-experience/SKILL.md) — turn on Live Preview at stack level (otherwise app install succeeds silently but nothing flows).
+3. [`install-studio`](../install-studio/SKILL.md) — adds the three SDKs, writes the bootstrap module.
+4. [`register-component`](../register-component/SKILL.md) — register the customer's components so Studio's palette uses them.
+5. [`setup-section-preview`](../setup-section-preview/SKILL.md) — adds the `/canvas` route.
+6. [`setup-template-preview-routes`](../setup-template-preview-routes/SKILL.md) — adds the catch-all visitor route.
+7. [`configure-studio`](../configure-studio/SKILL.md) — set Environment, Canvas URL in the Studio web app.
+8. [`verify-setup`](../verify-setup/SKILL.md) — confirm all four layers green.
+
+This sequence is also walked by [`studio-tour`](../studio-tour/SKILL.md) and [`byoc-end-to-end`](../byoc-end-to-end/SKILL.md) orchestrators when you want one skill driving the whole flow.
+
+## What this skill is NOT
+
+- Not the install itself — run `install-studio`.
+- Not a troubleshooting guide — run [`troubleshoot`](../troubleshoot/SKILL.md) router if something's broken.
+- Not the conceptual onboarding for new-to-Studio users — that's [`start-here-zero-knowledge`](../start-here-zero-knowledge/SKILL.md).

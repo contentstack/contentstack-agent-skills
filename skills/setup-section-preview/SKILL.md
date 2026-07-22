@@ -1,0 +1,198 @@
+---
+name: setup-section-preview
+description: "Add the canvas route that mounts `<StudioCanvas />` in the user's app AND set the matching Canvas URL in Studio project settings."
+allowed-tools: Read Grep Glob
+---
+
+## When to use
+
+Add the canvas route that mounts `<StudioCanvas />` in the user's app AND set the matching Canvas URL in Studio project settings.
+
+Use right after `install-studio` to wire the section-authoring route. Phrases — "set up canvas route", "MISSING_CANVAS_URL", "where does StudioCanvas mount", "canvas iframe is blank in Studio". Do NOT use to add template/preview routes (use `setup-template-preview-routes`) or to fix a misbehaving canvas after setup (use `troubleshoot-canvas`).
+
+# Set up the section preview route
+
+## Context
+
+The "canvas route" is the page in the user's app that Studio loads inside its iframe to preview sections. Two things have to line up:
+
+1. A route in the app at a known path (e.g. `/canvas`) that mounts `<StudioCanvas />`
+2. The same path set as **Canvas URL** in the Studio project's Settings → Configuration
+
+Without both, opening a section in Studio shows the `MISSING_CANVAS_URL` error.
+
+**Two unrelated "Base URLs" — don't confuse them.** (1) The *Visual Experience → Custom Preview URL* "Base URL" (set by `enable-visual-experience`) drives **template** preview URLs — not relevant here. (2) The **canvas** Base URL is the per-locale URL on the environment your Studio project targets (*Stack → Settings → Environments → `<env>` → URL for `<locale>`*). Studio composes the canvas iframe address as **canvas Base URL (origin) + Canvas URL (path)**. This skill sets the path; the origin must already exist on the targeted environment, or the canvas stays blank.
+
+Mounting `<StudioCanvas />` is simple — it takes no required props; Studio drives it via URL parameters. The harder part is making sure the framework's routing wires it correctly (App Router vs Pages Router vs React Router vs Remix).
+
+Prerequisite: `install-studio` has run, so `@contentstack/studio-react` is in the project.
+
+## Task
+
+### 0. ⛔ CONFIRM-AND-GO GATE — the canvas origin chain (do this BEFORE creating the route)
+
+The canvas iframe address is **canvas Base URL (origin) + Canvas URL (path)**. This skill sets the path (step 4); the **origin comes from the per-locale URL on the environment your Studio project targets**. If that URL is empty, Studio can't build the iframe address and the canvas stays blank — with an error that points at the wrong layer. Most "canvas won't load" reports at this stage are this, not the route. Do NOT create the canvas route until all three are confirmed:
+
+1. **Identify the dev origin** the canvas runs at — e.g. `http://localhost:51723`. If a dev server is running, it's that server's origin (the same one step 3 hits for its 200 check). If not, ask the user which origin they'll serve the app at locally.
+2. **Confirm an environment carries that origin** as its per-locale URL: *Stack → Settings → Environments → `<env>` → URL for `<locale>`* must equal the dev origin. (This is the **canvas** Base URL — NOT the Visual Experience Custom Preview URL.) If it's empty or wrong, guide the user to set it now before continuing.
+3. **Confirm that same environment is the one the project targets** — *Studio project → Settings → Configuration → Environment*. If the project points at a different environment (e.g. an empty `preview`), that mismatch **is** the trap: either set that environment's per-locale URL to the dev origin, or repoint the project's Environment (via `configure-studio`) at the environment that already has it.
+
+**Recommended topology (avoids clobbering deployed envs):** an environment record holds ONE URL per locale, so pointing `preview` at `localhost` breaks your deployed preview later. Prefer a dedicated **`development`** environment whose per-locale URL is `localhost`, with `preview`/`production` reserved for real origins, and point the Studio project's Environment at `development` for local authoring. Switch the project to `preview`/`production` when you deploy (see `deploy-studio-site`). This is a recommendation, not a requirement — if you deliberately use one shared environment, just make sure its per-locale URL matches wherever you're currently serving the canvas.
+
+Only once 1–3 hold, continue.
+
+1. **Detect the framework.** Look at `package.json` and the project's directory structure:
+   - `next` in deps + `app/` folder → Next.js App Router
+   - `next` in deps + `pages/` folder → Next.js Pages Router
+   - `vite` in deps → Vite (look for `src/routes/` or check for react-router)
+   - `@remix-run/*` in deps → Remix
+   - `react-scripts` → CRA (probably with react-router)
+   - else → ask the user which framework
+
+2. **Create the canvas route file** at the framework-appropriate path.
+
+   **⚠️ The canvas route MUST be isolated from your app's global chrome.** The route that mounts `<StudioCanvas />` should render ONLY that component — no site header/footer, no analytics tags (Lytics / Segment / GA), no third-party embeds, no global `<Script>`s (FontAwesome kits, commerce widgets, chat popups), no auth-gated wrappers. Every one of those runs inside Studio's canvas iframe when the user opens Studio, and any script that `throw`s on failure surfaces as a runtime overlay INSIDE Studio's canvas (looks like Studio is broken, isn't).
+
+   **Framework-specific isolation patterns:**
+
+   - **Next.js App Router:** put the canvas at a route group that has its own minimal `layout.tsx` returning `{children}` only — e.g. `app/(studio)/canvas/page.tsx` with `app/(studio)/layout.tsx` doing `export default function StudioLayout({children}) { return <>{children}</>; }`. Route groups let you opt out of the app's parent layouts (analytics, header, etc.) without changing URLs.
+     - **Alternative — layout guard:** if you can't use a route group, guard the existing `RootLayout` with a pathname check that skips analytics / third-party scripts when the pathname matches `*/canvas`.
+   - **Next.js Pages Router:** use `_app.tsx` with a pathname guard (`router.pathname === "/canvas" ? <Component/> : <ChromeWrapper><Component/></ChromeWrapper>`).
+   - **Vite / React Router / Remix:** the CanvasRoute component sits at the router level, above your app chrome — the chrome only wraps the visitor routes.
+
+   **Verify isolation before proceeding.** Open `http://localhost:<port><canvasPath>` in a browser, open DevTools → Network. You should see **only** the framework's assets + `@contentstack/*` — NO calls to `kit.fontawesome.com`, `c.lytics.io`, GA, chat providers, commerce embeds. If you see any of those, follow the isolation pattern above and re-verify. Skipping this step is fine short-term but every wrong-network-request shows up as a scary overlay to whoever opens Studio next.
+
+   **Next.js App Router** (`app/<canvasPath>/page.tsx`) — `<StudioCanvas/>` must load client-only:
+   ```tsx
+   "use client";
+   import dynamic from "next/dynamic";
+
+   // StudioCanvas is client-only: it reads browser-only context (window.location,
+   // post-message channel to Studio's parent frame). Server-rendering it produces
+   // null on the server and a populated tree on the client — a guaranteed
+   // hydration mismatch. Load it client-only.
+   const StudioCanvas = dynamic(
+     () => import("@contentstack/studio-react").then((m) => m.StudioCanvas),
+     { ssr: false },
+   );
+
+   export default function CanvasRoute() {
+     return <StudioCanvas />;
+   }
+   ```
+
+   **Next.js Pages Router** (`pages/<canvasPath>.tsx`) — same SSR-mismatch reason; wrap in `dynamic({ ssr: false })`:
+   ```tsx
+   import dynamic from "next/dynamic";
+   const StudioCanvas = dynamic(
+     () => import("@contentstack/studio-react").then((m) => m.StudioCanvas),
+     { ssr: false },
+   );
+   export default function CanvasRoute() {
+     return <StudioCanvas />;
+   }
+   ```
+
+   **Vite + React Router** (`src/routes/CanvasRoute.tsx` + router config update) — Vite is SPA-only, so a plain import is safe:
+   ```tsx
+   import { StudioCanvas } from "@contentstack/studio-react";
+   export default function CanvasRoute() {
+     return <StudioCanvas />;
+   }
+   ```
+   Plus add `{ path: "<canvasPath>", element: <CanvasRoute /> }` to the existing router config.
+
+   **Remix** (`app/routes/<canvasPath>.tsx`) — Remix server-renders by default; use `ClientOnly` or a `useEffect`-mounted boundary:
+   ```tsx
+   import { ClientOnly } from "remix-utils/client-only";
+   import { StudioCanvas } from "@contentstack/studio-react";
+   export default function CanvasRoute() {
+     return <ClientOnly fallback={null}>{() => <StudioCanvas />}</ClientOnly>;
+   }
+   ```
+
+   Convert `<canvasPath>` to the framework's expected filename (e.g. `/canvas` → `canvas/page.tsx` for App Router, `canvas.tsx` for Pages Router).
+
+3. **Verify the route locally** if a dev server is running. Hit `http://localhost:<port><canvasPath>` and confirm it returns 200. If no dev server, print the URL the user should test once they start it.
+
+4. **Set Canvas URL in Studio.** This is the second half — the route file is useless without the matching Studio setting. Print clear manual instructions for the user to apply in Studio:
+     ```
+     Open: <studioHost>/projects/<studioProjectId>/settings/configuration
+     Set "Canvas URL" to: <canvasPath>
+     Click Save.
+     ```
+
+5. **iframe-allowed config (REQUIRED on every dev server).** Studio iframes the canvas-app from `https://app.contentstack.com/#!/studio`. The browser will silently block the iframe unless the canvas-app's dev server allows being iframed from a different origin.
+
+   For local dev, `http://localhost:<port>` works as the Canvas URL origin — browsers treat localhost as a trusted origin (W3C Secure Contexts spec), so no HTTPS / mkcert is needed for the basic case. Run `setup-local-https-canvas` only if your app needs HTTPS-on-localhost for unrelated reasons (service workers, secure cookies, strict browser policy).
+
+   For Vite-based apps, add to `vite.config.*`. **Configure BOTH `server` and `preview` — the canvas should be served from `vite preview` (a prod build), not the dev server.** Vite's dev optimizer can pre-bundle the SDK with a separately-loaded React (different `?v=` hash) and break hook calls in the canvas — even with one React in `node_modules`. Use the dev server for non-Studio iteration; the moment Studio iframes the app, switch to `vite preview`. See `install-studio` step 9 for the full reasoning.
+
+   ```ts
+   server: {
+     // ...existing config...
+     allowedHosts: true,                     // Vite refuses unknown hosts by default; Studio iframe needs this
+     headers: {
+       'Access-Control-Allow-Origin': '*',
+       'Content-Security-Policy': "frame-ancestors *;",
+     },
+   },
+   preview: {
+     // RECOMMENDED canvas target — `<pm> build && <pm> exec vite preview` serves a deduped prod bundle
+     // (no runtime optimizer to split React across passes)
+     allowedHosts: true,
+     headers: {
+       'Access-Control-Allow-Origin': '*',
+       'Content-Security-Policy': "frame-ancestors *;",
+     },
+   },
+   ```
+
+   For Next.js, set the headers in `next.config.js`:
+   ```js
+   module.exports = {
+     async headers() {
+       return [{
+         source: '/:path*',
+         headers: [
+           { key: 'Content-Security-Policy', value: 'frame-ancestors *;' },
+           { key: 'Access-Control-Allow-Origin', value: '*' },
+         ],
+       }];
+     },
+   };
+   ```
+
+   **Why both:** `allowedHosts: true` (Vite) prevents the "host not allowed" 403 from the dev server. The `frame-ancestors *` CSP header tells the browser the page may be embedded in any frame. Without either, Studio's iframe stays blank with no console error — a particularly hard failure to diagnose.
+
+6. **Sanity check.** Tell the user to:
+   1. Open Studio at the project's Compositions list
+   2. Click any section (Sections tab)
+   3. Confirm the canvas iframe loads with `<StudioCanvas />` content — no MISSING_CANVAS_URL banner
+
+## Inputs needed from the user
+
+1. `canvasPath` (defaults to `/canvas`) — the path to use. Confirm with user before creating the file in case they have a routing convention.
+2. `studioProjectId` (required) — to set Canvas URL via API or to print the right manual link. If not provided, ask.
+3. `studioHost` (defaults to `https://app.contentstack.com/#!/studio`) — to construct the right URL. Adjust for non-US regions.
+
+## Acceptance
+
+- [ ] BEFORE creating the route: confirmed the targeted environment has a non-empty per-locale URL equal to the dev origin, AND the Studio project targets that environment
+- [ ] Canvas route file exists in the right location for the detected framework
+- [ ] The file mounts `<StudioCanvas />` (no other content, no required props)
+- [ ] If a dev server was running, the route returns 200
+- [ ] Canvas URL is set in Studio Project Settings → Configuration to match the path
+- [ ] For local dev: canvas-app serves over trusted HTTPS (via `setup-local-https-canvas`), AND `allowedHosts: true` + `frame-ancestors *` header are set in the framework config
+- [ ] Opening a section in Studio loads the canvas iframe without errors (no blank frame, no "host not allowed", no mixed-content block)
+
+If the Studio API call wasn't possible (no auth), the manual step is printed and the skill explicitly tells the user to complete it before claiming success.
+
+## See also
+
+- `understand-canvas-url` — concept explainer: what Canvas URL is, why a relative path, why `/canvas` is the standard, when Studio uses it vs the env base URL. Run this first if the user is unfamiliar with the concept.
+- `setup-local-https-canvas` — required prereq for local dev (mkcert)
+- `install-studio` — runs first; the SDK has to be installed
+- `configure-studio` — covers Environment + Language alongside Canvas URL
+- `verify-setup` — full layered smoke test
+- `troubleshoot-canvas` — when the iframe doesn't render after setup

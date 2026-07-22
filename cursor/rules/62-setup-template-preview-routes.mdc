@@ -1,0 +1,313 @@
+---
+description: "Wire a CATCH-ALL Studio route so every visitor URL resolves through Studio via `<StudioComponent />`. Direct visits and in-Studio preview share one mount. Includes explicit opt-outs."
+alwaysApply: false
+---
+
+
+## When to use
+
+Wire a CATCH-ALL Studio route so every visitor URL resolves through Studio via `<StudioComponent />`. Direct visits and in-Studio preview share one mount. Includes explicit opt-outs.
+
+Use when adding Studio-rendered template routes (Vite/React Router or Next.js App Router), seeing "Template did not load" / "COMPOSITION_NOT_FOUND" on a template URL, or finishing the Studio setup chapter (after `install-studio` + `setup-section-preview`). Phrases — "make every URL go through Studio", "wire catch-all template route", "template URL 404s". Skip if only the section-authoring `/canvas` route is needed (that's `setup-section-preview`).
+
+# Wire template preview routes
+
+## Context
+
+The user already has Studio installed (`install-studio`) and a `/canvas` section-authoring route mounted (`setup-section-preview`). They now need to wire Studio as the **default renderer for every URL on the site** — so any published composition resolves to its template automatically, and any opened template in Studio's iframe renders live.
+
+**Catch-all is the recommended default, not mandatory.** This skill registers ONE route matching every URL. Studio resolves the composition by URL at render time via `sdk.fetchCompositionData({ url, searchQuery })`; no match → null → catch-all renders 404. Per-template route registration is **not needed** — Studio's URL patterns handle matching internally — but it's valid if you have a reason (see below).
+
+**When dedicated routes are a fit instead of the catch-all:**
+- You're adding Studio to an existing app where you want explicit control over which URL patterns route through Studio (e.g. `app/blog/[slug]/page.tsx` mounting `<StudioComponent />` for blog posts only, while `/products/*` stays on hand-coded pages).
+- Your routing layer has constraints catch-all can't satisfy (route-level middleware, per-route auth, framework-specific data fetching that varies by URL shape).
+- You're gradually migrating from hand-coded pages — each new dedicated `<StudioComponent />` route replaces one set of hand-coded pages.
+
+For dedicated routes: mount `<StudioComponent />` (with the request URL passed to `sdk.fetchCompositionData({ url, searchQuery })` or `useCompositionData`). The renderer handles iframe preview and visitor render the same way. A dedicated per-pattern route is functionally identical to Studio.
+
+**Opt-outs are explicit (catch-all mode only).** If the user has paths that must NOT go through Studio (`/api/*`, `/admin/*`, custom static pages), this skill registers those routes ahead of the catch-all so they take precedence. Dedicated-route mode doesn't need opt-outs — only the URLs you explicitly route through `<StudioComponent />` go through Studio.
+
+The skill emits route code that mounts `<StudioComponent />` for the URL. The same component handles both direct visitors (rendering the deployed composition from CDA) and in-Studio iframe preview (rendering the unsaved working spec) — mode-switching happens inside the renderer. You do not branch on iframe context in your route code. The separate `/canvas` route (from `setup-section-preview`) is the only place `<StudioCanvas />` appears.
+
+There are TWO Studio React components in play:
+
+- **`<StudioComponent />`** — the renderer for visitor routes (`/blog/:slug`, the catch-all, etc.). Reads a published composition spec from CDA via `sdk.fetchCompositionData({ url, searchQuery })` (or `useCompositionData`) and renders it. When Studio loads the same URL in its iframe, it switches modes internally to show the unsaved spec — your code does nothing different.
+- **`<StudioCanvas />`** — the dedicated section-preview iframe target. Mount it once at `/canvas` (per `setup-section-preview`). Studio's Canvas URL config points here. You do NOT mount `<StudioCanvas />` on visitor routes.
+
+Reference doc: `docs/10-setup/studio-project/template-preview-routes.md`.
+
+## Failure signatures — all mean "no `<StudioComponent>` at the template's URL"
+
+Before running the Task steps, know the failure modes. These three symptoms have ONE root cause: a Connected template's URL isn't served by a route mounting `<StudioComponent>`.
+
+| Symptom in Studio's canvas / on the deployed site | Root cause |
+|---|---|
+| Studio previews **the existing hand-coded page** (looks correct but authoring changes don't reflect) | The template's URL is served by a legacy hand-coded route the catch-all/dedicated Studio route hasn't replaced. Studio's iframe renders the legacy route as-is. |
+| Studio shows **"Template Did Not Load"** or a **404** in the iframe on a template URL you just created | No route in the app matches that URL, or the matching route returns empty because `<StudioComponent>` never mounts. |
+| Studio shows **"SDK is not initialized"** on the template URL | A route matches the URL but doesn't import the module where `studioSdk.init()` runs (`lib/studio.ts` in the standard install). `<StudioComponent>` requires init to have happened by mount time; init only runs when the module is imported. |
+
+Fix, in order: (1) a route in the app matches the template's URL; (2) that route mounts `<StudioComponent>` (directly or via a wrapper that does); (3) that route's module tree imports the module that runs `studioSdk.init()`. All three must hold before authoring a Connected template.
+
+## Task
+
+1. **Confirm prerequisites.** Bail with a clear message if any of these are missing:
+   - `@contentstack/studio-react` is in `package.json` dependencies.
+   - `studioSdk.init(...)` runs at the app shell (created by `install-studio`).
+   - Components are registered before Studio mounts (project-specific `registerComponents()` call).
+   - A `/canvas` route mounting `<StudioCanvas />` already exists (created by `setup-section-preview`).
+   - Env vars are set: stack API key, delivery token, preview token, environment, region, branch (using the framework's prefix — `VITE_`, `NEXT_PUBLIC_`, etc.).
+   - **The environment base URL matches the served canvas-app's scheme.** Studio iframes connected-template previews at the env base URL (`GET /v3/environments/<env>` → `urls[].url`), NOT at `canvasUrl`. If the env is `http://localhost:5173` but your dev server is HTTPS-only (mkcert), the iframe gets nothing back and Studio shows "SDK Not Initialized" on connected templates while sections still render fine. **Fix:** `PUT /v3/environments/<env>` so `urls[].url` matches the canvas-app's scheme (HTTPS for local mkcert dev).
+   - **One env Base URL serves all Studio projects on the stack.** The env URL is a **stack-level** resource — multiple Studio projects on one stack share the single `urls[].url` per locale. If you're running two or more Studio projects against different local apps (e.g. project A on `:5192`, project B on `:3000`), they CANNOT both preview at once on the same environment. Pick separate environments per project (recommended — create `<project>_preview` for each) or separate stacks. See [`configure-studio`](../configure-studio/SKILL.md) § *Common pitfalls* for the full rationale + three options.
+
+2. **Confirm the catch-all default + collect opt-outs.** Tell the user verbatim:
+
+   > Studio handles ALL routes by default — every URL on your site flows through one catch-all route, and Studio resolves the matching template via `sdk.fetchCompositionData({ url, searchQuery })` at render time. You do NOT need to register each template URL.
+   >
+   > Are there any paths that should NOT go through Studio? Examples: `/api/*` (API routes), `/admin/*` (admin pages), or any custom non-Studio pages.
+   >
+   > Leave empty (default) to keep the catch-all unrestricted — RECOMMENDED.
+
+   If the user provides opt-out paths, register them ahead of the catch-all (step 4). If they leave empty, only the catch-all is wired.
+
+3. **Create one shared route component.** Do NOT generate a separate page per template — every template route uses identical wiring. One generic component handles all of them.
+
+   **React Router (Vite/CRA) variant** — emit at the path the user chose (default `src/routes/LinkedRoute.tsx`):
+
+   ```tsx
+   import { useLocation } from "react-router-dom";
+   import { StudioComponent, useCompositionData } from "@contentstack/studio-react";
+
+   export function LinkedRoute() {
+     const { pathname } = useLocation();
+     const { specOptions, isLoading, error } = useCompositionData({ url: pathname });
+     if (isLoading) return <div>Loading…</div>;
+     if (error) return <div>No composition for {pathname}</div>;
+     if (!specOptions?.spec) return <div>Composition found but empty.</div>;
+     return <StudioComponent specOptions={specOptions} />;
+   }
+   ```
+
+   **Next.js App Router variant (SSR — recommended for SEO sites)** — fetch in a Server Component, branch in a `"use client"` wrapper. The CSR `useCompositionData` snippet further below is for **SPAs without SEO needs only**; App Router apps that care about SEO must use this server-side path.
+
+   ```tsx
+   // app/[[...slug]]/page.tsx — Server Component
+   import { sdk } from "@/lib/contentstack";
+   import { StudioRender } from "./StudioRender";
+
+   export default async function Page({ params, searchParams }) {
+     // Same fetch for visitor + in-Studio iframe — StudioComponent picks the
+     // right render path internally. Forward the full request searchQuery so
+     // Studio's iframe overrides (locale / variant / preview entry) reach the SDK.
+     const url = "/" + (params.slug ?? []).join("/");
+     const searchQuery = new URLSearchParams(searchParams as Record<string, string>).toString();
+     const specOptions = await sdk.fetchCompositionData({ url, searchQuery });
+     return <StudioRender specOptions={specOptions} />;
+   }
+   ```
+
+   ```tsx
+   // app/[[...slug]]/StudioRender.tsx — Client Component
+   "use client";
+   import { StudioComponent } from "@contentstack/studio-react";
+
+   export function StudioRender({ specOptions }: { specOptions?: any }) {
+     if (!specOptions?.spec) return <div>No composition for this URL.</div>;
+     // StudioComponent handles iframe context internally — same component on
+     // visitor routes and inside Studio's preview iframe.
+     return <StudioComponent specOptions={specOptions} />;
+   }
+   ```
+
+   **App Router CSR variant (SPAs only — no SEO requirement)** — emit at `app/_components/LinkedRoute.tsx`, marked `"use client"`. Skip this for any visitor-facing site; the SSR pattern above is the default:
+
+   ```tsx
+   "use client";
+   import { usePathname, useSearchParams } from "next/navigation";
+   import { StudioComponent, useCompositionData } from "@contentstack/studio-react";
+
+   export function LinkedRoute() {
+     const pathname = usePathname();
+     const searchParams = useSearchParams();
+     return <VisitorComposition url={pathname} searchParams={searchParams} />;
+   }
+
+   function VisitorComposition({ url, searchParams }: {
+     url: string;
+     searchParams: URLSearchParams;
+   }) {
+     // Pass `searchQuery` as the raw URLSearchParams OBJECT — NOT a stringified
+     // form and NOT omitted. Studio's editor-mode detection reads editor params
+     // (see § Editor-mode detection below) directly off this object. The 1.5.x
+     // .d.ts type says `URLSearchParamsString` but the object is what actually
+     // works; passing the string form or omitting the arg breaks editing of
+     // unsaved compositions.
+     //
+     // `extendQuery` merges into the CDA fetch. Keeping locale-only avoids
+     // hydration mismatches from server-included fields.
+     const { specOptions, isLoading, error } = useCompositionData({
+       url,
+       searchQuery: searchParams,
+       extendQuery: { blog_post: { only: ["locale"] } },   // one entry per connected CT
+     });
+     if (isLoading) return <div>Loading…</div>;
+     if (error) return <div />;                            // empty div, NOT null
+     if (!specOptions?.spec) return <div />;               // canvas host needs a mount target
+     return <StudioComponent specOptions={specOptions} />;
+   }
+   ```
+
+   ### Why the `searchQuery` object + empty `<div>` matter
+
+   - **`searchQuery` = raw URLSearchParams object.** When Studio's iframe loads the template URL, it appends editor-mode params. The SDK reads them off `searchQuery` to switch from "render deployed composition" to "render unsaved working spec." Omit `searchQuery` and the SDK falls through to the deployed path → returns `null` on a not-yet-saved composition → **"Template Did Not Load."**
+   - **Return an empty `<div />` (not `null`) when there's no spec.** Studio's canvas host queries the mount target after route render; if there's nothing in the DOM it can't drive it, and Studio shows "SDK Not Initialized" or a blank error. An empty div gives it something to attach to.
+   - **`extendQuery` per connected CT.** Present in the working `cs-website-studio` reference; absent in older docs snippets. Restrict to `only: ["locale"]` to avoid over-fetching.
+
+4. **Register the catch-all route — pick `[...slug]` vs `[[...slug]]` based on existing app pages.**
+
+   #### Pre-step — detect existing root + specific routes (Next.js only)
+
+   Before emitting the catch-all file, grep for existing routes so Next.js's root-collision rule (cited from [nextjs.org/docs/app/api-reference/file-conventions/dynamic-routes](https://nextjs.org/docs/app/api-reference/file-conventions/dynamic-routes): *"with optional, the route without the parameter is also matched"*) is handled correctly:
+
+   ```bash
+   # Does the app already have a root page.tsx?
+   ls app/page.tsx pages/index.tsx 2>/dev/null
+
+   # What other specific routes exist? (informational — they win by Next precedence)
+   find app/ pages/ -name 'page.tsx' -o -name 'page.jsx' 2>/dev/null | head -20
+   ```
+
+   **Branching rule:**
+
+   | Signal | Catch-all file to emit |
+   |---|---|
+   | `app/page.tsx` (or `pages/index.tsx`) **exists** | `app/[...slug]/page.tsx` — **non-optional** catch-all. Does NOT match `/`; the existing root page keeps owning `/`. Coexists cleanly. |
+   | No root page found → greenfield-style | `app/[[...slug]]/page.tsx` — **optional** catch-all. Matches `/` AND all nested URLs. |
+
+   Tell the user verbatim what you found:
+
+   > Detected `app/page.tsx` (or whichever) → using **non-optional** `[...slug]` so it doesn't collide with your root page. Existing specific routes win by Next.js's standard precedence (more-specific route beats catch-all).
+
+   #### Emit the route files
+
+   **React Router** — in `src/main.tsx` (or wherever the route table lives), register opt-outs FIRST (so they take precedence) and the catch-all LAST:
+
+   ```tsx
+   <Routes>
+     <Route path="/canvas" element={<CanvasRoute />} /> {/* existing — section authoring */}
+
+     {/* Opt-outs (only if user provided them; otherwise omit this block) */}
+     <Route path="/api/*"   element={<NotFoundOrApiHandler />} />
+     <Route path="/admin/*" element={<AdminApp />} />
+
+     {/* DEFAULT — catch-all: every other URL flows through Studio */}
+     <Route path="*" element={<LinkedRoute />} />
+   </Routes>
+   ```
+
+   **Next.js App Router** — based on the detection above, create ONE catch-all file. Left = existing root page (use `[...slug]`); right = greenfield (use `[[...slug]]`):
+
+   ![Next.js App Router catch-all layouts — existing root page uses [...slug]; greenfield uses [[...slug]]](../../docs/assets/svg/template-route-layouts-nextjs.svg)
+
+   The catch-all itself must call `notFound()` when `!specOptions?.spec` so unclaimed paths 404 cleanly:
+
+   ```tsx
+   // app/[...slug]/page.tsx OR app/[[...slug]]/page.tsx
+   import { notFound } from "next/navigation";
+   // …after fetchCompositionData…
+   if (!specOptions?.spec) notFound();
+   ```
+
+   Do NOT create `app/blog/[slug]/page.tsx`, `app/products/[sku]/page.tsx`, etc. — the catch-all handles all of them. Studio's URL-pattern matching runs inside `sdk.fetchCompositionData({ url, searchQuery })`; the router doesn't need to know about each template.
+
+5. **Verify Canvas URL in Studio.** Studio → Project Settings → Canvas URL should be the **path** of the canvas route (`/canvas` in dev), NOT a template route and NOT a full origin. Studio prepends the origin itself (the targeted environment's per-locale Base URL) — so the composed iframe address resolves to e.g. `http://localhost:5173/canvas`. Studio reaches template routes by rewriting the iframe URL to the template's pattern; the SDK handles iframe context internally — your code only mounts `<StudioComponent />` and the rest happens behind the scenes. (See `understand-canvas-url` for the full concept.)
+
+6. **Smoke-test both code paths.**
+   1. `npm run dev` (or equivalent) — app boots, no console errors.
+   2. Visit `http://localhost:5173/blog/<published-entry-slug>` directly. The published composition should render. If it doesn't: either the template isn't deployed, no entry with that slug exists, or the URL pattern in Studio doesn't match `/blog/:slug`.
+   3. Open Studio → open a template → Preview Entry → pick a real entry. Studio loads the visitor URL inside its iframe. The canvas should render the template bound to that entry's data — `<StudioComponent />` detects iframe context internally and shows the live in-canvas runtime.
+   4. Edit the template in Studio (drop a component) WITHOUT saving. The canvas should update live — proving the renderer routed through the in-iframe live path (CDA has nothing yet).
+
+7. **Print next steps verbatim:**
+   ```
+   Template preview routes wired.
+
+   You should now be able to:
+     - Visit any template URL directly in a browser and see the published composition.
+     - Open a template in Studio with Preview Entry and see live, unsaved edits.
+
+   Common gotchas if something looks off:
+     - Studio's project-level Canvas URL must point at /canvas, NOT a template route.
+     - Templates with URL pattern /blog/{{entry.url}} only resolve for entries with a non-empty `url` field.
+     - For iteration bindings inside a template, bind to repeater.<field> — the visitor render uses the same spec.
+   ```
+
+## Inputs needed from the user
+
+1. `optOutPaths` — comma-separated list of route patterns that should NOT go through Studio. **Leave empty (default) to keep the catch-all unrestricted — RECOMMENDED for most apps.** Provide opt-outs only if the user has explicit non-Studio routes (`/api/*`, `/admin/*`, etc.).
+2. `sharedRoutePath` — where the shared `LinkedRoute` component should live. Default `src/routes/LinkedRoute.tsx` for Vite, `app/_components/LinkedRoute.tsx` for Next.js App Router.
+
+## Acceptance
+
+This skill succeeds only when ALL of the following are true. If any fails, do not claim success — surface the failure and stop.
+
+- [ ] `LinkedRoute` exists at the chosen path and mounts `<StudioComponent />` for visitor URLs (no iframe-detection branching).
+- [ ] **ONE catch-all route** is registered. For Next.js: `app/[...slug]/page.tsx` (non-optional) WHEN the app has an existing `app/page.tsx`, OR `app/[[...slug]]/page.tsx` (optional) WHEN greenfield with no root page. For React Router: `<Route path="*">` registered LAST. The catch-all points at `LinkedRoute`.
+- [ ] If the app has an existing `app/page.tsx`: confirm the chosen catch-all does NOT collide (greenfield-style `[[...slug]]` is wrong here — must be `[...slug]`).
+- [ ] If the user provided opt-outs, those routes are registered ahead of the catch-all and bypass Studio correctly.
+- [ ] Studio's project-level Canvas URL still points at `/canvas` (not a template route).
+- [ ] Direct visit to ANY published template URL renders the matching composition (URL pattern resolved by Studio's CDA query, not by per-route registration).
+- [ ] Opening any template in Studio's Preview Entry renders the live canvas (including unsaved edits).
+- [ ] Opt-out routes (if any) are NOT served by Studio.
+- [ ] `npm run dev` (or equivalent) starts without runtime errors.
+
+## Editor-mode detection — for custom renderers
+
+If you're shipping a custom `StudioRenderer` (rather than importing `<StudioComponent />` directly) — e.g. because you're doing per-route swaps in a partial-adoption app and want to gate on editor mode explicitly — detect editor mode by checking Studio's iframe search params:
+
+```ts
+function isStudioEditorMode(searchParams: URLSearchParams): boolean {
+  return (
+    searchParams.get("cs-composable-studio") === "true" ||
+    searchParams.has("cs-composable-uid") ||
+    searchParams.has("hash")
+  );
+}
+```
+
+**If you copied a `StudioRenderer` from an internal reference app** and editor mode never activates (Studio always shows "Template Did Not Load" for unsaved templates), the reference is likely gated on a different param set (`content_type_uid` / `entry_uid` / `live_preview`) than the public SDK's iframe sends. Replace the check with the one above — always verify against `document.location.search` inside the live Studio iframe (`window.parent === window ? "standalone" : "iframe"`, then log the search params) if you're unsure which scheme applies to the SDK version you installed.
+
+## Environment Base URL — must be reachable + include locale segment
+
+Studio previews Connected templates by having its canvas iframe fetch `<env base URL> + <template URL>`. Two things trip this up on real projects:
+
+1. **Base URL must point at the LOCAL dev server for local authoring.** If you set the preview environment's base URL to a deployed hostname (`https://<slug>.contentstackapps.com`), Studio previews templates against the *deployed* build — which won't have any newly-added `<StudioComponent>` routes yet. Symptom: "Template Did Not Load" / 404 in the iframe. **Fix:** `PUT /v3/environments/<env>` so `urls[].url` points at `http://localhost:3000` (or the dev port). Re-flip to the deployed URL when you're done authoring locally.
+
+2. **Locale-prefixed apps: the base URL MUST include the locale segment.** If your app uses `next-intl` or similar and routes are `/en/*` / `/fr/*`, the env base URL must be `http://localhost:3000/en`, NOT `http://localhost:3000`. Otherwise Studio composes `<base URL> + <template URL>` = `/` + `/` = `//` (unresolvable). One env has one base URL per locale; set them explicitly.
+
+## Trailing-slash 308 breaks the Studio iframe on locale-prefixed apps
+
+Studio composes the preview URL as `<base URL> + <template URL>`. On locale-prefixed Next apps, `<base URL>` ends `/en` and a template `url = "/"` produces `/en/`, which Next 308-redirects to `/en`. The redirect breaks the iframe: it never lands on the destination.
+
+**Fix in `next.config.js`:**
+
+```js
+module.exports = {
+  skipTrailingSlashRedirect: true,   // Studio-authored URLs must resolve 200 directly
+  // ...
+};
+```
+
+Or normalize the template URL patterns to never end in `/`. This is Next-specific but every locale-prefixed framework has an equivalent behavior — check the framework's docs if you see the iframe stuck on a redirect.
+
+## Third-party global scripts on Studio routes surface as runtime overlays
+
+Analytics / commerce embeds that `throw` on failure show up as scary-but-harmless runtime overlays inside the Studio iframe. Common offenders: Lytics (`throw new Error("Load error!")` in its script.onload), FontAwesome kit (403 when missing), commerce widget script loaders. Studio didn't cause them, but they render on the routes Studio previews and confuse the "is my setup working?" check.
+
+**Recommended:** audit the app's global `<Script>`s / analytics tags on the routes Studio renders. Third-party loaders that `throw` on failure should be either (a) removed from Studio's routes via a route-group / layout guard, or (b) patched to `console.warn` + `return` instead of `throw`. See [`troubleshoot-canvas`](../troubleshoot-canvas/SKILL.md) § *Third-party global-script overlays* for the full playbook.
+
+## See also
+
+- `install-studio` — installs the SDKs this skill depends on.
+- `setup-section-preview` — adds the `/canvas` section-authoring route.
+- Docs: `docs/10-setup/studio-project/template-preview-routes.md`.
+- Reference: `docs/90-reference/composition-rendering-reference.md` — every prop + fetcher option `<StudioComponent />` accepts (the routes this skill wires consume the resolved `specOptions`).

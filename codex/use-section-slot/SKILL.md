@@ -1,0 +1,107 @@
+# use-section-slot
+
+
+## When to use
+
+Carve a Section Slot into an already-designed section so template authors drop components into a named placeholder without unlocking the surrounding design. Path B (default) — Section-with-Slot + child Section.
+
+Use when authoring a Section and wanting to expose a variable region template authors fill per-instance — "add a slot", "section slot", "carve out a drop zone". Surrounding section stays locked; only slot contents vary per template instance. Do NOT use for value-level overrides (use Expose Section Prop). Do NOT use on an empty section.
+
+# Use a Section Slot
+
+## Context
+
+> **Prerequisite — the canvas must render.** This is a canvas operation; if the section canvas is blank, the canvas chain isn't wired (route + Canvas URL path + the targeted environment's per-locale Base URL). Run [`setup-section-preview`](../setup-section-preview/SKILL.md) first — it walks the whole chain, including the env Base URL.
+
+A Section Slot is a named, drop-target region carved into an already-designed Section. The surrounding section layout, bindings and styling stay locked at the section level; only the slot's contents vary per template instance. Template authors see each slot as a dashed rectangle showing its label and drop any component or section into it.
+
+Section Slots are siblings of Exposed Section Props but solve a different problem:
+
+- **Section Slot** — the variable thing is a *region of UI* (children: components, nested sections, repeated items).
+- **Expose Section Prop** — the variable thing is a *single value* on an existing component (a label, a flag, a piece of text).
+
+The Section Slot tile lives in the palette under **Smart Containers** and is only visible when you are in section authoring mode (it is hidden inside page editing). Slots only become live drop targets when the section is dropped onto a template — inside the section's own canvas they render as inert labelled placeholders, by design.
+
+Reference: `docs/34-smart-containers/section-slots.md`.
+
+## Task
+
+1. **Open the section in section authoring mode** in Studio. Confirm the Section Slot tile is visible in the palette under Smart Containers. If it is not, you are in page editing mode — switch to the Section.
+
+2. **Confirm the section already has fixed structure.** Layout containers, linked-schema bindings, headings and any repeaters that are part of the locked design should already exist on the canvas. Identify the one to four regions that should be variable per template instance. If the section is empty, stop and tell the user to build the fixed structure first — a section that is just a placeholder has no reason to exist.
+
+3. **Decide placement** based on the `placement` input:
+   - `component-slot-prop` (recommended): drop the Section Slot inside a component's `slot`-typed prop (e.g. a Card's `body` slot prop, a Hero's `children` slot prop). The slot then renders inside the component's frame and inherits its layout. The target component must already be registered with a `slot`-typed prop — see `register-component` § *5a. Exposing extensible regions with `slot` props*.
+   - `layout-container`: drop the Section Slot inside an existing Box / Row / Grid the section already laid out.
+   - `repeater-item`: see step 6 below.
+
+   Never drop a Section Slot as a bare sibling at the section root — it renders as a disconnected block with no surrounding design.
+
+4. **Drag the Section Slot tile onto the chosen target.** Use the canvas drop indicators to confirm it lands inside the intended container, not next to it.
+
+5. **Select the Section Slot node** (on the canvas or in Layers) and, in the right panel, set **Drop placeholder label** to the supplied `slotLabel`. This label is the only contract template authors have with the section — make it intent-revealing.
+
+6. **List + Slot variant (only if `placement = repeater-item`).** If the section owns a list layout where each item should be template-defined:
+   a. Drop a **Repeater** bound to `repeaterBindingPath` via the Data Picker. Inside the Repeater, the Data Picker switches root to the iteration item's fields (shown as **Repeater Data** in the picker) — no manual binding inside the Slot is needed; the child Section dropped into the Slot at template time will bind through its own linked schema against the iteration item.
+   b. Drop **exactly one** Section Slot inside the Repeater item.
+   c. Set its label to `slotLabel` (typically `Item template`). The slot renders once in section authoring and repeats per item at render time. Scope inside the slot inherits the current iteration item, so no manual per-item binding is needed.
+
+7. **Repeat steps 3–5** for every additional variable region the section needs. Sections commonly carry 1–4 slots (a card section, for example: `Media`, `Headline`, `Body`, `Action`).
+
+8. **Save the section.** Drop the section onto a test template to verify each slot appears as a dashed labelled drop target. Drop a component into one slot, then drop the same section onto a second template, and confirm the two templates' slot fills are independent — fills live on the template, not on the section.
+
+## Inputs needed from the user
+
+In this order. Stop and ask if any is missing — DO NOT guess placement or label.
+
+1. `sectionUid` — which Section to carve into
+2. `slotLabel` — the drop placeholder label authors see (must be intent-revealing; reject "Slot 1" / "Content" and ask again)
+3. `placement` — defaults to `component-slot-prop`
+4. `repeaterBindingPath` — only required when `placement = repeater-item`
+
+If the user wants multiple slots, collect a `slotLabel` per region and loop steps 3–5.
+
+## Layout container — the Slot must sit inside a sized cell
+
+A Section Slot does not define its own width. It fills whatever container wraps it. If the Slot sits directly on the Section's root (with no layout container around it), anything dropped into the Slot at template time stretches to the **full canvas width** — full-bleed cards, full-bleed sub-Sections, full-bleed everything.
+
+This is by design: registered components and child Sections are layout-agnostic by contract (see `register-component`'s layout rule), rendering at `width: 100%` of their container. They fill their cell — they don't decide cell size.
+
+So: **the Section that exposes a Slot must wrap that Slot in a layout container** that defines the cell.
+
+- For a list of cards: a Box with `display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px;` wrapping the Repeater + Slot.
+- For a single sized region (sidebar card, hero CTA): a Box with `max-width: 360px` (or whatever sizing the design calls for) wrapping the Slot.
+- For a flex strip of cards: a Box with `display: flex; gap: 16px;` and `flex-basis` set on each iteration so they don't stretch to fill.
+
+If you find yourself adding overrides on the dropped Section (or component) to make it look right inside this Slot, the layout coupling is backwards. Move sizing into the parent Section's container; let the child stay at `width: 100%`.
+
+## Acceptance
+
+This skill succeeds only when ALL of the following are true. If any fails, do not claim success — surface the failure and stop.
+
+- [ ] The Section Slot node exists in the section's tree at the placement chosen in step 3 (not as a bare sibling at the section root).
+- [ ] The slot's Drop placeholder label matches the supplied `slotLabel`.
+- [ ] In section authoring canvas the slot renders as an inert labelled placeholder (it intentionally rejects drops here).
+- [ ] When the section is dropped on a test template, each slot appears as a dashed rectangle showing its label and accepts any component or section.
+- [ ] Filling a slot on Template A does not change the slot on Template B (fills are stored per-template).
+- [ ] For `repeater-item` placement: exactly one Section Slot is nested inside a Repeater bound to `repeaterBindingPath`, and rendered output repeats per item in the bound list.
+- [ ] The Slot sits inside a **layout container** in the Section (a Box with grid tracks / flex / `max-width`) that defines the cell size — confirmed by inspecting the Section's Layers panel. The Slot does NOT sit as a bare child of the Section root with no sized parent.
+
+## Common pitfalls
+
+| Pitfall | Why it bites | Fix |
+| --- | --- | --- |
+| Slot-first authoring | Empty section wrapping a slot = "a section that is just a placeholder" — defeats the point | Build the fixed structure first, then carve the slot |
+| Sibling-of-component placement | Slot next to a component at section root breaks visual integration | Drop inside the component's slot-typed prop or a layout container |
+| Vague label | "Slot 1" / "Content" tells the template author nothing | Use intent-revealing labels like `Drop a card here` |
+| Using a slot to constrain type | Slots accept any component/section; no "type X only" restriction | For a typed value override use an exposed Section Prop |
+| Expecting fills inside the section's own canvas | Slots only become live drop targets on a template | Verify by dropping the section on a test template |
+| Deleting a slot with fills | Template-side fills orphan and get cleaned on next template save | Migrate fills manually before deleting |
+| Scope confusion in nested sections | Section B inside A's slot binds against A's scope, not the outer page CT | Use the Data Picker's explicit "page" scope when B needs the page entry |
+| Slot with no layout container around it | Drops stretch full canvas width (full-bleed) | Wrap the Slot in a Box with grid tracks, flex sizing, or `max-width` |
+
+## See also
+
+- `docs/32-sections/expose-section-props.md` — value-level sibling of Section Slots
+- `docs/32-sections/auto-binding-by-drop-location.md` — scope-root matching for nested sections
+- `docs/40-recipes/card-grid-with-slots.md` — full List + Slot recipe

@@ -1,0 +1,238 @@
+---
+description: "Pick and wire the right render path (CSR via `useCompositionData` vs SSR/RSC via `sdk.fetchCompositionData`) for a Studio-rendered page."
+alwaysApply: false
+---
+
+
+## When to use
+
+Pick and wire the right render path (CSR via `useCompositionData` vs SSR/RSC via `sdk.fetchCompositionData`) for a Studio-rendered page.
+
+Use when integrating @contentstack/studio-react into Next.js (App/Pages), Remix, Astro, or Vite/SPA and deciding between client- and server-side fetch. Phrases — "CSR or SSR", "Next App Router setup", "hydration mismatch", "SEO meta missing", "Live Preview broken after switching render mode". Also for diagnosing broken Studio iframe overrides after a render-mode change.
+
+# Configure CSR vs SSR for a Studio composition route
+
+## Read this first — SSR is available on every host
+
+The SDK ships two App Router paths (client-component SSR via the main entry, and an RSC entry with a ~142-byte structural bundle), plus recipes for Node/Express/Fastify, Next Pages Router, Remix, Astro, and Gatsby. Every host renders the full composition into the server HTML — `curl` returns real content, SEO works, no placeholder-defer.
+
+Pick your recipe from the framework recipes chapter and copy it verbatim:
+
+- **Node (Express/Fastify)** — CI-tested source of truth.
+- **Next.js App Router — RSC entry** — CI-tested on Next 14 + Next 16. Smallest possible client bundle.
+- **Next.js App Router — client-component SSR** — main-entry path, simplest wiring, full SEO.
+- **Next.js Pages Router**, **Remix / React Router 7**, **Astro**, **Gatsby** — adapted recipes.
+
+Same three-call contract everywhere (`fetchCompositionData` → `<StudioComponent />` → `getSSRStyleTags` / `<StudioServerStyles>`), plus `getCompositionMetadata` for SEO. Sections below cover the render-strategy decision itself — the mechanics live in the recipes above.
+
+## Context
+
+A Studio composition can be rendered via two data-fetching paths. Both return the same `StudioComponentSpecOptions` shape; only *where* the fetch runs differs.
+
+- **CSR** — `useCompositionData({ url })` hook. Runs in the browser. Best for Vite SPAs / routes where SEO is not required.
+- **SSR / RSC** — `sdk.fetchCompositionData({ url, searchQuery }, { locale })`. Runs on the server. Required for SEO and for routes where the initial HTML must contain the rendered composition.
+
+`<StudioComponent specOptions={...} />` is the single renderer for both visitor pages and pages opened inside Studio's builder iframe — it auto-detects mode and attaches the Visual Builder overlay when needed. `<StudioCanvas />` is a separate client-only component for the Studio canvas route and is **not** a render-strategy decision.
+
+**SDK shape.** `studioSdk` is the imported namespace; you must call `studioSdk.init({ stackSdk, contentTypeUid })` once at boot and use the **returned** object. Server fetches go through `sdk.fetchCompositionData(...)` on that returned object.
+
+```ts
+import { studioSdk } from "@contentstack/studio-react";
+export const sdk = studioSdk.init({ stackSdk, contentTypeUid });
+// later, server-side:
+const specOptions = await sdk.fetchCompositionData({ url, searchQuery }, { locale });
+```
+
+Reference doc: `docs/10-setup/app-prerequisites/choosing-between-csr-and-ssr-rendering.md` and `05-ssr-composition-query.md`.
+
+## The render-pipeline rule (read this first)
+
+What determines **true SSR** (the composition DOM in the server HTML) is whether `<StudioComponent>` renders through a **`renderToString` pipeline** (Pages Router / Vite custom server / Remix — server React dispatcher present, built-ins execute server-side) OR through **React Server Components** (App Router — built-ins are `"use client"` and the SDK renderer detects them as `Symbol.for("react.client.reference")` → emits `data-cs-defer-builtin` placeholders, deferring real render to client hydration). The data-fetch function (`fetchCompositionData` vs `useCompositionData`) is orthogonal and does **not** by itself produce SSR.
+
+**Net:** every mainstream host — including Next App Router (main entry and RSC entry), Pages Router, Remix, Astro, Gatsby, and plain Node — renders the composition into the server HTML via the SDK's three-call contract. See the framework recipes for the per-host wiring. The historical `data-cs-defer-builtin` placeholder path was removed in the SDK's dist-ESM restructure (#871 / #874).
+
+## Decision table
+
+| Situation | Path | True SSR? (composition DOM in server HTML) |
+| --- | --- | --- |
+| Vite / React SPA, no SEO | **CSR** — `useCompositionData` | No (client only) |
+| **Next.js Pages Router** | **SSR** — `getServerSideProps` → `sdk.fetchCompositionData` | **Yes** — `renderToString` |
+| **Next.js App Router (main entry)** | `sdk.fetchCompositionData` in Server Component → client wrapper renders `<StudioComponent />` | **Yes** — Next server-renders the client component's initial output |
+| **Next.js App Router (RSC entry)** | `sdk.fetchCompositionData` in Server Component → `<StudioServerStyles />` + `<StudioComponent />` from `@contentstack/studio-react/rsc` | **Yes** — ~142B client bundle for structural content; custom components register as client islands automatically |
+| Vite custom-server SSR | `renderToString` + `hydrateRoot` + `sdk.fetchCompositionData` (mirror SDK's `test-resources/ssr-react`) | **Yes** |
+| Remix | `loader` → `sdk.fetchCompositionData` | **Yes** — `renderToString` |
+| Static / rarely changing | **SSG/ISR** — `getStaticProps` + `revalidate` | **Yes** (at build/revalidate; via `renderToString`) |
+
+CSR works on **any** framework including App Router — the `isLoading` gate keeps built-ins out of the server prerender entirely. Use CSR as the universal fallback when true SSR isn't viable on a given framework.
+
+## Task
+
+1. **Pick the path** from the decision table using `framework`. Run only the matching block below; skip the others.
+
+2. **CSR (Vite / SPA — also the universal fallback on any framework, including App Router).**
+   ```tsx
+   "use client";
+   import { useCompositionData, StudioComponent } from "@contentstack/studio-react";
+
+   export default function Page() {
+     // window is browser-only — guard for any framework that prerenders this page (Next does, even with "use client").
+     const url = typeof window !== "undefined" ? window.location.pathname : "/";
+     const { specOptions, isLoading, error } = useCompositionData({ url });
+     if (isLoading) return <Loading />;
+     if (error) return <ErrorState message={error instanceof Error ? error.message : String(error)} />;
+     if (!specOptions?.spec) return <NotFound />;
+     return <StudioComponent specOptions={specOptions} />;
+   }
+   ```
+   The hook reads `window.location.search` automatically — no `searchQuery` argument required. CSR is the safe universal path: built-ins never enter a server pre-render, so the App-Router RSC crash from registering basics on the server can't happen.
+
+   Ensure **built-ins + custom components are registered before render** (see `register-component`). On CSR, the registration must run client-side at module init.
+
+   **Live Preview wiring is separate.** If this route needs to reflect author edits in real time, add the `onEntryChange` bridge from `install-live-preview` (step 7). CSR pages call the hook's `refetchSpec` inside the loop-safe callback.
+
+3. **App Router (RSC) — not true SSR; renders bound content on the client.** Use this only when SEO/server-HTML content isn't required (for SEO go to step 4: Pages Router). Initialise the sdk in a server-only module (no `"use client"`). Server Component fetches; a client wrapper renders. Built-ins (`Page`/`Section`/`Repeater`/…) are `"use client"` — the SDK detects them as `react.client.reference` on the server and emits `data-cs-defer-builtin` placeholders → real render happens on hydration.
+   ```tsx
+   // app/[[...slug]]/page.tsx — NO "use client"
+   import { sdk } from "@/lib/studio.server";
+   import { ClientRender } from "./ClientRender";
+   import { notFound } from "next/navigation";
+
+   export default async function Page({ params, searchParams }) {
+     const url = "/" + (params.slug?.join("/") ?? "");
+     const searchQuery = new URLSearchParams(searchParams as Record<string,string>).toString();
+     const specOptions = await sdk.fetchCompositionData(
+       { url, searchQuery },
+       { locale: "en-us" },
+     );
+     if (!specOptions.hasSpec || !specOptions.hasTemplate) notFound();
+     return <ClientRender specOptions={specOptions} />;
+   }
+
+   export async function generateMetadata({ params, searchParams }) {
+     const url = "/" + (params.slug?.join("/") ?? "");
+     const { seo } = await sdk.fetchCompositionData({
+       url,
+       searchQuery: new URLSearchParams(searchParams).toString(),
+     });
+     return seo
+       ? { title: seo.pageTitle, description: seo.pageDescription,
+           openGraph: { images: seo.openGraphImage ? [seo.openGraphImage] : [] } }
+       : {};
+   }
+   ```
+   Client wrapper (just renders — no Live Preview wiring here):
+   ```tsx
+   "use client";
+   import { StudioComponent } from "@contentstack/studio-react";
+
+   export function ClientRender({ specOptions }) {
+     if (!specOptions.hasSpec) return null;
+     return <StudioComponent specOptions={specOptions} />;
+   }
+   ```
+
+   **Live Preview wiring is separate.** If this route needs real-time author updates, mount the `LivePreviewBridge` from `install-live-preview` (step 7) once in the app shell (e.g. in `app/layout.tsx` inside a client boundary). App Router routes call `router.refresh()` in the loop-safe callback. Do NOT put `[router]` in the effect deps — it produces an infinite refetch loop.
+   Canvas route stays client-only:
+   ```tsx
+   // app/studio-canvas/page.tsx
+   "use client";
+   import { StudioCanvas } from "@contentstack/studio-react";
+   export default function Canvas() { return <StudioCanvas />; }
+   ```
+
+4. **SSR — Next.js Pages Router (the true-SSR path).** This is the recommended Next.js path when SEO matters: the composition DOM lands in the server HTML via `renderToString`. Register all components (built-ins + custom) at module scope in `pages/_app.tsx` with **static imports** so the same React instance runs server + client.
+   ```ts
+   // pages/blog/[slug].tsx
+   export async function getServerSideProps(context) {
+     const searchQuery = context.req.url.split("?")[1] ?? "";
+     const url = `/blog/${context.params.slug}`;
+     const specOptions = await sdk.fetchCompositionData({ url, searchQuery });
+     if (!specOptions.hasSpec) return { notFound: true };
+     return { props: { specOptions } };
+   }
+   ```
+   Page component renders `<StudioComponent specOptions={specOptions} />`; `specOptions` is JSON-serialisable.
+
+   **Live Preview wiring is separate.** If this route needs real-time author updates, mount the `LivePreviewBridge` from `install-live-preview` (step 7) in `pages/_app.tsx` inside a client boundary. Pages Router routes call `router.replace(router.asPath, undefined, { scroll: false })` in the loop-safe callback. Do NOT put `[router]` in the effect deps — the router identity changes on every replace, which would produce an infinite refetch loop.
+
+   ⚠️ Verify true SSR with a **prod build** (`next build && next start`), not `next dev`. Dev is per-boot racy (recompile + module-init order + StrictMode double-invoke); prod is deterministic. Acceptance: `curl <url>` → 200 with the composition DOM (incl. Repeater iteration items) in `<body>` after stripping `<script>` tags, **no `data-cs-defer-builtin`** attributes.
+
+5. **SSR (Remix).** Put sdk init in `app/lib/studio.server.ts` so secrets tree-shake out of the browser bundle.
+   ```ts
+   import { json } from "@remix-run/node";
+   import { sdk } from "~/lib/studio.server";
+
+   export async function loader({ request }) {
+     const url = new URL(request.url);
+     const specOptions = await sdk.fetchCompositionData({
+       url: url.pathname,
+       searchQuery: url.search.replace(/^\?/, ""),
+     });
+     if (!specOptions.hasSpec) throw new Response("Not Found", { status: 404 });
+     return json({ specOptions });
+   }
+   ```
+   Component: `const { specOptions } = useLoaderData(); return <StudioComponent specOptions={specOptions} />;`
+
+6. **SSG / ISR.** Pass `searchQuery: ""` (no Studio iframe at build time), set `revalidate: 60` for ISR, and wire a Contentstack publish webhook to `res.revalidate(path)` for instant invalidation. Live Preview won't update SSG output until revalidation — if that matters, move the route to SSR.
+
+7. **Hydration discipline.** Pass the **same** `specOptions` the server fetched straight to the client wrapper. Do **not** re-fetch on mount with `useCompositionData` after an SSR fetch — that produces a hydration mismatch. Pin `locale` and `variantAlias` to identical values on both sides.
+
+8. **Iframe override forwarding.** On every SSR/RSC path, forward the full request query string into `searchQuery`. Studio's builder iframe appends its own params (locale, variant, preview entry) to the iframe URL; the SDK reads them itself. Your code must not parse or rely on specific param names — they're an internal Studio↔SDK contract that may change. Just pass the raw query string through and the SDK does the rest.
+
+9. **Repeater iteration bindings.** If the composition includes a Repeater, the same `<StudioComponent />` resolves `repeater.<fieldUid>` bindings against each iteration's data — no extra wiring at the page level.
+
+10. **Verification.** Open the route in a regular tab and `view-source:`; for SSR/RSC/SSG the composition HTML must be in the initial response (not just a shell). `curl -A "Twitterbot" <url>` returns the og: meta tags. Open the same route inside Studio's preview iframe — the iframe's override params flow through `searchQuery` and the right entry/locale renders. Edit an entry in Live Preview — the page updates without a full reload. No React hydration warning in the console.
+
+    ⚠️ **Verify SSR with `curl`, not a browser screenshot.** Next injects a FOUC guard (`body{display:none}` via `data-next-hide-fouc`) during SSR and removes it on hydration — a pre-hydration screenshot shows blank even when the real content is in the HTML. `curl -sk <url> | grep -q '<known-text>'` executes no JS and returns the truth. A blank browser screenshot does NOT mean SSR failed.
+
+## Inputs needed from the user
+
+1. `framework` — one of `next-app`, `next-pages`, `remix`, `vite-spa`, `astro`, `ssg`
+2. `routePath` — the route file you'll write
+3. `contentTypeUid` — Studio composition content type uid (defaults to `compositions`)
+4. `defaultLocale` — defaults to `en-us`
+
+If `framework` is unclear, inspect `package.json` (`next` + `app/` dir → next-app; `next` + `pages/` dir → next-pages; `@remix-run/*` → remix; `vite` → vite-spa; `astro` → astro).
+
+## Acceptance
+
+Succeeds only when ALL of the following are true:
+
+- [ ] The route file uses the fetch path that matches the framework row in the decision table
+- [ ] Server-side paths forward `searchQuery` from the incoming request to `fetchCompositionData`
+- [ ] `<StudioComponent />` is rendered inside a `"use client"` boundary on App Router / RSC paths
+- [ ] If Live Preview is in scope for this route, the `LivePreviewBridge` from `install-live-preview` (step 7) is mounted in the app shell. Not needed for pure public SSR routes without Live Preview.
+- [ ] No `useCompositionData` call exists on a route that already fetched server-side (no double-fetch)
+- [ ] App Router routes export `generateMetadata` populated from `specOptions.seo`
+- [ ] Management tokens, if any, only appear in `*.server.ts` (Remix) or non-`"use client"` modules (Next.js)
+- [ ] Canvas route, if present, is a separate `"use client"` route mounting `<StudioCanvas />`
+- [ ] Browser console shows no hydration mismatch warning on the rendered route
+
+If acceptance fails, report exactly which step broke and stop.
+
+## Common pitfalls
+
+| Pitfall | Symptom | Fix |
+| --- | --- | --- |
+| `useCompositionData` in a Server Component | "Hooks can only be called inside a function component" | Switch to `sdk.fetchCompositionData` + client wrapper |
+| `<StudioComponent />` directly in a Server Component | Next.js client-component error | Wrap in a `"use client"` child taking `specOptions` as prop |
+| `searchQuery` not forwarded | Iframe shows wrong locale/variant; edit mode doesn't engage | Forward `request.url.search` / `new URLSearchParams(searchParams).toString()` |
+| Re-fetched on the client after SSR | Hydration mismatch warning | Pass server `specOptions` straight to the client wrapper |
+| Different `locale` server vs client | Mismatch warning, content flash | Pin both sides via the second arg of `fetchCompositionData` |
+| Live Preview never updates the running page | Missing `onEntryChange` bridge | Wire the `LivePreviewBridge` from `install-live-preview` (step 7). Not a CSR-vs-SSR issue — same fix regardless of framework. |
+| **Infinite `_next/data/<id>/<route>.json` (Pages) or RSC payload refetch — Network tab fires hundreds of times per edit** | `onEntryChange` wired in a `[router]`-dep effect | Move the wiring to the loop-safe pattern in `install-live-preview` (step 7): subscribe ONCE with empty deps, hold router in a `useRef`, skip the register-time fire, unsubscribe in cleanup. |
+| **App Router route renders fine in the browser but `view-source` shows no composition DOM** — bound content only in `self.__next_f` flight payload | By SDK design: RSC server pass detects every built-in as `react.client.reference` → emits `data-cs-defer-builtin` placeholders → real render deferred to client hydration. **Not true SSR.** | Accept (App Router = client render for Studio) or move the route to **Pages Router** (or Vite custom-server / Remix) for true SSR. (P31) |
+| **`transpilePackages: ['@contentstack/studio-*']` on App Router** | 500 with `Cannot read properties of null (reading 'useContext')` at `useData → RepeaterPreview` during the RSC server prerender | Don't transpile the SDK on App Router — it defeats the SDK's safe client-deferral (the basics resolve to real components, run on the server, and read a null React dispatcher). On Pages Router, transpiling is fine. (P31) |
+| **Coexisting `app/` dir while SSR-ing a `pages/` route** | The Pages-Router SDK React resolves to the app-page runtime → null dispatcher → crash | Make the project Pages-Router-only for the Studio SSR route (remove `app/` from that workspace). (P31) |
+| **Judging SSR from `next dev`** — Repeater items intermittently render field defaults ("Your text here") | Per-boot dev race (recompile + module-init order + React StrictMode double-invoke) | Verify and ship from a **prod build**: `next build && next start`. Prod is deterministic; dev is racy. (P31) |
+| **`dynamic(() => import('@contentstack/studio-react'))` for the canvas, prod build fails** | `Package path "." is not exported from package` | `studio-react`'s `exports` map only exposes `.` under the `import` condition. Dynamic-import a **local wrapper** that statically imports `StudioCanvas`. (P31) |
+| SSG never updates after publish | Stale content | Configure ISR `revalidate` or wire publish webhook → `res.revalidate(path)` |
+| Management token in client module | Token shipped to browser | Move sdk init into `*.server.ts` / non-`"use client"` module |
+
+## See also
+
+- `install-studio` — installs the three SDKs and wires `studioSdk.init`
+- `setup-section-preview` — adds the `<StudioCanvas />` route
+- `troubleshoot-canvas` — when the iframe still doesn't render after both skills are run
+- `docs/90-reference/composition-rendering-reference.md` — every prop + fetcher option the CSR / SSR pattern below pulls from

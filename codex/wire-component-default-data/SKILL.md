@@ -1,0 +1,135 @@
+# wire-component-default-data
+
+
+## When to use
+
+Add per-prop `defaultValue` to a registered Studio component so it renders visibly the moment an author drops it on the canvas — before any data binding.
+
+Use when registering (or revisiting) a component that needs placeholder content the instant an author drags it from the palette, before any prop is bound. Also for triaging "component renders blank after drop", empty palette previews, blank array items. Phrases — "set default value", "blank on drop", "palette preview empty". Defaults are UX requirement, not polish.
+
+# Wire Component Default Data
+
+## Context
+
+Studio renders a component the moment it's dropped on the canvas — long before the author wires any prop to entry data. If the `props` schema passed to `registerComponent` doesn't set `defaultValue` on each visible prop, the canvas shows empty rectangles, missing images, and unlabeled buttons. Authors read that as "broken", not "unbound".
+
+Reference: `docs/20-bring-your-own-components/set-component-default-data.md`.
+
+Mental model:
+
+- `defaultValue` lives **on each prop**, never on the component as a whole.
+- Defaults apply only when a prop is **unbound and not explicitly cleared**. The moment the author binds the prop to `template.*`, `contentstack.*`, repeater context (e.g. `repeater.title`), or a static value, the binding wins.
+- If the author clears a field (empty string / null), Studio respects the explicit empty — it does **not** fall back to the default.
+- `defaultValue` is different from `defaultValueHint`:
+  - `defaultValue` — real value passed to the component until overridden.
+  - `defaultValueHint` — placeholder text inside the form input only; never reaches the component.
+
+Use defaults for **palette preview + pre-binding state**. Use bindings for real authored content.
+
+## Task
+
+1. **Open the registration file** at `registrationFile` and locate the `registerComponent({ type: "<componentType>", ... })` call.
+
+2. **List the props that contribute visible structure** — text, images, choice variants, link labels, repeated items. Behavioural props (callbacks, ids, analytics tags) generally do **not** need defaults.
+
+3. **Set per-prop `defaultValue`** matching each prop's `type`. Use this template:
+
+   ```ts
+   registerComponent({
+     type: "Hero",
+     component: Hero,
+     props: {
+       headline: { type: "string",   defaultValue: "Your headline here" },
+       subtitle: { type: "string",   defaultValue: "Short description of this section" },
+       image:    { type: "imageurl", defaultValue: "/placeholder-hero.png" },
+       size:     { type: "choice",   options: ["small", "medium", "large"], defaultValue: ["medium"] },
+       cta: {
+         type: "object",
+         properties: {
+           label: { type: "string", defaultValue: "Get started" },
+           href:  { type: "href",   defaultValue: "#" },
+         },
+       },
+       features: {
+         type: "array",
+         items: { type: "string", defaultValue: "Feature item" },
+         defaultValue: ["First feature", "Second feature", "Third feature"],
+       },
+     },
+   });
+   ```
+
+   Rules by type:
+   - **`choice`** defaults are **arrays**, even for single-select: `defaultValue: ["medium"]`. Writing `"medium"` silently falls back to the first option or blank.
+   - **`object`** parents do **not** take their own `defaultValue` — each child prop owns its default.
+   - **`array`** props need two defaults: outer `defaultValue` (initial items the canvas shows) and `items.defaultValue` (each new row added later).
+   - **`imageurl`** defaults must resolve — ship the placeholder asset alongside the component bundle at `placeholderAssetPath`.
+
+4. **Use placeholder phrasing, not marketing copy.** Defaults ship as-is if the author forgets to bind.
+   - Good: `"Your headline here"`, `"Short description of this section"`, `"Feature item"`.
+   - Bad: `"Buy our amazing product today!"`.
+
+5. **Default `choice` props to the safest / most common variant** (`size: ["medium"]`, `tone: ["neutral"]`), not the rarest.
+
+6. **Decide between `defaultValue` and `defaultValueHint` per prop.** If you want guidance text in the form input only — and a blank canvas is fine for that prop — use the hint instead:
+
+   ```ts
+   title: {
+     type: "string",
+     defaultValueHint: "e.g. Welcome to our site",
+   }
+   ```
+
+   Reach for `defaultValue` when the canvas must not render blank; reach for `defaultValueHint` when blank is fine but the form needs a nudge.
+
+7. **For complex components (heroes, cards with many regions) pre-populate a coherent stub set** across every visible region so the dropped component reads as a recognisable shape, not a half-rendered skeleton.
+
+8. **Ship any referenced placeholder assets.** If a `defaultValue` points at `/placeholder-hero.png`, add that file to the project's `public/` (or framework equivalent) and confirm it loads. A broken image is worse than no image.
+
+## Defaults vs binding — when each applies
+
+| Situation | What renders |
+| --- | --- |
+| Prop unbound, no author input | `defaultValue` |
+| Prop bound to `template.title` / `contentstack.*` / `repeater.<field>` | Bound value (default ignored) |
+| Author cleared the field (empty string / null) | The empty value — Studio does NOT fall back to default |
+| `validate` rejects every value | Default still renders, but a validation error shows in the form |
+
+## Inputs needed from the user
+
+In this order. If any is missing, ask before editing code.
+
+1. `componentType` — the `type` string used at registration.
+2. `registrationFile` — path to the file calling `registerComponent`.
+3. `placeholderAssetPath` — optional; only required if the component has image props.
+
+## Acceptance
+
+This skill succeeds only when ALL of the following are true. If any fails, surface the failure and stop.
+
+- [ ] Every visible prop on the component has either a `defaultValue` or a deliberate `defaultValueHint`.
+- [ ] `choice` defaults are arrays (`["medium"]`, not `"medium"`).
+- [ ] No `object` parent has its own `defaultValue`; each child prop owns its default.
+- [ ] Every `array` prop has both outer `defaultValue` and `items.defaultValue`.
+- [ ] No default contains real marketing copy.
+- [ ] Every `imageurl` default resolves (the placeholder file exists in `public/`).
+- [ ] Rebuilding the canvas app, refreshing Studio, and dragging the component onto an empty canvas renders every region with placeholder content — verified by inspecting a PNG screenshot of the canvas iframe (a11y snapshots are opaque to iframe contents).
+- [ ] Binding one prop to `template.*` replaces the default; unbinding restores the default.
+
+## Common pitfalls
+
+| Pitfall | Why it bites | Fix |
+| --- | --- | --- |
+| `choice` defaults written as strings | Silently fall back to first option or blank | Wrap in an array: `["medium"]` |
+| `defaultValue` on an `object` parent | Has no effect; only child props take defaults | Set defaults on each child prop |
+| Forgetting `items.defaultValue` on arrays | Initial items render; "Add item" produces a blank row | Set both outer and `items.defaultValue` |
+| Confusing `defaultValue` with `defaultValueHint` | Hints never render on the canvas — component appears blank on drop | Use `defaultValue` when canvas must not render blank |
+| Real marketing copy as defaults | Authors leave it in place and it ships to production | Use placeholder phrasing like "Your headline here" |
+| Expecting defaults to back-fill after a clear | Studio respects explicit empties | If a default is needed, don't let the author clear |
+| Image defaults that 404 | Broken placeholder is worse than no image | Ship the asset alongside the bundle |
+
+## See also
+
+- `docs/20-bring-your-own-components/set-component-default-data.md` — full reference.
+- Pair with `register-studio-component` when you're introducing the component for the first time.
+- Pair with `bind-prop-to-template` once the component renders and the author is ready to wire real data.

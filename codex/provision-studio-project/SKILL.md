@@ -1,0 +1,192 @@
+# provision-studio-project
+
+
+## When to use
+
+Bootstrap a Studio project via API — create the compositions CT with the schema Studio's editor + runtime require, plus the publish + delivery-token setup.
+
+Use when standing up a brand-new Studio project headlessly (no UI), seeding an environment for tests/demos, or onboarding a new stack with no compositions CT yet. Signals — "create compositions CT via API", "seed a Studio project", "bootstrap a stack for Studio". Do NOT use for composition entries (`author-composition-via-api`) or stack assets/CTs outside compositions (`provision-studio-stack`).
+
+# Provision Studio Project (API-first)
+
+## Context
+
+Provisioning a Studio project touches **two API surfaces**:
+
+1. **Contentstack CMA** (`api.contentstack.io` and regional variants) — creates the stack, the compositions content type, the environment, the delivery + preview token, and enables Live Preview on the stack.
+2. **Studio API** (`composable-studio-api.contentstack.com` and regional variants) — creates the Studio project itself via `/v1/projects`, binds it to the stack (`connectedStackApiKey`) and the compositions CT (`contentTypeUid`), and configures environment + locale + Freeform.
+
+Skip either surface and Studio cannot resolve compositions:
+
+- No compositions CT → nothing to author against.
+- No Studio project → the canvas iframe has no project to load.
+- Live Preview not enabled on the stack → canvas iframe hangs forever on "Loading composition…" because the canvas-app's `rest-preview.contentstack.*` calls fail CORS preflight.
+
+The CT must carry an exact set of fields. If any are missing, mistyped, or wrong cardinality, the editor's `?include[]=linked_sections` fails, the runtime's `composable_uid` lookup misses, or the canvas cannot persist the composition.
+
+Once the project exists, composition entries are created via [`author-composition-via-api`](../author-composition-via-api/SKILL.md). Stack content outside the compositions CT (assets, page CTs the compositions reference) belongs in [`provision-studio-stack`](../provision-studio-stack/SKILL.md).
+
+Reference: `reference_studio_provisioning_api` for the host map across regions.
+
+## Task
+
+1. **Confirm prerequisites.** You have a Contentstack `authtoken` (from a logged-in session) AND `api_key` for the target stack — both Studio API and CMA expect these two headers together. Know the region: regional host map in `reference_studio_provisioning_api`. NA defaults — CMA `api.contentstack.io`, Studio API `composable-studio-api.contentstack.com`.
+
+   > **MCP-authed path (optional).** If `CONTENTSTACK_MCP_READY` (from [`install-contentstack-mcp`](../install-contentstack-mcp/SKILL.md)), the **CMA** steps here run as MCP tool calls with no pasted `authtoken` — step 7 CT-create (POST then PUT) → `create_a_content_type` + `update_content_type`, step 4 environment-create → `create_an_environment`, verify → `get_a_single_content_type`. The MCP does **not** cover the Studio API or tokens: steps **3 (enable Live Preview), 5 (delivery+preview token), 9 (`/v1/projects` register)**, and stack-create stay raw HTTP with the authtoken. **Step 9 specifically needs a user SESSION authtoken — the MCP OAuth token is rejected there (401/422); see step 9's callout.** The MCP also can't discover `org_id` / stack `api_key` — supply them (Playwright MCP `CS_RECENT_STACK_API_KEY`, or paste). No flag → everything below is raw curl.
+
+2. **Ensure the stack exists** (CMA). Either reuse via `GET /v3/stacks?organization_uid=<org>&query={"name":"…"}` or create via `POST /v3/stacks` (body: `{ stack: { name, description, master_locale: "en-us" } }`, plus header `organization_uid`). Capture `api_key`.
+
+3. **Enable Live Preview on the stack** (CMA — critical, easy to miss):
+   ```
+   PUT /v3/stacks  (headers: api_key, authtoken)
+   { "stack": { "settings": { "live_preview": { "enable": true } } } }
+   ```
+   Without this the canvas iframe hangs on "Loading composition…" because the canvas-app's calls to `rest-preview.contentstack.*` fail CORS preflight.
+
+4. **Create the environment** (CMA) if it doesn't exist: `POST /v3/environments` with `{ environment: { name: "preview", urls: [{ locale: "en-us", url: "<canvas-app-url>" }] } }`. The environment URL must match where the host app renders (the canvas-app or visitor app). Save `environment.uid` — Studio's `/v1/projects` configuration takes the **uid, not the name**.
+
+5. **Create the delivery token + paired preview token** (CMA):
+   ```
+   POST /v3/stacks/delivery_tokens
+   { "token": { "name": "...", "scope": [
+       { "module": "environment", "environments": ["<env-name>"], "acl": { "read": true } },
+       { "module": "branch",      "branches":     ["main"],       "acl": { "read": true } }
+   ] } }
+   ```
+   The response carries the preview token at `data.token.preview_token.preview_token`. Capture both.
+
+6. **Pick the compositions CT uid.** Convention: `<project>_compositions` (lowercase, underscored). Studio resolves the compositions CT by this uid.
+
+7. **Create the compositions CT — two calls, not one.** CMA validates reference targets at creation time, so **`linked_sections` and `symbols`** (both self-references) must be added on a follow-up PUT. Including either in the initial POST returns `error_code 115: <field>.reference_to: content type does not exist` — the CT can't reference itself before it exists.
+
+   ```
+   POST /v3/content_types    (body = every field in the table below EXCEPT linked_sections and symbols)
+   PUT  /v3/content_types/<uid>    (body = every field including linked_sections and symbols)
+   ```
+
+   Every field is **required by the editor or runtime** — do not drop, rename, or change cardinality.
+
+### Compositions CT — required fields
+
+| uid | data_type | mandatory | multiple | Required by | Purpose |
+|---|---|---|---|---|---|
+| `title` | text | yes | no | CMS UX | Author-visible title; unique recommended. |
+| `url` | text | no | no | Runtime | Composition URL pattern (e.g. `/products/{{entry.url}}`). Empty for symbol-only / freeform. |
+| `composable_uid` | text | yes | no | Runtime + editor | Contract key — runtime queries compositions by `composable_uid`, NOT entry uid. Must be unique. |
+| `ui_preview` | file | no | no | Editor | Thumbnail shown in Studio's composition list. |
+| `connected_content_type` | text | no | no | Editor + runtime | The page CT uid this composition is connected to (Connected Template). Empty for Freeform. |
+| `ui` | text (multiline) | no | no | Editor + runtime | `zlib:<base64>`-encoded composition node tree. Written by Studio canvas; written by [`author-composition-via-api`](../author-composition-via-api/SKILL.md) for headless authoring. |
+| `data_sources` | text (multiline) | no | no | Runtime | JSON object holding `resolvedReferences` etc. for reference resolution at render. |
+| `static_value` | group | no | no | Editor | Static-value sub-bindings — see § *static_value sub-schema* below; required as-is for the picker to enumerate static-value types. |
+| `schema_version` | text | no | no | Editor | Composition schema version stamp written by Studio — a semver-shaped string like `"1.0.0"` (also seen: `""`, `"1"`, `"2"`). |
+| `place_composition_as` | text | no | no | Editor | `"page"` for top-level template compositions (both Connected and Freeform); `"section"` for section compositions. `"template"` is legal but not what Studio writes for the top-level entry. |
+| `linked_schemas` | **group, multiple=true** | no | yes | Editor | Per-section template-binding override — one entry per content type the section accepts. **Must be `group` with `multiple: true`** — the editor expects an array. Sub-fields on the group: `content_type_uid` (text, **required** — always populated) plus `selected_field` (text, **optional** — populated only when the section restricts to a specific field via `selectedField`) and `display_name` (text, **optional**). Runtime stored shape: `[{ "content_type_uid": "blog_post", "_metadata": { "uid": "<system-generated>" } }, …]`. If this is a single `group` (multiple=false) or a flat text field, editor crashes during section-context build. |
+| `url_metadata` | group | no | no | Editor | `url_source` (text), `url_queries` (text) — drives the URL pattern editor. |
+| `linked_sections` | **reference, multiple=true, reference_to: <same CT uid>** | no | yes | Editor | Self-reference to other composition entries that are templates this composition links. **Must be a reference field** — the editor's CDA call uses `?include[]=linked_sections`, which only works on reference fields. If modeled as text/group, the editor's Template Did Not Load error appears. |
+| `symbols` | **reference, multiple=false, reference_to: <same CT uid>** | no | no | Editor | Self-reference used by the editor for symbol resolution. The editor's composition-load call includes `?include[]=symbols` — **must exist as a reference field**. |
+
+### `static_value` sub-schema
+
+Add a `group` field named `static_value` (multiple=false) with **13 sub-groups (each multiple=true)**, one per scalar binding type the picker offers. Each sub-group has a uniform `{ key: text, value: text }` shape (the `boolean` sub-group uses `value: boolean`):
+
+```
+static_value (group)
+├─ text        (group[]) { key: text, value: text (multiline) }
+├─ html_rte    (group[]) { key: text, value: text (multiline) }
+├─ array       (group[]) { key: text, value: text (multiline) }
+├─ object      (group[]) { key: text, value: text (multiline) }
+├─ number      (group[]) { key: text, value: text (multiline) }
+├─ href        (group[]) { key: text, value: text (multiline) }
+├─ textarea    (group[]) { key: text, value: text (multiline) }
+├─ any         (group[]) { key: text, value: text (multiline) }
+├─ json_rte    (group[]) { key: text, value: text (multiline) }
+├─ datestring  (group[]) { key: text, value: text (multiline) }
+├─ boolean     (group[]) { key: text, value: boolean }
+├─ imageurl    (group[]) { key: text, value: text (multiline) }
+└─ choice      (group[]) { key: text, value: text (multiline) }
+```
+
+The picker's "Static Value" branch enumerates these sub-groups by uid — missing sub-groups → missing options in the picker.
+
+8. **Verify the CT exists.** `GET /v3/content_types/<uid>` and confirm the field list matches the table above. Catch shape errors early — fixing a wrong cardinality after entries exist requires deleting and re-creating the CT.
+
+9. **Register the Studio project** (Studio API). Two calls.
+
+   > **⚠ The `authtoken` here MUST be a user SESSION authtoken — not the MCP OAuth token, not a management token.** The Studio project API authenticates with a user *session* token (the browser/login `authtoken`, i.e. `CS_AUTH_TOKEN`). Verified rejections on `POST /v1/projects` (fresh NA stack, `api_key` + `organization_uid` set): the MCP `--auth` **OAuth token** → `authtoken:` header gives **401 `error_code 105` "authtoken is not valid"**, and `Authorization: Bearer` gives **422 `error_code 21` "Stack not found"** (auth accepted but the fresh CMA stack isn't resolvable via the app-token path); a **management token** as `authtoken:` gives **401 "not logged in."** So **MCP auth ≠ Studio-API auth** — even with the MCP installed, this step needs a session authtoken (paste from browser DevTools → any `api.contentstack.io` request → `authtoken` request header; or `POST /v3/user-session`). Alternatively, create the project once in the Studio UI (also onboards the stack). See `install-contentstack-mcp` § *What it does — and does NOT do*.
+
+   ```
+   POST  https://<studio-api-host>/v1/projects     (headers: api_key, authtoken=SESSION token)
+   {
+     "name": "<Project Name>",
+     "description": "...",
+     "connectedStackApiKey": "<stack api_key from step 2>",
+     "contentTypeUid":       "<compositions CT uid from step 6>",
+     "canvasUrl":            "/canvas"   // route on the canvas-app that mounts <StudioCanvas/>
+   }
+   ```
+
+   Then configure it (this is where environment + locale + Freeform attach):
+
+   ```
+   PUT https://<studio-api-host>/v1/projects/<projectUid>
+   {
+     "name": "<Project Name>",
+     "canvasUrl": "/canvas",
+     "connectedStackApiKey": "<api_key>",
+     "contentTypeUid":       "<compositions CT uid>",
+     "settings": {
+       "configuration": { "environment": "<env UID from step 4>", "locale": "en-us" },
+       "isFreeformEnabled": true
+     }
+   }
+   ```
+
+   The `environment` value MUST be the env **uid** (looked up via `GET /v3/environments`), not the name. The Studio API regional hosts mirror the CMA: `eu-composable-studio-api.contentstack.com`, `azure-na-composable-studio-api.contentstack.com`, `azure-eu-composable-studio-api.contentstack.com`.
+
+10. **Publish at least one composition entry** to the chosen environment before testing rendering — unpublished compositions return 404 from the CDA, presenting as a blank canvas or "Composition Not Found." See [`author-composition-via-api`](../author-composition-via-api/SKILL.md) step 6 for the publish call.
+
+11. **Record the project metadata** (CT uid, environment, delivery token, preview token, Studio project uid, branch) in the project's `.env.example` so [`install-studio`](../install-studio/SKILL.md) can wire the host app consistently.
+
+## Acceptance
+
+- [ ] Stack exists and Live Preview is enabled (`GET /v3/stacks` → `stack.settings.live_preview.enable === true`).
+- [ ] Environment exists; delivery token + preview token captured.
+- [ ] `GET /v1/projects` lists the project with `connectedStackApiKey === <stack api_key>` and the right `contentTypeUid`.
+- [ ] `GET /v3/content_types/<uid>` returns all 14 fields from the table with exact `data_type`, `mandatory`, `multiple`.
+- [ ] `linked_schemas` is `group` with `multiple: true`. (Single-group is the most common provisioning bug — re-check.)
+- [ ] `linked_sections` is `reference` with `multiple: true` and `reference_to: [<this CT uid>]`.
+- [ ] `symbols` is `reference` with `multiple: false` and `reference_to: [<this CT uid>]`.
+- [ ] `composable_uid` is mandatory + unique.
+- [ ] `static_value` group contains all 13 sub-groups with correct shape.
+- [ ] One composition entry exists and is published; CDA `GET /v3/content_types/<uid>/entries?query={"composable_uid":"<your-uid>"}&environment=<env>` returns it.
+- [ ] Preview token is set on the environment; `?live_preview=<hash>` flows through `sdk.fetchCompositionData`.
+
+## Common pitfalls
+
+| Pitfall | Why it bites | Fix |
+|---|---|---|
+| `linked_schemas` modelled as `group` with `multiple: false` | Editor expects an array; section-context build crashes on `.map` of a single object | Re-create CT with `multiple: true`; or PATCH the CT field if no entries exist yet |
+| `linked_sections` modelled as text/group instead of reference | Editor's `?include[]=linked_sections` returns nothing — Template Did Not Load on canvas open | Must be `reference` field with `reference_to: [<same CT uid>]`; see [`troubleshoot-canvas`](../troubleshoot-canvas/SKILL.md) Template-Did-Not-Load row |
+| `symbols` field absent from the compositions CT (or modelled as anything other than reference) | Editor's composition-load includes `?include[]=symbols`; CMA returns **422 Unprocessable** for a non-reference include target → canvas shows the misleading **"Composition Not Found."** — trap because the composition entry itself exists and resolves via the CDA, but the editor's include-augmented fetch fails | Add the `symbols` field with `data_type: "reference"`, `multiple: false`, `reference_to: [<this CT uid>]`. Applies to any editor-included field — same trap for `linked_sections`. Two-step create still applies (self-refs need the PUT — step 7) |
+| `composable_uid` left non-unique | Runtime lookup picks an arbitrary entry; one composition renders for many URLs | Mark mandatory + unique at CT creation time |
+| Forgetting `static_value` sub-groups | Picker's Static Value root shows fewer (or zero) type options | Add the 13 sub-groups exactly as schema'd above |
+| Composition entry not published | CDA returns 404; canvas blank | Publish to the environment after entry create (P5) |
+| Preview token missing / set to literal `"undefined"` | Canvas iframe gets HTTP 401 with no CORS headers — "Component Loading Error" | See [`troubleshoot-canvas`](../troubleshoot-canvas/SKILL.md) preview-token row |
+| JSON-RTE static values fail to embed correctly | JSON-RTE embeds carry `attrs.locale` — missing in API-authored payloads | Set `attrs.locale` on every embedded entry/asset in `static_value.json_rte[*].value` (P6) |
+| Wrong region host | CT creation 404s | Use region-specific CMA host; see `reference_studio_provisioning_api` |
+| Live Preview not enabled on stack | Canvas iframe hangs on "Loading composition…"; rest-preview CORS preflight fails | `PUT /v3/stacks` with `stack.settings.live_preview.enable = true` (step 3) |
+| Studio project configured with environment **name** instead of **uid** | Studio API accepts the PUT but environment binding silently misses; compositions never resolve | Look up env uid via `GET /v3/environments`, pass `settings.configuration.environment = <uid>` |
+| Re-using a Studio project across stacks (name match, stale `connectedStackApiKey`) | Project surfaces last stack's compositions; current stack invisible in canvas | On every provision, PUT the project with the current `connectedStackApiKey` to re-bind |
+| Mixed CMA + Studio API hosts (e.g. NA Studio API with EU CMA) | 401/404s with no clear error | Pick a region and use BOTH region-matched hosts |
+| Including `linked_sections` in the initial `POST /v3/content_types` | `error_code 115: symbols.reference_to: content type does not exist` — CMA validates reference targets at create time; a CT can't self-reference before it exists | Two-step: POST without `linked_sections`, then PUT with the full schema (step 7) |
+| Delivery-token scope trimmed to environment-only (branch scope dropped) | `"Delivery Token creation failed. Please try again."` — no HTTP error code, no field diagnostic — a natural "simplification" of the step 5 body silently fails | Both scope entries are REQUIRED: `{ module: "environment", ... }` AND `{ module: "branch", branches: ["main"], acl: { read: true } }`. Keep the two-entry body from step 5 verbatim |
+| `PUT /v3/environments/<uid>` to update an environment (using the UID in the path) | `error_code 248: could not find environment` — this CMA endpoint keys on env **name** in the path, not UID | Use the env name: `PUT /v3/environments/preview`. Distinct from Studio `/v1/projects` config, which takes the env UID (step 9) |
+| Creating the stack (`POST /v3/stacks`) in an org where the user lacks stack-create rights | **HTTP 403, `error_code 316`, `"You don't have the permission to do this operation."`** (verified) — a bare 403, no field diagnostic | Don't crash. Tell the user: get stack-create rights in the org, OR switch to an org where they can (re-auth if using the MCP — there's no org-picker, switch the active org first), OR reuse an existing stack. `--auth` captures the active org, so switching active org before login targets the right one |
+
+## See also
+
+- [`author-composition-via-api`](../author-composition-via-api/SKILL.md) — create composition entries against this CT.
+- [`provision-studio-stack`](../provision-studio-stack/SKILL.md) — assets + page CTs the compositions reference.
+- [`install-studio`](../install-studio/SKILL.md) — host-app wiring + env vars.
+- [`troubleshoot-canvas`](../troubleshoot-canvas/SKILL.md) — preview token, linked_sections, blank canvas symptoms.
+- `reference_studio_provisioning_api` — host map and `/v1/projects` shape.

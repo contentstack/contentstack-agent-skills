@@ -4,5 +4,6 @@
   "description": "Contentstack agent skills for Claude Code, Cursor, Codex, and Gemini.",
   "author": {
     "name": "Contentstack"
-  }
+  },
+  "skills": "./skills/"
 }

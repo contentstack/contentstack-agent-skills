@@ -1,0 +1,58 @@
+# pin-query-to-freeform
+
+
+## When to use
+
+Pin a CDA query (filter + sort + limit) to a Freeform template so Repeater sources iterate dynamic content like top 3 featured products.
+
+Use when a Freeform template needs to iterate a dynamic list of entries (top 3 featured products, latest 5 articles, sorted catalog). Phrases — "pin a query", "iterate latest entries", "filtered list on freeform". Re-runs every render so content stays fresh. For single-entry pinning use `pin-entry-to-freeform`.
+
+# Pin a CDA query to a Freeform template
+
+> **Prerequisite:** this skill assumes you've already chosen Freeform via `choose-connected-vs-freeform`. If you haven't, run that first — Connected is the recommended default in Studio and most pages should use it (including one-off pages, via a single-entry CT). Freeform is the documented exception, not a parallel option. This skill remains valid for the legitimate Freeform cases; it just shouldn't be your starting point.
+
+## Context
+
+Freeform templates can pin a CDA query so a Repeater iterates a dynamic list of entries — for example the top 3 featured products or the latest 5 articles. The query (filter + sort + limit) is stored on the template and re-runs on every render, so content stays fresh as authors publish new entries. Reference doc: `docs/33-freeform/pinned-queries.md`. Pinned queries differ from pinned entries: a pinned entry returns a single record (bind directly to `template.*`), while a pinned query returns a list and must be consumed by a Repeater whose items resolve against `repeater.*`.
+
+## Task
+
+1. Confirm you are on a Freeform template — the canvas header shows the `FREEFORM MODE` badge.
+2. Deselect any component on canvas (click empty canvas area) so the right-panel Data tab shows template-level pins, not component-scoped ones.
+3. Open the right panel → **Data** tab → **Pinned Queries** section → click **Create Query**.
+4. In the New Query modal, fill the required **Name** and **Content Type** fields.
+5. Configure the query one of two ways:
+   - **By hand** — set the **filter**, **order**, and **limit** fields directly.
+   - **Natural language** — type a prompt in the *Tell me what data you need* box. Studio converts the prompt to a stored CDA query at save time. This conversion is one-shot: it is NOT re-evaluated at render. To tune the query later, re-open the modal.
+6. **Save** the query. It appears in the Pinned Queries list.
+7. Use the query on canvas: drop a **Repeater** component, click **Bind items** in Properties, and pick **Pinned Queries** → `<name>`.
+8. Drop a card or item component inside the Repeater body. Its bindings resolve against `repeater.*` — each iteration represents one entry from the query result.
+9. If the iterated content type contains references (single-CT or multi-CT), pair the Repeater with a **Condition Block** for each reference field — see `use-condition-block`.
+
+## Inputs needed from the user
+
+| Input | Prompt |
+| --- | --- |
+| `templateName` | Freeform template name |
+| `contentTypeUid` | Content type the query returns |
+| `filterExpression` | Filter (e.g. `featured = true`) or natural-language prompt |
+| `sortBy` | Sort spec (e.g. `price asc`) or blank |
+| `limit` | Result limit (e.g. 3, 5, 10) |
+
+## Acceptance
+
+- The target Freeform template's right-panel Data tab → Pinned Queries list shows the new query by name.
+- Dropping a Repeater on canvas and opening **Bind items** shows the query under **Pinned Queries**.
+- After binding the Repeater and adding a child card with `repeater.*` field bindings, the canvas (with Repeater Preview Mode on) renders one card per returned entry, respecting filter, sort, and limit.
+- Publishing a new entry that matches the filter causes it to appear in the rendered list on the next render — no template edit required.
+
+## Common pitfalls
+
+| Pitfall | Why it bites | Fix |
+| --- | --- | --- |
+| Leaving filter and sort blank | Returns an unbounded, arbitrarily ordered result set | Always set at least a filter or a sort plus a sensible limit |
+| Expecting the natural-language prompt to re-evaluate at render | The prompt is converted to a stored CDA query once at save time; render uses the stored query only | To change query behavior, re-open the Pinned Query modal and edit (or re-prompt) |
+| Binding a Repeater to a single-result query | A Repeater expects a list; one entry is wasted scaffolding | Use `pin-entry-to-freeform` for single-entry pinning and bind directly to `template.*` |
+| Selecting a component before opening the Data tab | Tab shows component-scoped pins, not template-level | Click empty canvas to deselect, then open Data tab |
+| Forgetting a Condition Block for references inside the Repeater | References (both single-CT and multi-CT) inside a Repeater require a Condition Block to resolve | Wrap each reference field in a Condition Block — see `use-condition-block` |
+| Binding child fields to `template.*` instead of `repeater.*` | `template.*` resolves to template-level pins, not the current iteration item | Inside a Repeater body, child bindings must use `repeater.<field>` |

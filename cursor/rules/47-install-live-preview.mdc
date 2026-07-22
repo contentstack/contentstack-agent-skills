@@ -1,0 +1,178 @@
+---
+description: "Install and wire `@contentstack/live-preview-utils` standalone — without the full Studio SDK — so an existing app can receive real-time edits from Contentstack into Visual Editor."
+alwaysApply: false
+---
+
+
+## When to use
+
+Install and wire `@contentstack/live-preview-utils` standalone — without the full Studio SDK — so an existing app can receive real-time edits from Contentstack into Visual Editor.
+
+Use when the user wants ONLY Live Preview added to an existing Contentstack app — typically rolling out Visual Editor before adopting Studio. E.g. "I just want Live Preview, not Studio yet". Do NOT use for full Studio install (use `install-studio` — it includes LP). Do NOT use to fix LP in an already-installed app (use `troubleshoot-canvas`).
+
+# Install Live Preview standalone
+
+## Context
+
+Live Preview is the post-message channel between Contentstack and a running site. When an editor changes a field, the site re-fetches and re-renders within ~1 second.
+
+**Two separate things must be true** for Live Preview to work:
+
+1. **Stack-level flag** — Live Preview is enabled at Stack → Settings → Visual Experience → General. This is a single checkbox; it's stack-wide, not per-CT.
+2. **App-level install** — `@contentstack/live-preview-utils` is installed, `ContentstackLivePreview.init({…})` is called once at app shell, and the Delivery SDK is wired with `live_preview: { enable, preview_token, host }`.
+
+Most "Live Preview broken" issues are one of those two missing. This skill ensures both.
+
+**Preview Token vs Delivery Token** — the Preview Token is **paired** with a Delivery Token (same screen, same record). It's NOT a separate token type. When you create a Delivery Token, Contentstack generates the Preview Token at the same time. They share an environment scope.
+
+Reference: `docs/10-setup/app-prerequisites/install-live-preview.md`.
+
+## Task
+
+1. **⛔ HARD GATE — stack-level Live Preview must be ON.** If the user hasn't already completed `enable-visual-experience` for this stack, **call it now** and wait for its four confirmations (Enable Live Preview checked + Save clicked, Default Preview Environment selected, Custom Preview URL set on the Preview URL sub-tab, Preview Token created on the Delivery Token). Without the stack-level flag, no `preview_token` will resolve content — the channel doesn't exist. Don't accept "I think it's on" — get explicit confirmation or run the enabling skill. **Do not proceed otherwise.**
+
+2. **Install the package.** Detect package manager from lockfiles:
+   - `pnpm-lock.yaml` → `pnpm add @contentstack/live-preview-utils`
+   - `yarn.lock` → `yarn add @contentstack/live-preview-utils`
+   - default → `npm install @contentstack/live-preview-utils`
+
+3. **Write Preview Token to `.env.local`** (or whatever local-only env file the framework uses — Vite → `.env.local`; Next → `.env.local`; CRA → `.env.local`). Use the prefix the framework requires:
+   - Vite: `VITE_CS_PREVIEW_TOKEN=…`
+   - Next: `NEXT_PUBLIC_CS_PREVIEW_TOKEN=…` (only if used client-side; otherwise no prefix and server-only)
+   - CRA: `REACT_APP_CS_PREVIEW_TOKEN=…`
+
+   Confirm `.env.local` is in `.gitignore` before writing.
+
+4. **Update the existing Delivery SDK init** to include the `live_preview` block. Find the file that currently calls `contentstack.stack({ apiKey, deliveryToken, environment })`. **Derive the preview host from the region — do not hardcode `rest-preview.contentstack.com`.** It's the US host only; every other region 401s against it.
+
+   ```ts
+   // Region → preview host. The US default is the ONLY region that uses the bare
+   // `rest-preview.contentstack.com` host; every other region prefixes it.
+   const PREVIEW_HOSTS = {
+     us:       "rest-preview.contentstack.com",
+     eu:       "eu-rest-preview.contentstack.com",
+     "azure-na": "azure-na-rest-preview.contentstack.com",
+     "azure-eu": "azure-eu-rest-preview.contentstack.com",
+     "gcp-na": "gcp-na-rest-preview.contentstack.com",
+     "gcp-eu": "gcp-eu-rest-preview.contentstack.com",
+     au:       "au-rest-preview.contentstack.com",
+   } as const;
+
+   const region = (import.meta.env.VITE_CS_REGION ?? "us") as keyof typeof PREVIEW_HOSTS;
+   const previewHost = PREVIEW_HOSTS[region];
+   if (!previewHost) throw new Error(`Unknown Contentstack region: ${region}`);
+
+   const stack = contentstack.stack({
+     apiKey:         import.meta.env.VITE_CS_API_KEY,
+     deliveryToken:  import.meta.env.VITE_CS_DELIVERY_TOKEN,
+     environment:    "preview",
+     region,
+     live_preview: {
+       enable:        true,
+       preview_token: import.meta.env.VITE_CS_PREVIEW_TOKEN,
+       host:          previewHost,
+     },
+   });
+   ```
+
+   Add `VITE_CS_REGION=<region>` (or `NEXT_PUBLIC_CS_REGION` / `REACT_APP_CS_REGION`) to `.env.local` so the host is derived at build/runtime, not hardcoded. Default to `us` when unset.
+
+5. **Wire `ContentstackLivePreview.init({…})` at app shell.** This is the post-message listener that picks up Contentstack's edit events. Call it **once**, before any route renders:
+
+   ```ts
+   import ContentstackLivePreview from "@contentstack/live-preview-utils";
+
+   ContentstackLivePreview.init({
+     stackSdk: stack,
+     enable: true,
+     ssr: false,    // set true for Next.js / Remix / Astro server-side rendering
+     mode: "builder",
+   });
+   ```
+
+   For Next.js / Remix / Astro / any SSR framework, set `ssr: true`. For Vite/CRA/single-page apps, leave `ssr: false`.
+
+6. **Verify `data-cslp` tags are emitted.** Open any page with a content binding in DevTools → Elements. Look for `data-cslp="<ct_uid>.<entry_uid>.<locale>.<field>"` on every bound DOM element. If absent, the binding isn't actually using the Delivery SDK output — the app is hardcoding strings instead of reading from CS.
+
+7. **Wire `onEntryChange` so the running page refetches on edit.** `ContentstackLivePreview.init` opens the channel; `onEntryChange(cb)` subscribes a callback that fires every time an author saves an edit. Without this, the channel is open but nothing tells your app to re-render — visitors see stale content until a manual reload. **Wire it once, in an app-shell client component, using the loop-safe pattern below.**
+
+   The callback body depends on how you render Studio compositions:
+
+   - **CSR** (`useCompositionData` hook) — call the hook's `refetchSpec`.
+   - **SSR / RSC — Next.js App Router** — call `router.refresh()`.
+   - **SSR — Next.js Pages Router** — call `router.replace(router.asPath, undefined, { scroll: false })`.
+   - **SSR — Remix** — call the route's `revalidator.revalidate()`.
+   - **Non-Studio pages that just read Delivery-SDK content** — call your own refetch / cache-invalidate.
+
+   **Loop-safe pattern (mandatory).** `onEntryChange` invokes the callback ONCE at register time in addition to on every edit. If you subscribe inside a `useEffect(..., [router])` and the callback calls `router.replace` / `router.refresh`, the router identity changes → the effect cleans up + re-subscribes → the register-time fire runs again → infinite refetch loop. Always: **subscribe once with `[]` deps, keep the router in a `useRef`, skip the first (register-time) fire, unsubscribe in cleanup.**
+
+   ```tsx
+   "use client";
+   import { useEffect, useRef } from "react";
+   import { useRouter } from "next/navigation"; // or next/router for Pages Router
+   import ContentstackLivePreview from "@contentstack/live-preview-utils";
+
+   export function LivePreviewBridge() {
+     const router = useRouter();
+     const routerRef = useRef(router);
+     routerRef.current = router;                       // latest router without re-subscribing
+     useEffect(() => {
+       let unsub: any, firstFire = true;
+       unsub = ContentstackLivePreview.onEntryChange(() => {
+         if (firstFire) { firstFire = false; return; } // skip register-time fire
+         routerRef.current.refresh();                  // App Router
+         // Pages Router:  routerRef.current.replace(routerRef.current.asPath, undefined, { scroll: false });
+         // CSR:            refetchRef.current?.();
+       });
+       return () => {
+         if (unsub != null) ContentstackLivePreview.unsubscribeOnEntryChange?.(unsub);
+       };
+     }, []);                                            // SUBSCRIBE ONCE — never depend on `router`
+     return null;
+   }
+   ```
+
+   Reference implementation: the SDK's own `composable-studio-sdk/test-resources/ssr-react/hooks/use-studio-spec-options.ts` uses the same `skipFirstClientFetchRef` pattern.
+
+8. **Live-test the channel.** Open the page in a browser. In another tab, open Contentstack and edit a field on the entry the page renders. The page should update within ~1s without a manual reload. If the Network tab shows the same route data endpoint (`_next/data/<id>/<route>.json` or the RSC payload) firing repeatedly for a single edit, your `onEntryChange` wiring isn't loop-safe — see step 7.
+
+## Inputs needed from the user
+
+1. `stackApiKey` — used in `stack({ apiKey })`.
+2. `previewToken` — written to `.env.local`, used in `live_preview.preview_token`.
+3. `environment` — must match a stack environment.
+4. `region` — selects the host string.
+
+Don't ask for Delivery Token here — it's already configured (Live Preview is being added to an existing app that has the Delivery SDK).
+
+## Acceptance
+
+- [ ] `@contentstack/live-preview-utils` appears in `package.json` dependencies.
+- [ ] `.env.local` has the Preview Token under the correct framework prefix.
+- [ ] The existing Delivery SDK init now includes `live_preview: { enable: true, preview_token, host }`.
+- [ ] `ContentstackLivePreview.init({…})` is called exactly once at app shell.
+- [ ] Stack-level Live Preview is confirmed ON (user verified).
+- [ ] At least one bound DOM element shows a `data-cslp` attribute in DevTools.
+- [ ] `ContentstackLivePreview.onEntryChange(...)` is wired loop-safely — subscribe-once (`useEffect(..., [])`), router held in a `useRef`, register-time fire skipped, cleanup calls `unsubscribeOnEntryChange`. **Never** `[router]` deps.
+- [ ] Editing a field in Contentstack updates the running app within ~1s.
+- [ ] Network tab shows exactly ONE refetch per edit (not a hundreds-of-requests loop).
+
+## Common pitfalls
+
+| Pitfall | Why it bites | Fix |
+| --- | --- | --- |
+| Treating Preview Token as a separate token type | It doesn't exist independently — it's always paired with a Delivery Token | On the Delivery Token screen, look for "Preview Token" field below the Delivery Token. They share a record. |
+| Forgetting the stack-level Live Preview flag | App is wired correctly but nothing flows because the stack-side channel is off | Stack → Settings → Visual Experience → General → toggle ON before anything else |
+| Using the wrong host string | Token + region mismatch → 401 or empty responses | Use the region map above; do NOT default to `rest-preview.contentstack.com` blindly |
+| Calling `init()` per-route instead of at app shell | Listeners stack; messages process N times; performance degrades | Single `init()` call before first render, then never again |
+| `ssr: false` in Next.js / Remix | Initial render misses preview data; only hydration fixes it | Set `ssr: true` for any SSR framework |
+| **`onEntryChange` wired in a `[router]`-dep effect** | Infinite `_next/data/<id>/<route>.json` (Pages) or RSC payload (App) refetch — hundreds of requests per edit | Subscribe ONCE with empty deps, hold router in a `useRef`, skip the first (register-time) fire, unsubscribe in cleanup. Full pattern in step 7. |
+| **`onEntryChange` never wired** | Channel opens but page never updates on edit; author sees stale content | Wire it in an app-shell client component (step 7). Applies to CSR AND SSR — SSR only "requires" it if Live Preview is enabled on that route; if a route has no Live Preview at all, skip both `ContentstackLivePreview.init` and `onEntryChange`. |
+| Committing Preview Token to git | Token leak | Always to `.env.local` (in `.gitignore`); never in source |
+
+## See also
+
+- `docs/10-setup/app-prerequisites/install-live-preview.md` — full reference
+- `install-studio` — full Studio install which includes Live Preview (use this if the user wants Studio too)
+- `verify-setup` — Layer 2 of the smoke test checks the Live Preview channel
+- `troubleshoot-canvas` — "Live Preview not configured" symptom

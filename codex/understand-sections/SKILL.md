@@ -1,0 +1,131 @@
+# understand-sections
+
+
+## When to use
+
+Explain what a Section is — a reusable page part (hero, feature grid, CTA banner) built by binding atomic React components to CMS data, optionally composing into compounds.
+
+Use as the concept on-ramp before any Section-authoring skill, or when a new user asks "what is a Section". Phrases — "what's a Section", "Section vs Template", "reusable page parts". Do NOT use to actually create a Section — for that, run `build-section`. Concept only.
+
+# What is a Section?
+
+## The one-line answer
+
+**A Section is a reusable part of a webpage — a hero, a feature grid, a testimonial strip, a CTA banner, a footer — with its CMS data binding already baked in.** It's a compound React component: one or many of your atomic components, bound to specific CMS fields, packaged as one drop-in unit that authors can place on any template.
+
+Think of the parts of a webpage you build over and over: every site has a hero, several content blocks, some CTAs, a footer. In a hand-coded site each is a JSX snippet you copy-paste between pages. In Studio those are **Sections** — authored once, bound to CMS data once, then reused everywhere by drag-and-drop.
+
+## A Section in plain language
+
+Imagine a marketing page. From top to bottom you might see:
+
+1. A **hero** with a headline, subheading, background image, and a CTA button
+2. A **feature grid** with three feature cards (icon + title + body each)
+3. A **testimonial strip** with a quote, author, and avatar
+4. A **CTA banner** with a headline and a button
+5. A **footer** with links and a logo
+
+Each of those five chunks is **a Section** in Studio. Each one is a *part of the page*, designed to be reused on similar pages with different content.
+
+## A Section is a compound component
+
+A **compound component** assembled from your atomic React components and bound to your CMS:
+
+```
+Section "Hero"  =  <Hero/>  +  binding to CT `hero_section`  +  entry "Homepage Hero"
+Section "ProductHighlight"  =  <Hero/> + 3×<FeatureCard/> + <CTABlock/>
+                              + bindings to product_highlight CT
+                              + entry sources for each
+```
+
+Two anatomies, same kind of thing — a *reusable*, *bindable*, *previewable* unit. The atomic components inside don't change; their composition + binding map is what the Section carries.
+
+> **What you DON'T do:** build a separate React component just to be "a Section." Sections are not a new component type. They're a *composition + binding wrapper* around the atomic React components you already have.
+
+## What a Section adds on top of a raw component
+
+A registered atomic component (`<Hero/>` with props `headline`, `subhead`, `imageUrl`) becomes a Section when you add three things:
+
+| Layer | What it carries |
+|---|---|
+| **Binding map** | Which CMS field drives which prop, in which iteration scope. E.g. `props.headline ← hero_section.title`, `props.subhead ← hero_section.subtitle`. |
+| **Composition** | If the Section is compound (multiple atomic components), the layout/order/nesting and any Section Slots (substitution points). |
+| **Live preview against real data** | The composed unit renders in Studio's canvas with the *actual* entry the binding points at — same data a visitor would see. Storybook shows a single component with mock props; a Section shows the *composed shape* with the *real CMS content*. |
+
+The atomic React code never changes. The "extra knowledge" lives as data in Studio.
+
+## What qualifies as a Section
+
+**The operational rule: a Section qualifies when the binding work amortizes** — i.e., when the same N bindings would otherwise be repeated by the author every time the component is dropped on a template. Sections pay off by baking the binding map ONCE; reuse is free thereafter.
+
+Two amortizing shapes:
+
+1. **The component has ≥2 separate prop bindings** — a Hero with `title` + `cover.url`; a Card with `image` + `title` + `summary` + `link`; a ProductHighlight composed of a Hero + 3 FeatureCards + a CTA. Without a Section, every template drop = N right-panel binding clicks. With a Section, those N bindings are saved once; the author drops the Section and every prop is already wired.
+2. **The component takes one prop bound to a structural shape** — Modular Block list, Reference array, Group field, Global Field. The outer bind is 1 click, but the internal rendering walks N sub-fields per iteration (or per nested object). That sub-field binding work amortizes the same way.
+
+The only case that does **NOT** qualify:
+
+- **A single atomic component bound to a single primitive (scalar) field** — `Heading` bound to `entry.title`, `Image` bound to `entry.cover.url`, `Text` bound to `entry.tagline`. One bind, one drop, no repetition cost — wrapping it as a Section gives no payoff. Studio's picker also rejects scalar fields at the Connect-a-Schema step. Use these components inline as Basic field components on a Template or inside another Section.
+
+**Diagnostic question:** *"If I drop this component on the next template, how many bindings would the author wire by hand?"*
+- ≥2 → make it a Section
+- 1 → leave it as a registered component used inline
+
+## When to make something a Section vs leave it as a registered component
+
+| Leave it as a registered component (no Section) | Make it a Section |
+|---|---|
+| Single bound prop, single primitive value (`Heading` ← `entry.title`) — one click to bind, no amortization | ≥2 bound props (`Hero` ← `entry.title` + `entry.cover.url`) — author would otherwise wire each prop on every drop |
+| Component takes a single scalar | Component takes a structural-shape value (Group, Global Field, Modular Block, Block, Reference) whose internal rendering walks multiple sub-fields |
+| Used as a primitive inside other compositions | Authors recognise it as "a part of a page" (hero, footer, CTA strip, card grid) and drop it themselves with bindings pre-wired |
+
+If in doubt: ask *"how many bindings will the author wire by hand on the next drop?"* If ≥2, make it a Section.
+
+## How Sections relate to Templates
+
+- **Atoms** are your registered React components (Button, Card, Hero, FeatureCard, …).
+- **Sections** combine atoms + their CMS binding → a reusable part of a page.
+- **Templates** combine Sections → a full page shape (e.g. a connected template for `blog_post` content type).
+
+A template is essentially a stack of Sections. Authors drop Sections onto a template, and the template-plus-Sections renders a live page at the matching URL.
+
+## When to expose a Section Slot
+
+Any Global Field / Modular Block / Group / Reference field on the CT is a strong Slot candidate — default to exposing a Slot rather than inlining. See `understand-section-slots` § *When to expose one — the Global Field / Modular Block / Group / Reference heuristic*.
+
+## Where you'll see Sections in Studio
+
+- **Sections tab** in the Studio project — lists every Section authored in this project. The skill `discover-sections` lists them programmatically.
+- **Palette → Sections category** when you're inside a Template canvas — drag from here onto the template.
+- **As nested children** when you compose one Section inside another (a Section can include another Section via Section Slots — see `use-section-slot`).
+
+## Where you'll see Sections in your codebase
+
+- **You won't.** Sections live in Studio as data — they reference your registered components by `componentType` UID but they aren't React components in your repo. The atomic React components ARE in your repo (the ones you ran `register-component` on). The Sections that compose them are data Studio holds.
+
+## What a Section is NOT
+
+| Misconception | Reality |
+|---|---|
+| "A Section is a new React component I need to write" | No. Sections are composed from atomic components you already have. No new code per Section. |
+| "A Section is the same thing as a Template" | No. A Section is a *part* of a page (reusable block); a Template is a *whole* page shape (a stack of Sections). |
+| "A Section locks me into one piece of content" | No. The binding map references a CMS *field* (e.g. `hero_section.title`). Different entries that share the CT shape can drive the same Section on different page instances. |
+| "Sections are only for marketing teams" | No. Sections are the unit of *reusable page parts* — engineering, design, and authors all benefit. Engineering builds the atoms once; everyone composes Sections forever. |
+
+## Next steps
+
+| If you want to… | Skill to run |
+|---|---|
+| List the Sections already in this project | `discover-sections` |
+| Create a new Section in Studio | `build-section` |
+| Make a Section field tweakable per template instance | `expose-section-props` |
+| Drop a Section into a template | `build-connected-template` |
+| Substitute a child component inside a Section per template | `use-section-slot` |
+| Render a list inside a Section | `use-repeater` |
+
+## See also
+
+- `docs/32-sections/overview.md` — long-form reference; this skill is the short on-ramp
+- `understand-canvas-url` — concept explainer for the Canvas URL field (sister skill)
+- `studio-tour` — broader Studio walkthrough for first-time users
+- `build-section` — actually create a Section after the concept is clear

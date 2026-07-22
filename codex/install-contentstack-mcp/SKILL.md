@@ -1,0 +1,212 @@
+# install-contentstack-mcp
+
+
+## When to use
+
+Optionally install + OAuth-authenticate the Contentstack MCP server so provisioning skills run CMA operations as tool calls instead of raw curl, with no manually-pasted authtoken.
+
+Offer the FIRST time a user runs an API-provisioning flow (`provision-studio-project`, `provision-studio-stack`, `author-composition-via-api`) and is about to paste an `authtoken`. If already installed (`claude mcp list`), skip silently. If declined, skip for the session — never re-prompt. NOT a hard gate; curl fallback always works.
+
+# Install Contentstack MCP — optional CMA auth + execution layer
+
+> **Recommendation, not a requirement.** Every provisioning skill works without this via raw `curl` + a pasted `authtoken`. With it, the CMA steps run as MCP tool calls and auth comes from a stored OAuth session — no token pasting.
+
+## What it does — and does NOT do
+
+Grounded in `contentstack.com/docs/agent-os/contentstack-mcp-server` **and verified against the CLI source** (`~/.npm/_npx/*/node_modules/@contentstack/mcp/dist/index.js`). Read this before offering — it corrects several wrong assumptions.
+
+> **⛔ PROD DATA CENTERS ONLY — the hard wall.** The CLI hardcodes exactly 7 prod regions (NA, EU, AU, AZURE_NA, AZURE_EU, GCP_NA, GCP_EU → `api.contentstack.io` / `eu-api.contentstack.com` / …). There is **no `csnonprod` / dev11 / custom-host option** and **no host-override env var** (only `CONTENTSTACK_REGION`, mapped to those 7). **If the target stack is on dev11 / any non-prod DC, this MCP cannot reach it — full stop.** No browser/TTY trick changes that; use the skills' raw-`curl` path (which lets you set the `csnonprod` host). Confirm the stack is prod BEFORE offering this skill.
+
+✅ **Replaces the `authtoken`.** `npx @contentstack/mcp --auth` → browser OAuth login, tokens saved locally and reused automatically on every later run. No more pasting `authtoken`.
+
+✅ **Auto-captures `organization_uid` + region.** The OAuth token stores the **org** (your login's default org) and the region — no need to ask for `org_id`. (This corrects the docs' "can't discover" claim: org IS captured; only the *stack* isn't.)
+
+✅ **Runs CMA ops as tools** (77 CMA + 22 CMA-extended): `create_a_content_type`, `update_content_type`, `get_all_content_types`, `create_a_global_field`, `update_a_global_field`, `create_an_entry`, `update_an_entry`, `publish_an_entry`, `get_all_entries`, `get_all_environments`, `create_an_environment`, `get_all_assets`, `publish_an_asset`. Covers most of `provision-studio-stack`, the CT-create in `provision-studio-project`, and entry create/publish in `author-composition-via-api`. **Note — asset *upload* has NO tool** (only get/publish/update/delete of existing assets); creating a new asset from a binary stays raw multipart `POST /v3/assets`.
+
+❌ **Does NOT auto-capture the stack `api_key`.** The token's `stack_api_key` is empty — no `list_stacks` tool. Supply it once: from [`install-playwright-mcp`](../install-playwright-mcp/SKILL.md) Step 5b (`CS_RECENT_STACK_API_KEY`), or the user pastes it. It MUST belong to the OAuth'd org (enforced by the Step 5 new-vs-existing / 403-recovery loop).
+
+❌ **Does NOT cover the Studio API — and the MCP's OAuth token is NOT accepted there.** `/v1/projects` (Studio project register/configure) is out of scope. Critically, **`POST /v1/projects` needs a user SESSION authtoken** (the browser/login token, i.e. `CS_AUTH_TOKEN`) — the MCP `--auth` **OAuth token is rejected**: as an `authtoken:` header → **401 `error_code 105` "authtoken is not valid"**; as `Authorization: Bearer` → **422 `error_code 21` "Stack not found"** (a management token also 401s). **MCP auth ≠ Studio-API auth.** So registering the Studio project ALWAYS needs a separately-obtained session authtoken (paste from browser DevTools, or `POST /v3/user-session`), or create the project in the Studio UI. See [`provision-studio-project`](../provision-studio-project/SKILL.md) step 9.
+
+❌ **No delivery/preview-token tool, no stack-create, no Live-Preview-enable tool.** All stay raw HTTP (`provision-studio-project` steps 3, 5, and stack-create).
+
+> **The split:** Contentstack MCP = auth (incl. org) + CMA execution, **prod only**. Playwright MCP = stack-key discovery from the UI. Raw HTTP = Studio API + tokens + LP-enable + stack-create + any non-prod DC. No single tool does all of it.
+
+## Task
+
+### Step 1 — Check if already installed
+
+```bash
+claude mcp list | grep -i contentstack
+```
+If `contentstack` shows up → skip the rest, print: `Contentstack MCP already installed — provisioning skills will use it automatically.` <!-- style-lint: allow -->
+
+### Step 2 — Offer (don't push)
+
+Tell the user verbatim:
+
+> I noticed the Contentstack MCP isn't installed. It's optional — provisioning works without it via curl. But if you install it (~2 min), you log in once via browser OAuth and never paste an `authtoken` again, and CMA steps (create CTs, entries, assets, publish) run as tool calls instead of curl. Two heads-ups: it only works on **prod** data centers (NOT dev11/csnonprod), and while your login captures the org automatically, you still supply the **stack API key** once. It also doesn't cover the Studio project API — registering a Studio project (`/v1/projects`) still needs a browser session authtoken, which this token isn't. Want me to install it? <!-- style-lint: allow -->
+
+- **Yes** → Step 3.
+- **No / not now** → reply `Got it — I'll use curl + a pasted authtoken for provisioning this session.` Stop. Do not re-prompt this session.
+- **Tell me more** → expand the "What it does" section, then re-ask.
+
+### Step 3 — Authenticate (OAuth)
+
+`--auth` walks **three arrow-key TTY menus in sequence** — `Select an action → Authorization`, then `Authorization actions → Login`, then `Select your Contentstack region → <region>` — and THEN prints the OAuth URL + calls `open()` to launch the browser. There is **no org-picker menu**: the org comes from your Contentstack login's default org. To target a different org, **switch your active org in the Contentstack web UI *before* logging in** — this is the ONLY way. (`CONTENTSTACK_ORGANIZATION_UID` does NOT help: the MCP takes the org from the OAuth token, not that env var, so it has no effect on CMA auth.)
+
+**Recommended — agent drives the menus via a PTY (the agent CAN open the browser for you).** The menus need a TTY, but `expect` allocates one, so the agent auto-selects the first two defaults, **navigates to the user's region** on the third menu, and lets the CLI open the browser. You only do the in-browser login. The region menu is 0-indexed — `NA=0, EU=1, AU=2, AZURE_NA=3, AZURE_EU=4, GCP_NA=5, GCP_EU=6` — so set `downs` to your region's index (do NOT assume NA):
+
+```expect
+# cs-auth.exp — run: expect cs-auth.exp   (background it)
+set downs 0                                  ;# <-- SET to region index: NA=0, EU=1, AU=2, AZURE_NA=3, AZURE_EU=4, GCP_NA=5, GCP_EU=6
+set timeout 60                               ;# short — menus render fast
+spawn npx -y @contentstack/mcp --auth
+expect "Select an action"              ; send "\r"   ;# Authorization (default)
+expect "Authorization actions"         ; send "\r"   ;# Login (default)
+expect "Select your Contentstack region"
+for {set i 0} {$i < $downs} {incr i} { send "\033\[B" }  ;# arrow-down to the chosen region
+send "\r"
+set timeout 1800                             ;# 30 min — generous window for the human browser login (must exceed how long login takes)
+expect eof                                            ;# CLI prints URL, opens browser, waits for the localhost:8184 callback
+```
+
+Run it backgrounded, then read the log for `Opening browser…` + the `https://app.contentstack.com/…/authorize` URL (hand that URL to the user as a fallback if the auto-open is blocked). The user completes the login in the browser; the CLI's `localhost:8184` callback finishes it (`Authentication completed successfully`). If the login window may exceed 30 min (MFA/SSO enrollment), raise the second `set timeout` or use `set timeout -1` so the callback server isn't killed mid-login.
+
+**Fallback — user runs it in their own terminal** (no `expect`, or the agent can't spawn a PTY): the `!` prefix gives a real TTY:
+
+```
+! npx @contentstack/mcp --auth
+```
+Then they arrow through Authorization → Login → region and log in.
+
+Either way, tokens are saved locally and auto-reused; the region + org are stored in the session.
+
+### Step 4 — Register the MCP server
+
+**claude-code CLI:**
+```bash
+claude mcp add contentstack -e GROUPS=cma,cma-extended -- npx -y @contentstack/mcp
+```
+
+**Claude Desktop / Cursor / VS Code (JSON config):**
+```json
+{
+  "mcpServers": {
+    "contentstack": {
+      "command": "npx",
+      "args": ["-y", "@contentstack/mcp"],
+      "env": { "GROUPS": "cma,cma-extended" }
+    }
+  }
+}
+```
+Config locations: Claude Desktop (macOS) `~/Library/Application Support/Claude/claude_desktop_config.json` · Cursor `~/.cursor/mcp.json` · VS Code extension MCP panel. Restart the IDE / `claude` session so the server registers.
+
+> `GROUPS=cma,cma-extended` enables the write tools the provisioning skills need. Add `cda` only if a skill needs published-content reads. Do NOT set a `CONTENTSTACK_MANAGEMENT_TOKEN` when using OAuth — the stored session is the credential.
+
+### Step 5 — Choose the target stack (a loop: new-or-existing → permission → recover)
+
+The MCP operates on ONE stack (`CONTENTSTACK_API_KEY`), which **MUST belong to the OAuth'd org** (Step 3's captured `organization_uid`) — a key from another org fails the smoke test (Step 6). Run this loop; it exits only when an existing key is supplied OR a new stack is created successfully.
+
+**Q1 — ask after EVERY org selection** (first login AND after any "new org" re-auth below): *"Create a new stack, or choose an existing stack?"*
+
+- **Choose existing stack** → user supplies an `api_key` (from [`install-playwright-mcp`](../install-playwright-mcp/SKILL.md) Step 5b `CS_RECENT_STACK_API_KEY`, or pasted). Confirm it's in the OAuth'd org. → **go to "Set the key" (loop exit).**
+
+- **Create a new stack** → the MCP has **no stack-create tool** → raw CMA `POST /v3/stacks` (header `organization_uid: <org>`, auth = OAuth access_token as `Bearer` or a pasted authtoken; body `{ stack: { name, master_locale: "en-us" } }`). Confirm name + org first (real mutation). **Always attempt it — the create IS the permission check.** Branch on the response:
+  - **HTTP 201** → capture `api_key` → **go to "Set the key" (loop exit).**
+  - **HTTP 403, `error_code 316`, `"You don't have the permission to do this operation."`** (verified) → the user lacks stack-create rights in this org. Do NOT crash. **Q2 — ask: *"No permission to create here — choose an existing stack, or a different org?"*** (only these two; admin-rights is an out-of-band footnote):
+    - **Choose existing stack** → user pastes `api_key` → **go to "Set the key" (loop exit).**
+    - **Choose different org** → **re-run Step 3 — the browser re-opens.** Before logging in, the user switches their **active org** (Contentstack top-left switcher) to one where they can create (there's no in-flow org-picker — the login captures the active org). New org captured → **loop back to Q1** (re-ask new-vs-existing for the new org). Repeat until exit.
+
+**Set the key** (loop exit): the server was registered keyless in Step 4, and **`claude mcp add` errors if the name already exists** — so **remove, then re-add** with the key (CLI), or edit the `env` block directly (JSON config), then restart → Step 6:
+
+```bash
+claude mcp remove contentstack
+claude mcp add contentstack -e GROUPS=cma,cma-extended -e CONTENTSTACK_API_KEY=<blt...> -- npx -y @contentstack/mcp
+```
+
+For multi-stack work in one session, repeat this remove-then-re-add when switching stacks.
+
+> **Why a restart is needed — and how to have only ONE.** The stack is bound to `CONTENTSTACK_API_KEY` **at server-process start**. There is **no hot-reload** (changing the env on a running process has no effect), **no per-call stack override** (the tools take `branch`, not an `api_key` — verified), and **no `claude mcp reconnect/restart`** subcommand (only add/remove/list/get/login/logout). So changing the target stack ALWAYS requires the server to respawn = one session restart — this is a Claude Code + MCP limitation, not something this skill can auto-fix. **To keep it to exactly one restart: finish the Step 5 loop and resolve the FINAL stack BEFORE the restart, then register + restart once — never re-register mid-build.** Switching to a different stack later is one restart each. If you genuinely cannot restart (long continuous flow), **provision via raw `curl` + the OAuth Bearer token instead** — no MCP, no restart, at the cost of not using the MCP tools.
+
+### Step 6 — Smoke test
+
+After a **session restart** (so the MCP's tools load into the agent's toolset), call a read tool: `get_all_content_types` (or `get_all_environments`) against the configured stack. Pass = returns real CT/env data.
+
+**Fail mode — `MCP error -32603: … Cannot read properties of undefined (reading 'data')`.** The server crashed on an undefined CMA response (no clean 401/403). Most often a **stale OAuth token → re-auth (Step 3) for a fresh one** (the actual fix in testing); otherwise the stack is in the wrong org/region, or is a non-prod stack. See the `-32603` and wrong-org rows in *Common pitfalls* for the full triage.
+
+Note `claude mcp list` showing `✔ Connected` only means the server *process* started — it does NOT confirm CMA calls work. The tool call is the real test.
+
+### Step 7 — Write the session flag
+
+Record an in-conversation note downstream skills read. Get the org by reading `organization_uid` from the stored token (`~/Library/Application Support/ContentstackMCP/oauth-config.json`). **Use the exact flag names the provisioning skills + the Playwright hook already consume** (`CS_RECENT_STACK_API_KEY`, `CS_ACTIVE_ORG`) — a differently-named key is never read:
+```
+CONTENTSTACK_MCP_READY=true
+CS_MCP_REGION=<region picked in --auth>
+CS_ACTIVE_ORG=<organization_uid from the OAuth token>
+CS_RECENT_STACK_API_KEY=<blt...>
+```
+Downstream skills check `CONTENTSTACK_MCP_READY` and read `CS_RECENT_STACK_API_KEY`; if absent they fall back to curl + a pasted authtoken.
+
+### Step 8 — Tell the user what's now automated
+
+Print:
+```
+✅ Contentstack MCP installed + authenticated.
+
+Runs as tool calls now (no curl, no pasted authtoken):
+  • provision-studio-stack       — global fields, CTs, entries, asset dedupe + publish
+  • provision-studio-project     — compositions CT create + environment create
+  • author-composition-via-api   — entry create/update + publish
+
+STILL raw HTTP (not in MCP scope) — authtoken/OAuth still needed for these:
+  • provision-studio-project     — /v1/projects (Studio API), delivery+preview token, enable Live Preview, stack-create
+  • provision-studio-stack       — asset binary UPLOAD (no MCP tool) + the CDA verify (delivery-host read)
+  • stack API key                — you supply once (org is auto-captured by the login; MCP can't enumerate stacks)
+  • anything on dev11/csnonprod  — prod DCs only
+```
+
+## Inputs needed from the user
+
+1. `ide` — picks the config path.
+2. `region` — the prod DC the stack lives in (drives the Step 3 region-menu selection). Must be one of the 7 prod regions.
+3. `stackApiKey` — the target stack (in the OAuth'd org); from Playwright MCP's `CS_RECENT_STACK_API_KEY` or pasted once. Org is NOT an input — it's auto-captured by the login.
+4. `existing vs new stack` — Step 5 branch.
+
+## Acceptance
+
+- [ ] Target stack confirmed **prod** (not dev11/csnonprod) BEFORE offering.
+- [ ] User offered the recommendation in non-pushy framing, with the prod-only + "you supply the stack key" caveats stated.
+- [ ] If declined: no further prompts this session.
+- [ ] If accepted: `claude mcp list` shows `contentstack`; `--auth` completed (browser OAuth, region selected, org auto-captured).
+- [ ] Stack key resolved (existing pasted, or new stack created) AND it belongs to the OAuth'd org.
+- [ ] Smoke test (`get_all_content_types` / `get_all_environments`) returns real data — NOT just `✔ Connected`. On the `-32603 …'data'` crash, re-auth for a fresh token and retry.
+- [ ] Session note written: `CONTENTSTACK_MCP_READY=true`, region, org, stack API key.
+- [ ] User told which provisioning steps run as tools vs stay raw HTTP.
+
+## Common pitfalls
+
+| Pitfall | Why it bites | Fix |
+|---|---|---|
+| Trying to use it against a **dev11 / csnonprod** stack | The CLI hardcodes 7 prod DCs; no non-prod host, no override env var — CMA calls just fail | Confirm the stack is prod before offering. For non-prod, use the skills' raw-`curl` path (sets the `csnonprod` host) |
+| Smoke test crashes: `-32603 … Cannot read properties of undefined (reading 'data')` | Server got an undefined CMA response and didn't surface the real 401/403 | **Re-auth for a fresh token first** (the actual fix in testing). Else: stack not in the OAuth'd org, wrong region, or non-prod stack |
+| Expecting to paste `org_id` | The OAuth token auto-captures `organization_uid` — asking for it is redundant | Read it from the token; only the **stack** key is a manual input |
+| Stack `api_key` from a different org than the login | CMA can't read it → the `-32603` crash above | Use a key in the OAuth'd org; or re-auth into the owning org (switch default org first — there's no org-picker in `--auth`) |
+| `POST /v3/stacks` (new-stack) → **HTTP 403, `error_code 316`** `"You don't have the permission to do this operation."` | The user lacks stack-create rights in that org (verified against a real no-permission org) | Show the clear message (Step 5): get rights / switch org (re-auth) / use existing. Don't crash or retry blindly |
+| Assuming it provisions the Studio project | `/v1/projects` (Studio API) is out of scope; only CMA + related | Keep `provision-studio-project` steps 3/5/9 (LP-enable, tokens, project register) on raw HTTP |
+| Using the MCP OAuth token to call `/v1/projects` | The Studio project API needs a user **session** authtoken — the OAuth token 401s (`error_code 105` "authtoken is not valid") as `authtoken:`, 422s (`error_code 21` "Stack not found") as `Bearer`; a management token 401s too | Paste a browser **session authtoken** (DevTools → any `api.contentstack.io` request → `authtoken` header), or `POST /v3/user-session`, or create the project in the Studio UI. MCP auth ≠ Studio-API auth |
+| Expecting a delivery/preview-token tool | None exists ("requires manual setup") | Create tokens via raw CMA `POST /v3/stacks/delivery_tokens` (both env + branch scope) |
+| Setting a management token alongside OAuth | Ambiguous credential; may target the wrong stack/region | With OAuth, omit `CONTENTSTACK_MANAGEMENT_TOKEN`; the stored session is the credential |
+| `GROUPS` too narrow (`cma` only) | Some skills need CMA-extended (workflows/versions) | Register with `GROUPS=cma,cma-extended` |
+| `--auth` dies instantly: `Error: User force closed the prompt with 0 null` | Run in a shell with **no TTY** — the arrow-key menus can't read input | Agent path: drive it via `expect` (Step 3 — allocates a PTY, auto-selects the 3 menu defaults, `open()` launches the browser). User path: `! npx @contentstack/mcp --auth` for a real TTY |
+| MCP installed but not restarted | Tools don't appear; skills silently fall back to curl | Restart the `claude` session / IDE after `claude mcp add` — MCP tool schemas load at session start |
+| `claude mcp list` shows `✔ Connected` → assuming CMA works | "Connected" only means the server process started, not that CMA calls succeed | Confirm with an actual read tool (Step 6), not the connection status |
+| Session flag lost to context compaction | Downstream skill re-prompts for authtoken mid-flow | Re-run the Step 6 smoke test when a provisioning skill starts rather than trusting the flag indefinitely |
+
+## See also
+
+- [`install-playwright-mcp`](../install-playwright-mcp/SKILL.md) — discovers `org_id` + stack API key from the UI; the complement this MCP can't do.
+- [`provision-studio-project`](../provision-studio-project/SKILL.md) — CT-create + env-create route through MCP; `/v1/projects` + tokens stay raw HTTP.
+- [`provision-studio-stack`](../provision-studio-stack/SKILL.md) — CTs, entries, assets, publish all route through MCP tools.
+- [`author-composition-via-api`](../author-composition-via-api/SKILL.md) — entry create + publish via MCP; the `ui`/`data_sources` shape is unchanged.
+- Reference: `@contentstack/mcp` on npm · `contentstack.com/docs/agent-os/contentstack-mcp-server`.

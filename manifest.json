@@ -1,11 +1,61 @@
 {
   "exported_at": "2026-04-28T08:27:32.000Z",
-  "skill_count": 21,
+  "skill_count": 87,
   "skills": [
+    {
+      "slug": "adapt-collection-component",
+      "title": "Adapt a production collection-shaped component into a Studio List Section",
+      "product": "Studio"
+    },
+    {
+      "slug": "analyze-project-fit",
+      "title": "Analyze project fit — pre-flight diagnostic for Studio install",
+      "product": "Studio"
+    },
+    {
+      "slug": "author-composition-via-api",
+      "title": "Author a composition by API (the manual contract)",
+      "product": "Studio"
+    },
+    {
+      "slug": "author-without-code",
+      "title": "Author a page in Studio — no code required",
+      "product": "Studio"
+    },
     {
       "slug": "brand-kit-assistant",
       "title": "Brand Kit Assistant",
       "product": "Brand Kit"
+    },
+    {
+      "slug": "build-connected-template",
+      "title": "Build a Connected Template in Studio",
+      "product": "Studio"
+    },
+    {
+      "slug": "build-freeform-template",
+      "title": "Build a Freeform template",
+      "product": "Studio"
+    },
+    {
+      "slug": "build-repeating-section",
+      "title": "Build a repeating Section — parent + child pattern",
+      "product": "Studio"
+    },
+    {
+      "slug": "build-section",
+      "title": "Build a Section",
+      "product": "Studio"
+    },
+    {
+      "slug": "byoc-end-to-end",
+      "title": "BYOC end-to-end — from registered components to a rendered Template",
+      "product": "Studio"
+    },
+    {
+      "slug": "choose-connected-vs-freeform",
+      "title": "Choose Connected vs Freeform Template",
+      "product": "Studio"
     },
     {
       "slug": "cms-assets",
@@ -78,9 +128,44 @@
       "product": "CMS"
     },
     {
+      "slug": "configure-csr-vs-ssr",
+      "title": "Configure CSR vs SSR for a Studio composition route",
+      "product": "Studio"
+    },
+    {
+      "slug": "configure-studio",
+      "title": "Configure a Studio project",
+      "product": "Studio"
+    },
+    {
+      "slug": "decompose-design",
+      "title": "Decompose a design into Studio's three layers",
+      "product": "Studio"
+    },
+    {
+      "slug": "decompose-site",
+      "title": "Decompose an entire site — one schema, N build sheets, zero duplicate registrations",
+      "product": "Studio"
+    },
+    {
+      "slug": "deploy-studio-site",
+      "title": "Deploy a Studio site",
+      "product": "Studio"
+    },
+    {
+      "slug": "design-section-from-jsx",
+      "title": "Design a section's linked schema from existing JSX",
+      "product": "Studio"
+    },
+    {
       "slug": "developer-hub-app-architect",
       "title": "Developer Hub App Architect",
       "product": "Developer Hub"
+    },
+    {
+      "slug": "discover-sections",
+      "title": "Discover sections — propose a build-order from your existing routes",
+      "product": "Studio"
     },
     {
       "slug": "dx-delivery-sdk",
@@ -93,6 +178,61 @@
       "product": "Developer Experience"
     },
     {
+      "slug": "embed-composition",
+      "title": "Embed a Studio-managed region inside a code-owned page",
+      "product": "Studio"
+    },
+    {
+      "slug": "enable-visual-experience",
+      "title": "Enable Visual Experience + Live Preview at the stack level",
+      "product": "Studio"
+    },
+    {
+      "slug": "expose-section-props",
+      "title": "Expose Section Props",
+      "product": "Studio"
+    },
+    {
+      "slug": "figma-generate-components",
+      "title": "Generate Studio components from a Figma design",
+      "product": "Studio"
+    },
+    {
+      "slug": "gate-third-party-scripts",
+      "title": "Gate third-party scripts out of the Studio canvas",
+      "product": "Studio"
+    },
+    {
+      "slug": "import-content",
+      "title": "Import content into Contentstack CTs — idempotent, resumable, asset-aware",
+      "product": "Studio"
+    },
+    {
+      "slug": "import-design-tokens",
+      "title": "Import design tokens into Studio",
+      "product": "Studio"
+    },
+    {
+      "slug": "install-contentstack-mcp",
+      "title": "Install Contentstack MCP — optional CMA auth + execution layer",
+      "product": "Studio"
+    },
+    {
+      "slug": "install-live-preview",
+      "title": "Install Live Preview standalone",
+      "product": "Studio"
+    },
+    {
+      "slug": "install-playwright-mcp",
+      "title": "Install Playwright MCP — optional acceleration layer",
+      "product": "Studio"
+    },
+    {
+      "slug": "install-studio",
+      "title": "Install Studio in this project",
+      "product": "Studio"
+    },
+    {
       "slug": "launch-sync-environment-variables-from-env-example",
       "title": "Sync Launch environment variables from .env.example",
       "product": "Launch"
@@ -103,9 +243,199 @@
       "product": "Launch"
     },
     {
+      "slug": "migrate-ct-schema",
+      "title": "Migrate a Content Type schema — dry-run planned, dual-write executed, rollback documented",
+      "product": "Studio"
+    },
+    {
+      "slug": "migrate-page-to-studio",
+      "title": "Migrate one hand-coded page to a Studio template",
+      "product": "Studio"
+    },
+    {
       "slug": "migration-companion",
       "title": "Contentstack Migration Companion",
       "product": "Developer Experience"
+    },
+    {
+      "slug": "pin-entry-to-freeform",
+      "title": "Pin Entry to Freeform Template",
+      "product": "Studio"
+    },
+    {
+      "slug": "pin-query-to-freeform",
+      "title": "Pin a CDA query to a Freeform template",
+      "product": "Studio"
+    },
+    {
+      "slug": "plan-studio-architecture",
+      "title": "Plan the Studio architecture from project requirements",
+      "product": "Studio"
+    },
+    {
+      "slug": "provision-studio-project",
+      "title": "Provision Studio Project (API-first)",
+      "product": "Studio"
+    },
+    {
+      "slug": "provision-studio-stack",
+      "title": "Provision Studio Stack (CTs, entries, assets)",
+      "product": "Studio"
+    },
+    {
+      "slug": "register-breakpoints",
+      "title": "Register Breakpoints (default + tablet + mobile)",
+      "product": "Studio"
+    },
+    {
+      "slug": "register-component",
+      "title": "Register a component with Studio",
+      "product": "Studio"
+    },
+    {
+      "slug": "register-json-rte",
+      "title": "Register a JSON RTE renderer",
+      "product": "Studio"
+    },
+    {
+      "slug": "setup-local-https-canvas",
+      "title": "Set up locally-trusted HTTPS for the canvas-app",
+      "product": "Studio"
+    },
+    {
+      "slug": "setup-section-preview",
+      "title": "Set up the section preview route",
+      "product": "Studio"
+    },
+    {
+      "slug": "setup-template-preview-routes",
+      "title": "Wire template preview routes",
+      "product": "Studio"
+    },
+    {
+      "slug": "start-here-zero-knowledge",
+      "title": "Start here — Studio from zero",
+      "product": "Studio"
+    },
+    {
+      "slug": "studio-tour",
+      "title": "Studio Tour — start here",
+      "product": "Studio"
+    },
+    {
+      "slug": "troubleshoot",
+      "title": "Troubleshoot Studio — symptom router",
+      "product": "Studio"
+    },
+    {
+      "slug": "troubleshoot-canvas",
+      "title": "Troubleshoot Studio canvas issues",
+      "product": "Studio"
+    },
+    {
+      "slug": "troubleshoot-composition-resolution",
+      "title": "Troubleshoot composition URL resolution",
+      "product": "Studio"
+    },
+    {
+      "slug": "troubleshoot-data-binding",
+      "title": "Troubleshoot Studio data binding",
+      "product": "Studio"
+    },
+    {
+      "slug": "troubleshoot-ssr-rendering",
+      "title": "Troubleshoot Studio SSR / RSC rendering failures",
+      "product": "Studio"
+    },
+    {
+      "slug": "understand-authoring-headlessly",
+      "title": "What API-authoring a composition means",
+      "product": "Studio"
+    },
+    {
+      "slug": "understand-auto-binding",
+      "title": "How auto-binding works",
+      "product": "Studio"
+    },
+    {
+      "slug": "understand-canvas-url",
+      "title": "What is the Canvas URL?",
+      "product": "Studio"
+    },
+    {
+      "slug": "understand-canvas-vs-component",
+      "title": "`<StudioCanvas />` vs `<StudioComponent />` — the Sections-vs-Templates axis",
+      "product": "Studio"
+    },
+    {
+      "slug": "understand-installation",
+      "title": "What installing Studio adds to your project",
+      "product": "Studio"
+    },
+    {
+      "slug": "understand-linked-schemas",
+      "title": "What is a linked schema?",
+      "product": "Studio"
+    },
+    {
+      "slug": "understand-section-slots",
+      "title": "What is a Section Slot?",
+      "product": "Studio"
+    },
+    {
+      "slug": "understand-sections",
+      "title": "What is a Section?",
+      "product": "Studio"
+    },
+    {
+      "slug": "understand-templates",
+      "title": "What is a Template?",
+      "product": "Studio"
+    },
+    {
+      "slug": "upgrade-studio-sdk",
+      "title": "Upgrade the Studio SDK packages",
+      "product": "Studio"
+    },
+    {
+      "slug": "use-condition-block",
+      "title": "Use a Condition Block",
+      "product": "Studio"
+    },
+    {
+      "slug": "use-repeater",
+      "title": "Use a Repeater",
+      "product": "Studio"
+    },
+    {
+      "slug": "use-section-slot",
+      "title": "Use a Section Slot",
+      "product": "Studio"
+    },
+    {
+      "slug": "verify-setup",
+      "title": "Verify Studio setup end-to-end",
+      "product": "Studio"
+    },
+    {
+      "slug": "verify-visual-parity",
+      "title": "Verify visual parity — composed vs production, Section by Section",
+      "product": "Studio"
+    },
+    {
+      "slug": "wire-component-default-data",
+      "title": "Wire Component Default Data",
+      "product": "Studio"
+    },
+    {
+      "slug": "wire-external-data",
+      "title": "Wire External Data",
+      "product": "Studio"
+    },
+    {
+      "slug": "wire-variant-alias",
+      "title": "Wire a route-level branch to variant aliases",
+      "product": "Studio"
     }
   ]
 }
