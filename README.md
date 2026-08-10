@@ -1,6 +1,6 @@
 # Contentstack Skills
 
-A bundle of 21 ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools, covering CMS implementation, Brand Kit guidance, delivery SDK development, migration workflows, Developer Hub app architecture, and Launch automation.
+A bundle of 22 ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools, covering CMS implementation, Brand Kit guidance, delivery SDK development, kickstart maintenance, migration workflows, Developer Hub app architecture, and Launch automation.
 
 ## What's in here?
 
@@ -21,7 +21,7 @@ You only need to install one. Pick the section below that matches your tool.
 ### Claude Code
 
 ```
-/plugin marketplace add <this-repo>
+/plugin marketplace add contentstack/contentstack-agent-skills
 /plugin install contentstack-skills
 ```
 
@@ -35,16 +35,18 @@ Install via Cursor's plugin marketplace, **or** copy `cursor/rules/*.mdc` into y
 
 Point your agent at this repo or copy the `codex/` directory into your project. The entry point is [`codex/AGENTS.md`](codex/AGENTS.md).
 
+Repository: [github.com/contentstack/contentstack-agent-skills](https://github.com/contentstack/contentstack-agent-skills)
+
 ### Gemini CLI
 
 ```
-gemini extensions install <this-repo>
+gemini extensions install contentstack/contentstack-agent-skills
 ```
 
 ### skills CLI (single skill on demand)
 
 ```
-npx skills add <this-repo>@<skill-slug>
+npx skills add contentstack/contentstack-agent-skills@<skill-slug>
 ```
 
 ## Skills included
@@ -68,6 +70,7 @@ npx skills add <this-repo>@<skill-slug>
 | `cms-workflows` | Workflows & Publish Rules | CMS | Workflow stages, approval flows, transition restrictions, publish governance, automation hooks, and common pitfalls. |
 | `developer-hub-app-architect` | Developer Hub App Architect | Developer Hub | Developer Hub and Marketplace app planning, UI location choices, React/TypeScript scaffolding, setup, SDK, manifest, proxy, and publishing issues. |
 | `dx-delivery-sdk` | Delivery SDK | Developer Experience | Production-ready TypeScript with `@contentstack/delivery-sdk` for entries, assets, references, filters, sorting, pagination, locales, Live Preview, and Visual Builder. |
+| `dx-kickstart-next` | Contentstack Kickstart Next | Developer Experience | Maintaining Contentstack's Next.js kickstart: App Router structure, Delivery SDK setup, Live Preview, seeded stack alignment, env vars, validation, and PR reviews. |
 | `dx-migrate-js-to-ts-sdk` | Migrate JS to TS SDK | Developer Experience | Migration from the JavaScript Contentstack SDK to the TypeScript Delivery SDK, including API mapping, rewrites, and unsupported pattern callouts. |
 | `launch-sync-environment-variables-from-env-example` | Sync Launch environment variables from .env.example | Launch | Comparing a local `.env.example` with Launch environment variables and patching missing keys without printing secrets. |
 | `launch-trigger-and-monitor-launch-deployments` | Trigger and Monitor Launch Deployments | Launch | Triggering Launch deployments, polling deployment status, retrieving failure logs, and summarizing likely causes and next steps. |
@@ -92,10 +95,13 @@ skills/CLAUDE.md (router)  ──► cursor/rules/00-router.mdc
 .github/workflows/     CI that regenerates cursor/rules and codex on push
 codex/                 Generated Codex tree — do not edit
 cursor/rules/          Generated Cursor rules — do not edit
+docs/                  Official documentation source for the skills bundle
 scripts/               Contributor build scripts
 skills/                Source of truth — edit here
 gemini-extension.json  Gemini CLI extension manifest
 ```
+
+The `docs/` directory contains the official documentation pages for installation, setup verification, architecture, contributing, and the skill reference.
 
 ## Editing skills
 
