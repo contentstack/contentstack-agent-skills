@@ -12,7 +12,7 @@ The same skills are packaged in five formats so you can use whichever tool fits 
 - **Cursor** — rule files (`cursor/rules/`)
 - **Codex / OpenAI agents** — markdown tree (`codex/`)
 - **Gemini CLI** — extension manifest (`gemini-extension.json`)
-- **[skills](https://github.com/anthropics/skills) CLI** — pulls any single skill on demand
+- **`skills` CLI** — pulls any single skill on demand
 
 You only need to install one. Pick the section below that matches your tool.
 
@@ -21,7 +21,7 @@ You only need to install one. Pick the section below that matches your tool.
 ### Claude Code
 
 ```
-/plugin marketplace add <this-repo>
+/plugin marketplace add contentstack/contentstack-agent-skills
 /plugin install contentstack-skills
 ```
 
@@ -38,13 +38,33 @@ Point your agent at this repo or copy the `codex/` directory into your project. 
 ### Gemini CLI
 
 ```
-gemini extensions install <this-repo>
+gemini extensions install https://github.com/contentstack/contentstack-agent-skills
 ```
 
-### skills CLI (single skill on demand)
+### skills CLI
+
+Install the whole bundle:
 
 ```
-npx skills add <this-repo>@<skill-slug>
+npx skills add contentstack/contentstack-agent-skills
+```
+
+Install a single skill:
+
+```
+npx skills add contentstack/contentstack-agent-skills@<skill-slug>
+```
+
+or, using the full repo URL and the `--skill` flag:
+
+```
+npx skills add https://github.com/contentstack/contentstack-agent-skills --skill <skill-slug>
+```
+
+Install several specific skills in one command by repeating `--skill`:
+
+```
+npx skills add contentstack/contentstack-agent-skills --skill <skill-slug-1> --skill <skill-slug-2>
 ```
 
 ## Skills included
