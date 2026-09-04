@@ -101,6 +101,12 @@ reproduces the failure. If you cannot reproduce it, you have a hypothesis, not a
 collecting. A fix that "works" without a reproduced baseline may be working for a reason you have not
 identified, and you will not know which.
 
+**Transition rule:** any transition restarts at step 2. Worked then broke, a gate that advanced then
+regressed, a new error replacing an old one: each is a regression from a known state, and the first
+question is what changed since it last worked. Include your own edits in that question, not only the
+user's. Mid-session, the change most likely to have caused a transition is the one you just made, and
+it is also the one you are least likely to suspect.
+
 ### Step 1. Which product?
 
 Ask explicitly. Users say "preview" for all of them, and they do not share a setup path, an
@@ -125,7 +131,10 @@ documentation for the framework and mode. Do not reconstruct setup steps from me
 here when the documented setup is in place and something still fails.
 
 **Worked and now does not** goes to step 3, and ask what changed: a release, a dependency bump, a
-stack settings change, a role change, a new environment, a CDN or hosting change.
+stack settings change, a role change, a new environment, a CDN or hosting change. This question is not
+only for intake. Every transition during the session, such as a gate that advanced and then regressed
+or a new error replacing the old one, comes back here, and the list of changes must include every
+edit you made since the last known-good state, not only the user's.
 
 ### Step 3. Read the Onboarding Check
 
