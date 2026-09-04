@@ -95,6 +95,12 @@ it, and go get it. Confidence is the cue to do this, not the excuse to skip it. 
 a mode assumption: the code reads one way, and the Onboarding Check card or the network tab says
 otherwise. When they disagree, the observed behaviour wins over the intended one.
 
+**Reproduction rule:** no code change without a reproduced failure. Before editing application code,
+state the contract you believe is broken, the evidence for it, and the command or action that
+reproduces the failure. If you cannot reproduce it, you have a hypothesis, not a diagnosis. Keep
+collecting. A fix that "works" without a reproduced baseline may be working for a reason you have not
+identified, and you will not know which.
+
 ### Step 1. Which product?
 
 Ask explicitly. Users say "preview" for all of them, and they do not share a setup path, an
@@ -332,8 +338,11 @@ ordered checks.
 
 ### Step 7. Fix, verify, or hand to Contentstack Support
 
-Propose the smallest correct change at the right layer: init, tagging, fetch, cache boundary,
-routing, or stack configuration. Then give one verification the user runs themselves.
+Before proposing any change, satisfy the reproduction rule: contract, evidence, and the action that
+reproduces the failure, stated in that order. Then propose the smallest correct change at the right
+layer: init, tagging, fetch, cache boundary, routing, or stack configuration, and give one verification
+the user runs themselves. The verification is the reproduction step run again with the opposite
+result.
 
 Some causes sit outside the user's application entirely: stack provisioning, plan gating, and
 browser policy. Recognising one early beats any workaround, because no change to the site can
