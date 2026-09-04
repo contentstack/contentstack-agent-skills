@@ -101,6 +101,29 @@ import { VB_EmptyBlockParentClass } from "@contentstack/live-preview-utils";
 
 Hover and click on the marked wrapper draw no outline; the button is the affordance.
 
+## Variants
+
+Highlight Variant and audience mode key on v2 tags:
+`v2:<ct>.<entry_uid>_<variant_uid>.<locale>.<field>`. `addEditableTags()` emits them only for fields
+listed in the entry's `_applied_variants`, and the response includes that map only when the request
+carries `include_applied_variants=true`. Pass it on the content request, not on the Live Preview
+config:
+
+```js
+// Honoured: a query parameter on the request itself
+stack.contentType(ct).entry().query().addParams({ include_applied_variants: "true" }).find();
+stack.contentType(ct).entry(uid).addParams({ include_applied_variants: "true" }).fetch();
+// REST: ...&include_applied_variants=true
+
+// Accepted by the types, never sent (delivery-sdk 5.6.0, core 1.5.2)
+stack.livePreviewQuery({ live_preview: hash, include_applied_variants: true });
+contentstack.stack({ live_preview: { enable: true, include_applied_variants: true } });
+```
+
+Leave it on for delivery traffic; with no variant applied the response is unchanged. Never pass the
+variant uid yourself, the Preview Service applies it from the UI selection. One flag on the page
+query covers references that `includeReference()` resolved.
+
 ## Verify
 
 - `document.querySelectorAll('[data-cslp]')` in DevTools should account for every key you expect

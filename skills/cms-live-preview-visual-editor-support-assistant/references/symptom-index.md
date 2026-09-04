@@ -60,6 +60,7 @@ SKILL.md before reading anything below.
 | A page or component with an empty modular-block / multiple field shows no "+ Add Component" affordance, so aut… | [empty-block-add-button-not-appearing-or-failing](faq-visual-editor.md#empty-block-add-button-not-appearing-or-failing) |
 | With GraphQL, edit tags are generated but Visual Editor cannot resolve them | [graphql-connection-wrappers-break-cslp](faq-visual-editor.md#graphql-connection-wrappers-break-cslp) |
 | Interactive components stop working inside the editor canvas: carousel arrows, tab strips, accordions, dropdow… | [canvas-swallows-site-click-events](faq-visual-editor.md#canvas-swallows-site-click-events) |
+| Variant content renders on the canvas but Highlight Variant outlines nothing and audience mode shows no variant fields | [highlight-variant-or-audience-mode-does-nothing](faq-visual-editor.md#highlight-variant-or-audience-mode-does-nothing) |
 
 ## Timeline
 

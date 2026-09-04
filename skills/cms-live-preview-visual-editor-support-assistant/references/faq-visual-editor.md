@@ -86,6 +86,22 @@ If nothing on the canvas is editable at all, start with `edit-tags-not-generated
 
 ---
 
+### highlight-variant-or-audience-mode-does-nothing
+- **bucket**: visual-editor
+- **symptom**: Variant content renders correctly on the canvas, but Highlight Variant outlines nothing and audience mode shows no variant-specific fields. No error anywhere. Every `data-cslp` on the page is v1 (`<ct>.<uid>.<locale>.<field>`); none starts with `v2:`.
+- **frameworks**: any
+- **rendering_modes**: any
+- **root_cause**: `addEditableTags()` emits a `v2:<ct>.<entry_uid>_<variant_uid>.<locale>.<field>` tag only for fields listed in the entry's `_applied_variants`. That map is in the response only when the content request carries `include_applied_variants=true`. Without it every tag is v1, the SDK parses no variant, and both features have nothing to key on. Content still renders correctly because the Preview Service already applied the variant, which is why this looks like a highlighting bug rather than a fetch problem. Two places look like they set the flag and do not: `livePreviewQuery({ include_applied_variants: true })` and `include_applied_variants` on the Stack's `live_preview` config are accepted by the delivery-sdk types and stored, but `@contentstack/core` never reads them off that config, so the flag never reaches the request (checked against delivery-sdk 5.6.0, core 1.5.2).
+- **fix**:
+  1. Pass it as a query parameter on the content request itself. Delivery SDK: `.addParams({ include_applied_variants: "true" })` on the query chain (`.entry().query().addParams(...)`) or on a single-entry fetch (`.entry(uid).addParams(...)`). REST: append `include_applied_variants=true` to the URL.
+  2. Do not route it through `livePreviewQuery()` or the Stack `live_preview` config. Both drop it silently.
+  3. Leave it on for delivery traffic too. When no variant applies the response carries no `_applied_variants` and is otherwise unchanged, so a preview-only branch buys nothing.
+  4. One flag on the page query covers referenced entries that `includeReference()` resolved; `addEditableTags()` reads `_applied_variants` per reference.
+  5. Never pass the variant uid yourself. The Preview Service applies it from the UI selection; `Entries.variants()` and `x-cs-variant-uid` are for regular delivery.
+- **verification**: With a variant selected, inspect a variantised field in DevTools. Its `data-cslp` starts with `v2:` and the entry segment reads `<entry_uid>_<variant_uid>`. Highlight Variant now outlines it.
+
+---
+
 ### canvas-swallows-site-click-events
 - **bucket**: visual-editor
 - **symptom**: Interactive components stop working inside the editor canvas: carousel arrows, tab strips, accordions, dropdowns and links do nothing when clicked, while the same page works normally outside the editor. Often noticed as soon as a parent container gets a `data-cslp`.
