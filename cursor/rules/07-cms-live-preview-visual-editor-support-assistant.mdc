@@ -115,7 +115,7 @@ Onboarding Check, or a failure set.
 | Product | What it is | Notes |
 |---|---|---|
 | **Live Preview** | Side-by-side preview pane, content refresh only | The base. Everything else builds on it. |
-| **Visual Editor** (a.k.a. Visual Builder) | Live Preview plus on-canvas editing | Requires working Live Preview **plus** edit tags. Not a separate integration. |
+| **Visual Editor** (a.k.a. Visual Builder) | Live Preview plus on-canvas editing | Requires working Live Preview **plus** edit tags **plus** `mode: "builder"` in `init()`. `mode: "preview"` fails its Verify Mode gate even with tags present. Not a separate integration. |
 | **Timeline** | Preview at a point in time | Own Onboarding Check with different gates. |
 | **Preview Sharing** | Share a preview link externally | Plan-gated. |
 
@@ -149,10 +149,11 @@ they do the card is the one that reflects reality. Do step 3 first, then let ste
 Ask for the screenshot rather than the wording, because users paraphrase the step name and each
 name maps to a specific gate.
 
-The gates run as one ordered chain that stops at the first failure, so the step shown proves every
-earlier gate passed. Full gate list, meanings, and the Timeline variant are in
-[references/onboarding-check.md](references/onboarding-check.md). In short, for Live Preview and
-Visual Editor:
+Three products, three different checks. Confirm the product first. Full gate lists and meanings are
+in [references/onboarding-check.md](references/onboarding-check.md).
+
+**Live Preview** shows one card. The gates run as one ordered chain that stops at the first failure,
+so the step shown proves every earlier gate passed:
 
 | Card | Localises to |
 |---|---|
@@ -163,8 +164,13 @@ Visual Editor:
 | Default Environment Not Set | Setup is fine; no default preview environment on the stack |
 | Setup Complete | Reachability, handshake, version and Preview Service are all fine |
 
-**Timeline runs a different check.** Three gates, not these five, so do not map a Timeline card
-onto the table above:
+**Visual Editor shows a six-item list, not a card.** Every item is evaluated on its own and carries
+its own status, so read the failing items rather than the first one. Configure environment (Default
+Environment, Base URL), Install SDK, Verify Mode for Live Preview, Preview Token. Two of these bite
+customers who arrived from a Live Preview setup: Verify Mode fails on `mode: "preview"` (Visual
+Editor needs `mode: "builder"`), and Base URL is origin-exact against the page being previewed.
+
+**Timeline runs a third check.** Three gates, so do not map a Timeline card onto either table:
 
 | Card | Localises to |
 |---|---|
@@ -313,7 +319,7 @@ addEditableTags(entry, contentTypeUid, true, locale);
 <h1 {...data.$?.title}>{data.title}</h1>
 ```
 
-`mode: "builder"` does not generate tags; only `addEditableTags()` does, it mutates the entry and
+`mode: "builder"` does not generate tags; only `addEditableTags()` does, though `mode: "builder"` is still required because Visual Editor's Verify Mode gate fails on `mode: "preview"`, it mutates the entry and
 returns nothing, and the third argument must be `true` for React and JSX. Mirror the data path
 exactly, because references come back as arrays: `post.author[0].$?.name`, not
 `post.$?.author.name`. Tag the leaf element, one `data-cslp` per element, and call it on referenced
