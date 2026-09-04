@@ -1,17 +1,21 @@
 # The Onboarding Check
 
-Every visual experience product ships a setup check that runs automatically when the preview panel
-opens and reports its result in a small floating status card. It is the highest-yield thing to ask
+Every visual experience product ships a setup check that runs automatically when its panel opens.
+There are **three** of them, and they differ in both gates and shape: Live Preview shows one card
+with the first failing gate; Visual Editor shows a six-item list with a status per item; Timeline
+shows one card with three gates. Confirm which product the user is in before reading anything below. It is the highest-yield thing to ask
 about, because it has already run the diagnosis the user is asking you to do.
 
 **Always ask for a screenshot of this card before asking anything else.** The step name on it
 localises the problem to one gate, and because of how the check is structured, it also tells you
 everything that already passed.
 
-## The property that makes it powerful
+## The property that makes the Live Preview and Timeline cards powerful
 
-The gates are evaluated as a single ordered chain, and it stops at the first failure. Only one
-step is ever shown.
+For Live Preview and Timeline the gates are evaluated as a single ordered chain that stops at the
+first failure, so only one step is ever shown. **Visual Editor is different**: every item is evaluated
+independently and shown with its own status, so read the whole list rather than one card. The
+inference below applies to the single-card checks only.
 
 So a card reading "Preview Service Not Enabled" is not just one fact. It proves the website loaded
 in the frame, the SDK initialised, and the SDK version is supported. Three contracts are already
@@ -37,9 +41,35 @@ The exact body text is worth quoting back to users, because they often paraphras
 something ambiguous. Gate 1 reads "Ensure the website is live and accessible via Contentstack
 origins." Gate 4 reads "Please enable the Preview Service for a seamless live preview experience."
 
+## Visual Editor
+
+Visual Editor runs its own check, not Live Preview's. Six items, shown as a list with a status per
+item. Every item is evaluated independently (`steps.every(isComplete)`), so a partially green list is
+the normal way it looks while something is wrong, and the failing items are the ones to read. Card
+text as observed in the UI; the identifier is the implementation's step id.
+
+| # | Item (card text) | Step id | Passes when |
+|---|---|---|---|
+| 1 | Configure environment | `ENVIRONMENT` | both sub-steps below pass |
+| 1a | Default Environment | `LP_DEFAULT_ENV` | the environment in the preview URL's parameters exists on the stack |
+| 1b | Base URL | `BASE_URL` | that environment has a Base URL for the current locale, and its **origin matches the origin of the page being previewed**. A Base URL on a different host or scheme fails here even though the page loads |
+| 2 | Install SDK | `LP_SDK_VERSION` | Live Preview Utils major version is 3 or higher |
+| 3 | Verify Mode for Live Preview | `LP_SDK_INIT_MODE` | `init()` was called with `mode: "builder"`. **`mode: "preview"` fails this gate.** Edit tags alone do not get you a canvas |
+| 4 | Preview Token | `LP_SERVICE` | after the init handshake, the editor polls the Preview Service and it responds; the site is fetching through the Preview Service, not the delivery CDN |
+
+Two consequences worth stating:
+
+- **Visual Editor needs three things, not two.** Working Live Preview, edit tags, and `mode: "builder"`
+  in `init()`. The product table in SKILL.md says so; a customer who followed a Live Preview guide has
+  `mode: "preview"` and will fail item 3 with everything else green.
+- **Item 1b is origin-exact.** The Base URL must match the previewed page's scheme and host. A Base
+  URL of `https://www.example.com` with the site served at `https://example.com`, or `http` versus
+  `https`, fails the check while the frame still renders.
+
 ## Timeline
 
-Timeline runs its own check with three gates, not the five above. Do not map one onto the other.
+Timeline runs its own check with three gates, not Live Preview's five or Visual Editor's six. Do not
+map any of the three onto another.
 
 | # | Card | On failure | Meaning |
 |---|---|---|---|
@@ -106,5 +136,6 @@ Ask for the screenshot rather than the wording. Users paraphrase the step name i
 one, and since each name maps to a specific gate, a paraphrase can send you down the wrong branch.
 
 If they cannot screenshot it, ask for the exact step name and body text as displayed, and confirm
-which product they are in, because Live Preview and Timeline share a visual style but not a set of
-gates.
+which product they are in. Live Preview and Timeline share a single-card style but not a set of
+gates, and Visual Editor's is a six-item list; a paraphrased step name from the wrong product sends
+you down the wrong branch.
