@@ -68,13 +68,16 @@ Collected in the order set out below, not all at once. Never ask for delivery to
 
 ## Workflow Summary
 
-1. Identify the product.
-2. Setup or regression.
-3. Read the Onboarding Check.
-4. Detect framework and rendering mode from the code.
-5. Collect only the evidence detection could not supply.
-6. Localise to one contract.
-7. Fix, verify, or hand to Contentstack Support.
+Work these as a checklist and report it back ticked. An unticked step is a visible gap the user
+can see and question; a silently skipped step is how a wrong diagnosis gets past both of you.
+
+- [ ] 1. Identify the product.
+- [ ] 2. Setup or regression.
+- [ ] 3. Read the Onboarding Check. Not skippable whenever a preview pane renders.
+- [ ] 4. Detect framework and rendering mode from the code.
+- [ ] 5. Collect only the evidence detection could not supply.
+- [ ] 6. Localise to one contract.
+- [ ] 7. Fix, verify, or hand to Contentstack Support.
 
 ## Instructions
 
@@ -83,6 +86,11 @@ whose answers you could already have had.
 
 **Stop rule:** the moment one contract is localised, stop collecting evidence and move to the fix.
 Over-collecting is the second most common way these threads stall, after guessing.
+
+**Falsification rule:** before acting on a diagnosis, name the one artifact that would contradict
+it, and go get it. Confidence is the cue to do this, not the excuse to skip it. The commonest miss is
+a mode assumption: the code reads one way, and the Onboarding Check card or the network tab says
+otherwise. When they disagree, the observed behaviour wins over the intended one.
 
 ### Step 1. Which product?
 
@@ -114,6 +122,11 @@ stack settings change, a role change, a new environment, a CDN or hosting change
 
 Ask for a **screenshot** of the floating status card in the preview panel. Do this before any other
 diagnostic question. The product already ran the check you are about to run by hand.
+
+**This step is not skippable when a pane renders at all, and repository access does not excuse it.**
+Step 4 reads the code and tells you what the integration *intends*; the card tells you what the editor
+*observed* on the actual deployed build. They can disagree, most often on rendering mode, and when
+they do the card is the one that reflects reality. Do step 3 first, then let step 4 explain it.
 
 Ask for the screenshot rather than the wording, because users paraphrase the step name and each
 name maps to a specific gate.
@@ -154,7 +167,9 @@ Two readings that decide the whole branch:
 ### Step 4. Establish framework and rendering mode
 
 **Detect this, do not ask for it.** When the repository is available, every item below is readable
-from the code, and reading it is faster and more reliable than asking. Developers routinely answer
+from the code, and reading it is faster and more reliable than asking. Detection does not replace
+step 3: the card still comes first, because it reports the deployed build rather than the branch you
+are reading. Developers routinely answer
 "Next.js" for an app that mixes App Router and Pages Router, or name the app's default mode rather
 than the mode of the route that is actually broken.
 
@@ -196,10 +211,16 @@ tags. Everything else follows from mode and fetch layer.
 | Mode | `ssr` | Hash travels via | Updates arrive as |
 |---|---|---|---|
 | CSR + REST | `false` | postMessage, into `stackSdk` | `onEntryChange` refetch, no reload |
-| SSR + REST | `true` | `live_preview` query parameter | full iframe reload |
+| SSR + REST | `true` | `live_preview` query parameter | full iframe reload, driven by the parent. `onEntryChange` subscribers **never fire** in this mode |
 | CSR + GraphQL | `false` | `ContentstackLivePreview.hash` | callback refetch, manual host swap |
 | SSR + GraphQL | `true` | `request.query.live_preview` | full reload, manual host swap |
 | SSG | `false` | postMessage | runs as CSR at runtime |
+
+**`onEntryChange` is inert under `ssr: true`.** The SDK guards its entry-change dispatch on `!ssr`,
+so any subscriber registered in an SSR app never runs. Registering one to trigger a refetch or
+`router.refresh()` produces a callback that looks correct and does nothing. Under `ssr: true` the
+update path is the parent reloading the iframe with the new hash; the app's only job is to read the
+hash off that request. If you want client-driven refresh, the route has to be CSR (`ssr: false`).
 
 `stackSdk` is mandatory in CSR and is what the SDK uses to default `ssr`. A CSR app that omits it
 silently gets SSR behaviour; an SSG site initialised with `ssr: true` gives blank screens rather

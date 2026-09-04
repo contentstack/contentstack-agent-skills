@@ -11,10 +11,18 @@ Diagnose against this file. Use `frameworks.md` only for where `init()` is allow
 | Mode | `ssr` | How the hash travels | How updates arrive | Hard requirement |
 |---|---|---|---|---|
 | CSR + REST | `false` | postMessage; the SDK injects it into `stackSdk` | `onEntryChange` / `onLiveEdit` refetch, no reload | `stackSdk` is mandatory |
-| SSR + REST | `true` | `live_preview` query parameter on the request | full iframe reload | a fresh Delivery SDK instance per request |
+| SSR + REST | `true` | `live_preview` query parameter on the request | full iframe reload, parent-driven; `onEntryChange` subscribers never fire | a fresh Delivery SDK instance per request |
 | CSR + GraphQL | `false` | `ContentstackLivePreview.hash` | callback refetch | manual host swap plus headers |
 | SSR + GraphQL | `true` | `request.query.live_preview` | full iframe reload | manual host swap plus headers |
 | SSG | `false` | postMessage | runs in CSR mode at runtime | `stackSdk`, and `init()` must be browser-only |
+
+## `onEntryChange` does not fire under `ssr: true`
+
+The SDK dispatches entry-change events only when `ssr` is `false`. In SSR mode the parent reloads
+the iframe with the new hash and the app never receives a client-side event. A subscriber registered
+in an SSR app is silently inert, so a `router.refresh()` or refetch wired into it never runs, and the
+integration looks correct while doing nothing on edit. Drive SSR updates from the request, not from a
+subscriber; if client-driven refresh is wanted, the route must be CSR.
 
 ## How `ssr` is resolved
 
