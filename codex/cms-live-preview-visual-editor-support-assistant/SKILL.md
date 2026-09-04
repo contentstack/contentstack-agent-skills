@@ -316,11 +316,25 @@ addEditableTags(entry, contentTypeUid, true, locale);
 <h1 {...data.$?.title}>{data.title}</h1>
 ```
 
-`mode: "builder"` does not generate tags; only `addEditableTags()` does, though `mode: "builder"` is still required because Visual Editor's Verify Mode gate fails on `mode: "preview"`, it mutates the entry and
-returns nothing, and the third argument must be `true` for React and JSX. Mirror the data path
-exactly, because references come back as arrays: `post.author[0].$?.name`, not
-`post.$?.author.name`. Tag the leaf element, one `data-cslp` per element, and call it on referenced
-entries too.
+`mode: "builder"` does not generate tags; only `addEditableTags()` does. (`mode: "builder"` is
+still required, because Visual Editor's Verify Mode gate fails on `mode: "preview"`.) The call
+mutates the entry and returns nothing, and the third argument must be `true` for React and JSX.
+Call it once per top-level entry: references resolved with `includeReference()` or `include[]`
+carry `uid` and `_content_type_uid`, and their tags are rebased to the referenced entry
+automatically. A separate call is needed only for references merged by hand, or GraphQL nodes
+fetched without `system`. Mirror the data path exactly, because references come back as arrays:
+`post.author[0].$?.name`, not `post.$?.author.name`.
+
+Tag leaves **and** containers. A scalar takes `entry.$.field` on the element that renders the value.
+Multiple fields, references and modular blocks take `entry.$.field` on the wrapper plus
+`entry.$["field__" + i]` on each instance; the canvas attaches add and reorder controls only when
+an instance sits inside an element carrying the container tag. An empty multiple or block field
+keeps its wrapper in the DOM while previewing, marked with `VB_EmptyBlockParentClass` and the
+container tag, or the canvas has nothing to draw its add button on.
+
+Enumerate fields from `Object.keys(entry.$)` and diff against what the page renders. Do not eyeball
+the JSX. The full key convention and a per-field-kind checklist are in
+[references/edit-tags.md](references/edit-tags.md).
 
 For contract 3:
 

@@ -58,10 +58,13 @@ meaningless.
 
 18. **A rendered field carries `data-cslp`**, formed as
     `<content_type_uid>.<entry_uid>.<locale>.<field_path>`.
-19. **`addEditableTags(entry, contentTypeUid, true, locale)`** is called on every fetched entry,
-    including referenced entries. The third argument must be `true` for React and JSX.
-20. **The `$` attributes are spread onto the leaf element** that renders the value, one `data-cslp`
-    per element. Tagging a wrapper selects the wrong field.
+19. **`addEditableTags(entry, contentTypeUid, true, locale)`** is called once on every fetched
+    top-level entry. The third argument must be `true` for React and JSX. References resolved with
+    `includeReference()` are rebased automatically; a separate call is only for hand-merged ones.
+20. **`$` keys are spread onto leaves and containers.** Scalars: the element rendering the value.
+    Multiple, reference and block fields: `entry.$.field` on the wrapper plus `entry.$["field__" + i]`
+    per instance, and an empty one keeps the wrapper with `VB_EmptyBlockParentClass`. Enumerate from
+    `Object.keys(entry.$)`, not from the JSX. See [edit-tags.md](edit-tags.md).
 21. **Reference paths mirror the data shape.** References come back as arrays:
     `post.author[0].$?.name`, not `post.$?.author.name`.
 22. **For GraphQL**, connection wrappers are flattened and `system { uid, content_type_uid }` is
