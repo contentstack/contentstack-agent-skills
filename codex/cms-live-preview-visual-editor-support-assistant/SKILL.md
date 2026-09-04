@@ -102,7 +102,14 @@ identified, and you will not know which.
 regressed, a new error replacing an old one: each is a regression from a known state, and the first
 question is what changed since it last worked. Include your own edits in that question, not only the
 user's. Mid-session, the change most likely to have caused a transition is the one you just made, and
-it is also the one you are least likely to suspect.
+it is also the one you are least likely to suspect. An Onboarding Check gate that goes backwards is
+information, not flakiness; do not answer it with a reload.
+
+**No-resilience rule:** while diagnosing, add no fallbacks, retries, caches, or optimisations.
+Falling back to published content when the preview fetch fails shows an editor published content
+while they believe they are looking at their edit, and hides the very signal being debugged. Fail
+visibly. If SDK-prescribed behaviour looks improvable, find the guard the SDK already has for that
+concern before changing anything; it usually exists.
 
 ### Step 1. Which product?
 
