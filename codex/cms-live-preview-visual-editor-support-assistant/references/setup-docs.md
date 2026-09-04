@@ -29,8 +29,9 @@ Establish framework and rendering mode first, then route.
 
 ### Visual Editor, on top of a working Live Preview
 
-Visual Editor is not a separate integration. It is Live Preview plus edit tags, so Live Preview
-must work first.
+Visual Editor is not a separate integration. It is Live Preview plus edit tags plus `mode: "builder"`
+in `init()`, so Live Preview must work first, and a setup copied from a Live Preview guide will still
+fail Visual Editor's Verify Mode gate until the mode is changed from `"preview"`.
 
 - [Set Up Visual Builder for Your Website](https://www.contentstack.com/docs/developers/set-up-visual-builder/set-up-visual-builder-for-your-website)
 - [Set Up Visual Editor for Your Website](https://www.contentstack.com/docs/developers/set-up-visual-editor/set-up-visual-editor-for-your-website)

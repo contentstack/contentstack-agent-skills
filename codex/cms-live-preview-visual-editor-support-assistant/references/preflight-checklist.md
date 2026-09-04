@@ -51,43 +51,45 @@ meaningless.
     produces blank screens rather than an error.
 16. **`stackDetails: { apiKey, environment }` is passed explicitly.** Since v2 the SDK no longer
     derives the API key from the Stack object for edit tags.
+17. **`mode: "builder"` is set if Visual Editor is the target.** Visual Editor's own onboarding check
+    has a Verify Mode item that fails on `mode: "preview"`. Edit tags alone do not produce a canvas.
 
 ## Contract 2: edit tags reach the DOM
 
-17. **A rendered field carries `data-cslp`**, formed as
+18. **A rendered field carries `data-cslp`**, formed as
     `<content_type_uid>.<entry_uid>.<locale>.<field_path>`.
-18. **`addEditableTags(entry, contentTypeUid, true, locale)`** is called on every fetched entry,
+19. **`addEditableTags(entry, contentTypeUid, true, locale)`** is called on every fetched entry,
     including referenced entries. The third argument must be `true` for React and JSX.
-19. **The `$` attributes are spread onto the leaf element** that renders the value, one `data-cslp`
+20. **The `$` attributes are spread onto the leaf element** that renders the value, one `data-cslp`
     per element. Tagging a wrapper selects the wrong field.
-20. **Reference paths mirror the data shape.** References come back as arrays:
+21. **Reference paths mirror the data shape.** References come back as arrays:
     `post.author[0].$?.name`, not `post.$?.author.name`.
-21. **For GraphQL**, connection wrappers are flattened and `system { uid, content_type_uid }` is
+22. **For GraphQL**, connection wrappers are flattened and `system { uid, content_type_uid }` is
     requested on every node, before `addEditableTags()` runs.
 
 ## Contract 3: the hash reaches the fetch
 
-22. **Content requests hit a `*-preview.contentstack.com` host** during an active preview session.
+23. **Content requests hit a `*-preview.contentstack.com` host** during an active preview session.
     Seeing `cdn.contentstack.io` or `graphql.contentstack.com` here is the single most common setup
     failure, whatever the reported symptom was.
-23. **Those requests carry `live_preview` and `preview_token` headers** and return 200.
-24. **Every fetch path uses the initialized Stack instance.** A second instance, a hand-rolled
+24. **Those requests carry `live_preview` and `preview_token` headers** and return 200.
+25. **Every fetch path uses the initialized Stack instance.** A second instance, a hand-rolled
     wrapper, or a BFF that bypasses it will keep serving published content.
-25. **The hash is never hardcoded or invented.** An unrecognised hash returns
+26. **The hash is never hardcoded or invented.** An unrecognised hash returns
     `error_code 382, Please create tracker before starting live preview session`.
-26. **If the app proxies Contentstack through its own backend**, the hash is forwarded end to end.
-27. **SSR only: the Stack instance is built per request.** A module-level instance leaks one
+27. **If the app proxies Contentstack through its own backend**, the hash is forwarded end to end.
+28. **SSR only: the Stack instance is built per request.** A module-level instance leaks one
     editor's draft into other users' responses, including public traffic.
-28. **Caching is bypassed for preview requests.** Any cache on the preview path serves published
+29. **Caching is bypassed for preview requests.** Any cache on the preview path serves published
     content after the host switch is already correct, and can serve preview output to real visitors.
 
 ## Behaviour
 
-29. **Edit a field without saving.** The preview updates.
-30. **Hover a tagged element in Visual Editor.** It highlights, and clicking focuses the matching
+30. **Edit a field without saving.** The preview updates.
+31. **Hover a tagged element in Visual Editor.** It highlights, and clicking focuses the matching
     field in the form panel.
-31. **Open entries from several content types**, including a nested route and one with no `url`
+32. **Open entries from several content types**, including a nested route and one with no `url`
     field. Each loads its own page.
-32. **Navigate inside the preview pane.** Preview context survives the navigation.
-33. **Load the public site in a normal browser tab.** No edit button, no `#cslp-tooltip` in the DOM,
+33. **Navigate inside the preview pane.** Preview context survives the navigation.
+34. **Load the public site in a normal browser tab.** No edit button, no `#cslp-tooltip` in the DOM,
     and no preview response served from cache.
