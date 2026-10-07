@@ -13,12 +13,16 @@ problem.** Say so and move to the network tab.
 
 ## The list
 
-### `NO_REQUEST_LISTENER_FOUND` / `No ack listener found`
+### `NO_REQUEST_LISTENER_FOUND` and `No ack listener found`
 
-Routine. It means a postMessage arrived with no registered listener, which happens normally during
-load and teardown. Appears on working setups.
+Two different postMessage errors from the same library, both routine:
 
-Never conclude anything from it on its own. It does not affect SSR content, and it is not evidence
+- `NO_REQUEST_LISTENER_FOUND` ("No request listener found for event …"): one side sent a request
+  the other side has no handler for, for example a `scroll` event during load.
+- `No ack listener found`: an acknowledgement arrived after its sender stopped waiting, typically
+  during load or teardown.
+
+Both appear on working setups. Never conclude anything from either on its own. It does not affect SSR content, and it is not evidence
 that the handshake failed — read the Live Preview Onboarding Check instead, which sticks on **Live
 Preview SDK Not Initialized** until the SDK's init message arrives.
 

@@ -1,14 +1,14 @@
-# Setup FAQ
+# Integration FAQ
 
-Setup and first-integration failures, ordered by how often they come up in practice. Each entry
-gives the symptom as users actually report it, the mechanism behind it, the fix, and a
-verification step.
+Failures in an existing integration's wiring: reachability, init, edit tags, the fetch, hosts and
+stack configuration. Ordered by how often they come up. Each entry gives the symptom as users report
+it, the mechanism, the fix, and a verification step.
 
-Read this after localising the problem to one of the four contracts in the parent skill. The
-contract tells you which section to read; this file tells you what to do.
+Read this after localising the problem to one of the four contracts in SKILL.md. For first-time
+setup, use `setup-docs.md` instead.
 
 ### app-fetches-from-delivery-cdn-instead-of-preview-service
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: Live Preview / Visual Editor loads the site fine, but edits made in the entry form or the right-hand panel never appear in the preview. Content only changes after the entry is published. The Onboarding Check gets past the site-loading and SDK gates and then stops on **Preview Service Not Enabled**. Variant selection in Visual Editor also shows the base entry.
 - **frameworks**: Next.js (Pages + App Router), React, Angular, Gatsby, Vue/Nuxt, Java/Spring, framework-agnostic REST/GraphQL clients
 - **rendering_modes**: any
@@ -35,22 +35,23 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### iframe-blocked-by-x-frame-options-or-csp-frame-ancestors
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: The Live Preview / Visual Editor pane is blank or shows "`<your-host>` refused to connect". Console shows `Refused to display '<url>' in a frame because it set 'X-Frame-Options' to 'sameorigin'` (or `deny`), or a `frame-ancestors` CSP violation. Frequently paired with a `401` on a `HEAD`/`GET` of the site root. Works on localhost, fails on the deployed dev/QA/staging host.
 - **frameworks**: framework-agnostic (server / CDN / hosting-platform header config)
 - **rendering_modes**: any
 - **root_cause**: Contentstack renders the site inside an iframe on the app origin. Any `X-Frame-Options: SAMEORIGIN|DENY` or a CSP `frame-ancestors` directive that does not include the Contentstack app origin makes the browser refuse the frame before the page can run. Platform-level deployment protection (for example a hosting provider's password protection) adds `X-Frame-Options: DENY` to the password screen itself, so even the auth prompt cannot render.
 - **fix**:
-  1. Remove `X-Frame-Options` for the preview host and use CSP instead: `Content-Security-Policy: frame-ancestors 'self' https://*.contentstack.com https://*.contentstack.io;` (`X-Frame-Options` has no allowlist syntax; a bare `SAMEORIGIN` always wins).
+  1. Remove `X-Frame-Options` for the preview host and use CSP instead, allowing the Contentstack app origin for the stack's region: `Content-Security-Policy: frame-ancestors 'self' https://app.contentstack.com;` (for example `https://eu-app.contentstack.com` in EU). `https://*.contentstack.com` is the broader fallback. `X-Frame-Options` has no allowlist syntax; a bare `SAMEORIGIN` always wins.
   2. Apply the header on every route, not just the site root. A route that redirects to a different hostname than the configured Base URL will also fail.
-  3. If the deployment sits behind platform password protection, note that no header or query parameter can be injected into a browser-originated iframe request from Contentstack. Options: disable protection on the preview deployment, use a bypass token embedded in the Base URL, put a server-side proxy in front that injects the header, or use Live Preview → Open in New Tab (a plan-gated feature that renders outside the iframe).
+  3. If the deployment sits behind platform password protection, note that no header or query parameter can be injected into a browser-originated iframe request from Contentstack. Options: disable protection on the preview deployment, use a bypass token embedded in the Base URL (every stack user can read the Base URL, so scope the token to the preview deployment and rotate it), put a server-side proxy in front that injects the header, or use Live Preview → Open in New Tab (a plan-gated feature that renders outside the iframe).
   4. Third-party SSO screens that themselves set `X-Frame-Options: DENY` cannot render in the iframe at all. Use Open in New Tab, which renders the preview outside the iframe so those screens can load.
+  5. On the Live Preview Onboarding Check this shows as **Live Preview SDK Not Initialized**, not "Could Not Connect to Website". The reachability gate is a `no-cors` request, which succeeds on any HTTP response, so frame headers and auth screens pass it.
 - **verification**: `curl -I https://<preview-host>/<some-deep-route>` and confirm no `X-Frame-Options` and a `frame-ancestors` value that includes the Contentstack app origin. Reload Live Preview; the pane should render.
 
 ---
 
 ### error-382-create-tracker-before-starting-live-preview-session
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: Preview API requests fail with
   `{"error_message":"Please create tracker before starting live preview session","error_code":382,"status":400}`
   (a sibling variant is `{"error_message":"Please provide live preview hash in request","error_code":382}`). Often appears the moment `mode: "builder"` is set, or when the site is opened directly rather than from inside the Contentstack preview pane. Sometimes reproduces for one developer and not another on "identical" setups.
@@ -67,18 +68,18 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### edit-tags-not-generated-or-not-spread
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: Nothing on the page is inline-editable: no hover highlight, no edit button, no field toolbar. Clicking the canvas does nothing, or selects the wrong (parent) element. `entry.$` / `post.$` is `undefined` in the app, or `data-cslp` renders as literal text instead of an attribute. Live Preview auto-refresh often still works, which makes it look like a Visual Editor bug.
 - **frameworks**: React, Next.js, Vue, Angular, Gatsby, Blazor/.NET, jQuery
 - **rendering_modes**: any
 - **root_cause**: Tags need two independent things and teams usually do only one: `addEditableTags()` must run on every fetched entry, **and** the generated `$` attributes must be spread onto the DOM elements that render each field. `mode: "builder"` does not generate tags, but it is still required: Visual Editor's Verify Mode gate fails on `mode: "preview"`, so tags alone do not produce a canvas. Four ways this goes wrong: the call is missing entirely (commonly commented out during a migration); `tagsAsObject` is `false` or omitted, producing a `data-cslp` string React cannot spread; the content type **title** is passed instead of its **uid**; or the call is correct but nothing spreads the result into the markup.
 - **fix**:
-  1. Call it on every entry right after fetching, including referenced entries: `addEditableTags(entry, contentTypeUid, true, locale)`. The third argument must be `true` for React and JSX.
+  1. Call it once per top-level entry right after fetching: `addEditableTags(entry, contentTypeUid, true, locale)`. The third argument must be `true` for React and JSX. References resolved with `includeReference()` or `include[]` are tagged in the same call; only hand-merged references need their own call.
   2. Pass the content type **uid**, not its display title.
   3. Spread onto the element that renders the value: `<h1 {...post.$?.title}>{post.title}</h1>`.
   4. Mirror the data path exactly. References come back as arrays, so it is `post.author[0].$?.name`, not `post.$?.author.name`.
-  5. Tag the leaf element that holds the value, one `data-cslp` per element. Tagging a wrapper group instead of the field makes Visual Editor select the wrong field.
-  6. Check nothing strips them at build time: `cleanCslpOnProduction: true` removes `data-cslp` from the DOM, and `PURGE_PREVIEW_SDK=true` no-ops the whole SDK.
+  5. Put a scalar field's tag on the element that renders its value, not on a surrounding wrapper, or Visual Editor selects the wrong field. Multiple, reference and modular-block fields are the exception: their container tag goes on the wrapper and each instance gets its own `field__<index>` tag. See `edit-tags.md`.
+  6. Check nothing strips them: with `enable: false`, the default `cleanCslpOnProduction: true` removes `data-cslp` from the DOM, and `PURGE_PREVIEW_SDK=true` no-ops the whole SDK. A build that evaluates `enable` as false on the preview deployment loses its tags this way.
   7. For GraphQL, the response shape itself breaks tag paths — see `graphql-connection-wrappers-break-cslp` in `faq-visual-editor.md` for the normalizer that has to run before `addEditableTags()`.
   8. If you only want auto-refresh and not in-context editing, use `mode: "preview"` rather than `mode: "builder"` with no tags.
 - **verification**: In DevTools on the previewed page, `document.querySelectorAll('[data-cslp]').length` must be greater than 0, and a rendered field must carry `data-cslp="<content_type_uid>.<entry_uid>.<locale>.<field_path>"`. Hovering it in the canvas should highlight it, and clicking should focus the matching field in the form panel.
@@ -86,13 +87,13 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### preview-url-does-not-resolve-to-the-app-route
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: Live Preview opens the site's home page or a "Page Not Found" instead of the entry being edited. Navigating inside the preview 404s. Sometimes the pane says "You are currently previewing a different webpage". Affects entries whose real URL is nested, taxonomy-driven, multi-tenant, or has no `url` field at all.
 - **frameworks**: Next.js, React, framework-agnostic
 - **rendering_modes**: any
 - **root_cause**: By default the preview URL is `environment Base URL` + the entry's `url` field. That only works when app routing maps 1:1 to the `url` field. Nested paths, custom route prefixes, several content types with different URL shapes, multiple sites served from one stack, or a URL stored in a custom text field instead of the built-in `url` field all break the concatenation.
 - **fix**:
-  1. Configure **Custom Preview URLs** (Settings → Visual Experience → Preview URL). This is the feature that decouples preview from `Base URL + entry.url`; it is plan-gated. Follow the docs for the pattern syntax, placeholders, Base URL aliases and defaults: [Custom Preview URLs](https://www.contentstack.com/docs/developers/set-up-live-preview/custom-preview-urls).
+  1. Configure **Custom Preview URLs** (Settings → Visual Experience → Preview URL). This is the feature that decouples preview from `Base URL + entry.url`; it is plan-gated. Follow the docs for the pattern syntax, placeholders, Base URL aliases and defaults: [Custom Preview URLs](https://www.contentstack.com/docs/headless-cms/custom-preview-urls).
   2. With Custom Preview URLs enabled, tell the editor which entry each page is by calling `setPageContext({ entryUid, contentTypeUid })` on every page (Live Preview Utils v4.4.4+). Fallbacks: the `window.__CS_PAGE_CONTEXT__` global, or `<meta name="contentstack:entry-uid">` and `<meta name="contentstack:content-type-uid">`. **This only has an effect when the Custom Preview URLs setting exists for the stack and is configured.** Without it the editor resolves by URL alone and the call is silently ignored — it does not error, so a stack without the feature looks like `setPageContext` not working.
   3. Do not narrow the environment Base URL to one content type's prefix (for example `.../inspiration/articles/`) — that fixes one content type and breaks all others.
   4. Verify the entry's `url` field actually corresponds to a route the app serves, and that the route renders the content type you expect.
@@ -101,14 +102,14 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### sdk-version-below-visual-editor-minimum-or-breaking-major-upgrade
-- **bucket**: setup
-- **symptom**: Visual Editor features silently do nothing on an otherwise working Live Preview setup; or a version bump breaks a previously working integration — `setConfigFromParams` disappears, `ReferenceError: window is not defined` in server code, the Edit button suddenly renders in production, or `Live_Preview_SDK: To use edit tags, you must provide the stack API key`.
+- **bucket**: integration
+- **symptom**: Visual Editor features silently do nothing on an otherwise working Live Preview setup; or a version bump breaks a previously working integration: `setConfigFromParams` is no longer callable, `ReferenceError: window is not defined` in server code, the Edit button suddenly renders in production, or `Live_Preview_SDK: To use edit tags, you must provide the stack API key`.
 - **frameworks**: Next.js, React, Gatsby, Angular
 - **rendering_modes**: any
-- **root_cause**: Feature availability is version-gated and majors carry breaking changes that were not always documented. Pinned-old dependency policies (auto-update disabled) leave teams on v1.x where the required callbacks do not exist. The v2 → v3 jump removed `setConfigFromParams` (its replacement reads `window`, which throws in SSR) and made `stackDetails.apiKey` mandatory for edit tags.
+- **root_cause**: Feature availability is version-gated and majors carry breaking changes. Pinned-old dependency policies (auto-update disabled) leave teams on v1.x where builder mode does not exist; it arrived in v3. `setConfigFromParams` is no longer part of the public API, and code that replaced it with a helper reading `window` throws in SSR. `stackDetails.apiKey` is required for edit tags and builder mode.
 - **fix**:
-  1. Meet the minimums: Live Preview Utils **v3.0+** and Delivery SDK **v3.20.3+** for Visual Editor; **v4.4.4+** if you use `setPageContext()`.
-  2. Pass `stackDetails: { apiKey, environment }` explicitly in `init()` — v2+ no longer derives the API key from the Stack object for edit tags.
+  1. Meet the minimums: Live Preview Utils **v3.0+** for Visual Editor (legacy `contentstack` JavaScript SDK **v3.20.3+**; every `@contentstack/delivery-sdk` release qualifies); **v4.4.4+** if you use `setPageContext()`.
+  2. Pass `stackDetails: { apiKey, environment }` explicitly in `init()`. Builder mode throws without them.
   3. In SSR, stop calling `setConfigFromParams`. Read the query parameters from the request and apply them with `livePreviewQuery()` instead of relying on any SDK helper that touches `window`.
   4. Pin one delivery method for the SDK. Mixing an npm install with an ESM/CDN `<script type="module">` import of a different version produces version-specific behaviour differences (for example the Edit button appearing after a CDN bump).
   5. Read the SDK release notes before a major bump rather than the setup docs alone.
@@ -117,7 +118,7 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### environment-base-url-misconfigured-or-missing-for-a-locale
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: The Live Preview environment selector is greyed out or shows "No environments available"; preview loads the wrong path or the site root; a specific locale cannot be previewed at all while others work; the preview pane keeps showing the previous environment's URL after switching.
 - **frameworks**: framework-agnostic (stack configuration)
 - **rendering_modes**: any
@@ -133,27 +134,27 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### edit-button-rendered-outside-a-live-preview-session
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: The Live Preview "Edit" pencil button appears on the normal production or UAT site for ordinary visitors, or the `#cslp-tooltip` button element is injected into `document.body` on production even when not visible (usually caught in an accessibility audit). Sometimes intermittent, correlating with client-side route changes rather than fresh page loads.
 - **frameworks**: Next.js (App Router especially), React
 - **rendering_modes**: CSR, SSR
-- **root_cause**: With `editButton.enable: true`, the SDK gates the button on `enable` + `inIframe()` + the `cslp-buttons` query parameter. It never checks the `live_preview` hash or any active-session signal, so a normally loaded page with the SDK initialized renders the button by design. Teams that gate `init()` on a server-read hash also get bitten by App Router soft navigation, which does not re-run that server-side gate while the SDK's button instance persists across route changes.
+- **root_cause**: With `editButton.enable: true` and no `exclude`, the SDK renders the button on any page where it is initialized, inside the iframe or not. It never checks the `live_preview` hash or any session signal. `inIframe()` only matters when `exclude` is set, and a `?cslp-buttons=` query parameter overrides `exclude` unless `includeByQueryParameter: false`. Teams that gate `init()` on a server-read hash also get bitten by App Router soft navigation, which does not re-run that server-side gate while the SDK's button instance persists across route changes.
 - **fix**:
-  1. Add `editButton: { enable: true, exclude: ['outsideLivePreviewPortal'] }`. Outside the iframe `inIframe()` is false, so the button will not render, while Live Preview inside the pane keeps working.
-  2. If Live Preview is not used on production at all, strip it from the production build: `cleanCslpOnProduction: true` removes `data-cslp` from the DOM, and the `PURGE_PREVIEW_SDK=true` build flag no-ops the SDK entirely.
+  1. Add `editButton: { enable: true, exclude: ['outsideLivePreviewPortal'], includeByQueryParameter: false }`. Outside the iframe the button no longer renders, a query parameter cannot bring it back, and Live Preview inside the pane keeps working.
+  2. If Live Preview is not used on production at all, do not initialize it there: `enable: false` (with the default `cleanCslpOnProduction: true`, which then strips `data-cslp`), or the `PURGE_PREVIEW_SDK=true` build flag, which no-ops the SDK entirely.
   3. Do not rely on a server-side hash check alone in an App Router app; soft navigation will not re-evaluate it.
-- **verification**: Load the production URL in a normal tab with DevTools open. `document.getElementById('cslp-tooltip')` should be absent, and no `data-cslp` attributes should be present if `cleanCslpOnProduction` is set.
+- **verification**: Load the production URL in a normal tab with DevTools open. `document.getElementById('cslp-tooltip')` should be absent, and no `data-cslp` attributes should be present if the SDK runs with `enable: false`.
 
 ---
 
 ### cors-blocked-on-preview-api-requests
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: `Access to fetch at 'https://<region>-rest-preview.contentstack.com/v3/...' from origin '<site origin>' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource`, frequently alongside a `401 (Unauthorized)` on the same request. Works on localhost, fails on the deployed dev/staging host.
 - **frameworks**: Gatsby, Angular, Next.js, React
 - **rendering_modes**: CSR mainly
 - **root_cause**: Two distinct problems that surface as one console message. (1) The site's own Content Security Policy (`connect-src` / `default-src`) does not allow calls to Contentstack hosts, which most frameworks restrict by default in production but not in local dev. (2) The preview request is genuinely rejected (bad or wrong-type token), and the error response carries no CORS headers, so the browser reports it as a CORS failure instead of a 401. There is no per-stack "CORS allowlist" on the Contentstack side to add origins to.
 - **fix**:
-  1. Widen the site's CSP to the whole Contentstack domain rather than individual hosts. Listing only `app.contentstack.com` and `rest-preview.contentstack.com` has repeatedly been insufficient; `https://*.contentstack.com` (and `https://*.contentstack.io` where delivery/asset hosts are used) is what worked.
+  1. Allow every Contentstack host the page calls in the site's `connect-src`: the region's delivery, preview, GraphQL and asset hosts as well as the app host. Listing only the app and REST preview hosts usually misses one. `https://*.contentstack.com https://*.contentstack.io` is the simple form when listing hosts individually keeps failing.
   2. Fix the 401 separately: confirm you are sending a valid **Preview Token** (not a Delivery Token, not a Management Token) in the `preview_token` header, and regenerate it if in doubt. Resolve the CSP first, or the server error stays masked.
   3. Recheck env vars after a stack migration or API key change — a stale API key produces the same 401-behind-CORS shape.
 - **verification**: `curl` the same preview URL with the same headers from a terminal. A 200 proves the token is valid and the remaining problem is browser-side CSP. In the browser, the request should complete with `Access-Control-Allow-Origin` present.
@@ -161,7 +162,7 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### ssr-stack-instance-shared-or-duplicated
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: Two opposite failures from the same mistake. **(A) Hash never arrives:** `init()` succeeds and `ContentstackLivePreview.hash` is populated on the client, but server-rendered pages still return published content. Deterministic, and only the author notices. **(B) Preview state leaks out:** intermittent, user-dependent wrong content, and the **production** site failing with `The Live Preview tracker is invalid or no longer exists. Create a new tracker to continue.` (error_code 382) or `The requested tracker was created for the 'dev' branch. Access using the 'main' branch is not allowed.`; preview stalling after a while; `TypeError: Cannot read properties of undefined (reading 'uid')` after idle hours in production; two editors seeing each other's content; personalization on the public site stopping resolving per visitor because a cached preview render is being served instead. This one reaches real visitors.
 - **frameworks**: Next.js (App Router and Pages Router), Express/Node, Nuxt
 - **rendering_modes**: SSR | edge
@@ -179,7 +180,7 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### nextjs-app-router-init-must-run-in-a-client-component
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: In a Next.js App Router project, Live Preview never activates: no hash in the URL, no SSR-mode detection, edit tags render but do nothing, or nothing at all happens when the entry is edited. The same code works in a Pages Router project.
 - **frameworks**: Next.js App Router
 - **rendering_modes**: SSR, CSR
@@ -203,7 +204,7 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### legacy-management-token-setup-not-migrated-to-preview-token
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: "Preview Service Not Enabled" shows in the preview panel on a setup that otherwise works. Or a setup copied from older docs / an older starter app passes a `management_token` to `live_preview` and fails with 401/422 after tokens were rotated.
 - **frameworks**: Next.js, Gatsby, React, framework-agnostic
 - **rendering_modes**: any
@@ -212,13 +213,13 @@ contract tells you which section to read; this file tells you what to do.
   1. Generate a Preview Token on the Delivery Token you already use.
   2. Replace `live_preview.management_token` with `live_preview.preview_token` and point `live_preview.host` at the region's `*-rest-preview.contentstack.com`.
   3. Update any framework source plugin to a version whose build output actually reads `preview_token` (some releases had source and build output disagreeing).
-  4. Remove the Management Token from client-side code entirely. Stack API Key, Delivery Token, and Preview Token are read-only and safe to ship to the browser; a Management Token has write access and is not.
+  4. Remove the Management Token from client-side code entirely; it has write access. The Stack API Key, Delivery Token and Preview Token are read-only and acceptable client-side, but still treat them as credentials: do not paste them into tickets or logs.
 - **verification**: No Management Token appears in any client bundle or preview request; the "Preview Service Not Enabled" card is gone and the Onboarding Check reaches Setup Complete.
 
 ---
 
 ### branch-or-alias-mismatch-between-app-token-and-entry
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: Preview opens for pages that already exist on the main branch but never shows updates, and any page that exists only on the working branch 404s. Or: `error_code: 901, "Access denied. You have insufficient permissions to perform operation on this branch"`.
 - **frameworks**: framework-agnostic
 - **rendering_modes**: any
@@ -232,7 +233,7 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### wrong-region-hosts-in-sdk-and-preview-config
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: Live Preview never activates or the preview panel reports the service is not enabled, even though the stack settings look correct. Requests in the network tab go to the default North America hosts while the stack lives in another region.
 - **frameworks**: Next.js, Angular, React
 - **rendering_modes**: any
@@ -243,18 +244,18 @@ contract tells you which section to read; this file tells you what to do.
      - preview: `rest-preview.contentstack.com` → e.g. `eu-rest-preview.contentstack.com`, `azure-na-rest-preview.contentstack.com`, `gcp-eu-rest-preview.contentstack.com`
      - GraphQL preview: `graphql-preview.contentstack.com` → the region-prefixed equivalent
      - app host (`clientUrlParams.host`): `app.contentstack.com` → e.g. `eu-app.contentstack.com`, `gcp-na-app.contentstack.com`
-  2. Use the SDK's `region` option where available rather than hand-writing hosts, and make sure a hardcoded `host` does not override it.
+  2. On the Delivery SDK, use its `region` option rather than hand-writing hosts, and make sure a hardcoded `host` does not override it. Live Preview Utils has no `region` option: set `clientUrlParams.host` to the region's app host by hand.
   3. Re-check every host after a stack migration; the API key changes too.
 - **verification**: In DevTools → Network, every Contentstack request goes to a host carrying the correct region prefix, and returns 200.
 
 ---
 
 ### locale-defaults-to-en-us-in-init
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: Start Editing / the Edit button opens Visual Editor or the entry editor with `locale=en-us` even though the stack has no `en-us` language, producing a 404 or a "Language not found" toast. Works on one deployment and not another with identical code.
 - **frameworks**: React, Angular, framework-agnostic
 - **rendering_modes**: any
-- **root_cause**: When `stackDetails.locale` is not set in `init()`, the SDK tries to infer the locale by finding an element with `data-cslp` in the DOM and reading the locale out of it. If no tagged element is present at that moment, it falls back to `en-us`. That fallback is invalid on stacks whose master language is something else, and it explains why the same code behaves differently on two deployments (one happens to have tagged content in the DOM, the other does not).
+- **root_cause**: The SDK picks the locale for the editor URL in this order: a valid `data-cslp` tag found in the DOM, then `stackDetails.locale` from `init()`, then the default `en-us`. With no tagged element in the DOM at that moment and no configured locale, it lands on `en-us`, which is invalid on stacks whose master language is something else. That is why the same code behaves differently on two deployments: one happens to have tagged content in the DOM, the other does not.
 - **fix**:
   1. Set the locale explicitly:
      `ContentstackLivePreview.init({ stackDetails: { apiKey, environment, locale: '<your-locale>' } })`.
@@ -265,11 +266,11 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### start-editing-button-cannot-be-hidden-in-editor-mode
-- **bucket**: setup
-- **symptom**: The floating "Start Editing" button appears in the bottom-right corner of the site on every environment once `mode: "builder"` is set, including production. Setting `editButton.enable: false` removes the per-field edit tags but not this button.
+- **bucket**: integration
+- **symptom**: The floating "Start Editing" button appears in the bottom-right corner of the site on every environment once `mode: "builder"` is set, including production. Setting `editButton.enable: false` removes the per-field Edit button but not this one.
 - **frameworks**: React, Next.js, Gatsby
 - **rendering_modes**: any
-- **root_cause**: "Start Editing" is a separate control from the per-field edit tags. It is enabled implicitly by `mode: "builder"` and has its own config key, which was not obvious from the setup docs. `editButton` governs only the field-level tags.
+- **root_cause**: "Start Editing" is a separate control from the per-field Edit button. It is enabled implicitly by `mode: "builder"` and has its own config key. `editButton` governs only the per-field button.
 - **fix**:
   1. Disable it explicitly:
      ```js
@@ -278,17 +279,17 @@ contract tells you which section to read; this file tells you what to do.
        editInVisualBuilderButton: { enable: false },
      });
      ```
-  2. Better for production builds: do not initialize the SDK there at all, or use `PURGE_PREVIEW_SDK=true` / `cleanCslpOnProduction: true`.
+  2. Better for production builds: do not initialize the SDK there at all (`enable: false`), or use `PURGE_PREVIEW_SDK=true`.
 - **verification**: Load the production URL; no floating Start Editing button. Load the preview environment; the button is present when you want it.
 
 ---
 
 ### onboarding-check-card-not-visible-or-appears-unexpectedly
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: A "Preview Service Not Enabled" popup appeared for teams that had not changed anything, then disappeared days later on its own. Conversely, other teams never see the status card at all when they want to diagnose a failing integration.
 - **frameworks**: framework-agnostic
 - **rendering_modes**: any
-- **root_cause**: Each product keeps its own stack setting, and they do not agree on what "unset" means. Timeline treats an unset value as visible. Live Preview treats an unset value as hidden. Visual Editor treats an unset value as visible, and also treats a stack with no `visual_builder` settings at all as visible. Meanwhile the Visual Experience settings screen renders the toggle as on whenever the value is unset, so a stack that never explicitly saved the setting can show the toggle on while Live Preview behaves as though it is off. Separately, the checks run asynchronously with a timeout, so the card can appear briefly on a correctly configured site whose first preview fetch is slow, then clear itself once the request lands.
+- **root_cause**: Each product keeps its own stack setting, and they do not agree on what "unset" means. Timeline treats an unset value as visible. Live Preview treats an unset value as hidden. Visual Editor treats a stack with no `visual_builder` settings at all as visible, but a stack that has `visual_builder` settings without this key as hidden. Meanwhile the Visual Experience settings screen renders the toggle as on whenever the value is unset, so a stack that never explicitly saved the setting can show the toggle on while Live Preview behaves as though it is off. Separately, the checks run asynchronously with a timeout, so the card can appear briefly on a correctly configured site whose first preview fetch is slow, then clear itself once the request lands.
 - **fix**:
   1. Open Settings → Visual Experience and click Save without changing anything. Saving once stores the state shown for Live Preview, Visual Editor and Timeline together, and a toggle that was never saved still shows as on, so one save records an explicit on for all three. That removes the unset ambiguity and makes all three agree.
   2. Check the setting for the product actually being used. Live Preview, Visual Editor and Timeline each have their own, under Settings → Visual Experience.
@@ -300,7 +301,7 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### visual-experience-navigation-missing-for-the-stack
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: The "Visual Experience" / builder-mode option does not appear in the Contentstack navigation at all, so the team cannot open the builder and assumes their integration is wrong.
 - **frameworks**: framework-agnostic
 - **rendering_modes**: any
@@ -313,7 +314,7 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### third-party-cookies-blocked-inside-the-preview-iframe
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: The site renders in the preview pane but behaves as if logged out, or without personalization, locale or currency preferences. Anything driven by the site's own cookies is lost.
 - **frameworks**: framework-agnostic
 - **rendering_modes**: any
@@ -328,7 +329,7 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### chrome-local-network-access-blocks-preview-of-localhost
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: A previously working local Live Preview setup breaks with
   `Access to fetch at 'http://localhost:5173/' from origin 'https://<region>-app.contentstack.com' has been blocked by CORS policy: Permission was denied for this request to access the 'unknown' address space`.
   Chrome only; Safari unaffected. Downgrading the SDK does not help.
@@ -343,7 +344,7 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### cslp-tags-contain-the-literal-string-undefined
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: `data-cslp` attributes in the DOM contain `undefined` where the entry uid should be. Inline editing does not work and edit mapping silently fails on those elements.
 - **frameworks**: Next.js
 - **rendering_modes**: SSR
@@ -362,7 +363,7 @@ contract tells you which section to read; this file tells you what to do.
 ---
 
 ### ssg-preview-needs-csr-mode
-- **bucket**: setup
+- **bucket**: integration
 - **symptom**: Live Preview on a statically generated site is unreliable or simply shows build-time content: blank or black screens, flicker, an auth prompt on reload, or edits that never appear no matter what. The hash is on the URL and never reaches the fetch.
 - **frameworks**: Next.js, Gatsby, Astro, framework-agnostic
 - **rendering_modes**: SSG/ISR

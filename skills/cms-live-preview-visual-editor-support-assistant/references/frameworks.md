@@ -9,11 +9,14 @@ needs to be previewable.
 
 ## Next.js, App Router
 
-The most common setup mistake in this framework, and the one that produces "the SDK is installed
-and nothing happens" with no error anywhere.
+The most common mistake in this framework, and the one that produces "the SDK is installed and
+nothing happens" with no error in the browser. On the server, `init()` logs "The SDK is not
+initialized in the browser." and returns.
 
 `init()` cannot run in a server component. Put it in a client component and import that into the
-layout so it runs once per app load:
+layout so it runs once per app load. The options differ by mode.
+
+CSR (content fetched in the browser):
 
 ```tsx
 "use client";
@@ -35,6 +38,35 @@ export function LivePreviewInit() {
 }
 ```
 
+SSR (server components fetch at request time). `init()` takes no `stackSdk`; the server applies
+the hash per request instead:
+
+```tsx
+// LivePreviewInit.tsx
+"use client";
+import { useEffect } from "react";
+import ContentstackLivePreview from "@contentstack/live-preview-utils";
+
+export function LivePreviewInit() {
+  useEffect(() => {
+    ContentstackLivePreview.init({
+      ssr: true,
+      mode: "builder",
+      stackDetails: { apiKey: API_KEY, environment: ENVIRONMENT },
+    });
+  }, []);
+  return null;
+}
+
+// app/[...slug]/page.tsx
+export default async function Page({ searchParams }) {
+  const params = await searchParams; // a Promise since Next.js 15
+  const stack = createStack();       // new Delivery SDK instance per request
+  stack.livePreviewQuery(params);    // reads live_preview, content_type_uid, entry_uid, preview_timestamp
+  // fetch through `stack` ...
+}
+```
+
 Watch for three things here:
 
 - Soft navigation does not re-run server-side gating, and the SDK's module-level state persists
@@ -42,8 +74,9 @@ Watch for three things here:
   will appear on production pages after a client-side navigation.
 - App Router metadata is produced by `generateMetadata()`, which has no hook for injecting window
   globals. If you are using the `window.__CS_PAGE_CONTEXT__` route for page context, set it from a
-  client component, or use the `<meta>` tag form instead. Page context is only honoured when
-  **Custom Preview URLs** is configured and enabled on the plan; without that it is silently ignored.
+  client component, or use the `<meta>` tag form instead. The SDK always sends page context, but
+  Visual Editor uses it only when **Custom Preview URLs** is enabled for the stack; otherwise it is
+  silently ignored.
 - Reading `searchParams` opts the route out of static rendering. Expect that when you add the SSR
   hash path.
 
@@ -93,8 +126,8 @@ route.
 
 Init in a client-only plugin. For page context, `useHead()` is the natural place to emit the
 `<meta>` tags, since Nuxt produces head tags natively and has no built-in hook for injecting window
-globals. As everywhere, page context only takes effect with **Custom Preview URLs** configured and
-enabled on the plan.
+globals. As everywhere, page context only takes effect when **Custom Preview URLs** is enabled for
+the stack.
 
 The Nuxt CSR and SSR stories differ on whether Visual Editor overlays appear, and Contentstack's
 own material is inconsistent on this point. Verify against the actual app before promising overlay

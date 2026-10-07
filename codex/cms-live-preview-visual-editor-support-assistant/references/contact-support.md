@@ -20,7 +20,7 @@ with Contentstack Support.
 | Symptom | What it actually is |
 |---|---|
 | A previously working `localhost` preview stops working, console shows a local network access error | Chrome's Local Network Access policy now blocks the app origin from framing localhost. Only the user can grant the permission, in the browser. |
-| Preview pane blank, and the site sits behind platform password protection or third-party SSO | Those screens set `X-Frame-Options: DENY` on themselves. Contentstack cannot inject headers into a browser-originated iframe request. Workarounds, cheapest first: enable **Open in New Tab**, which renders the site outside the iframe so frame headers stop applying; otherwise disable protection on the preview deployment, put a bypass token in the Base URL, or front it with a server-side proxy that strips the header. |
+| Preview pane blank, and the site sits behind platform password protection or third-party SSO | Those screens set `X-Frame-Options: DENY` on themselves. Contentstack cannot inject headers into a browser-originated iframe request. Workarounds, cheapest first: enable **Open in New Tab**, which renders the site outside the iframe so frame headers stop applying; otherwise disable protection on the preview deployment, put a bypass token in the Base URL (scoped to the preview deployment and rotated, since every stack user can read it), or front it with a server-side proxy that strips the header. |
 | Ad slots, consent widgets, or other host-dependent third-party scripts misbehave in the pane | Those scripts key off the top-level origin, which is the Contentstack app inside an iframe. Expected, not a preview defect. |
 
 ## How to hand it over

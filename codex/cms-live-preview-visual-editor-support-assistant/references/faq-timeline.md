@@ -30,7 +30,7 @@ already good.
 - **rendering_modes**: any
 - **root_cause**: Highlight Differences works by matching changed fields to DOM elements through their `data-cslp` attributes. It needs live edit tags enabled on the site **and** a `data-cslp` physically present on the element that renders the changed field. Where the tag coverage is thin, or the specific field that changed carries no tag, the diff has nothing to attach the highlight to and the comparison looks empty even though both versions rendered.
 - **fix**:
-  1. Confirm live edit tags are enabled and rendered — see `edit-tags-not-generated-or-not-spread` in `faq-setup.md`.
+  1. Confirm live edit tags are enabled and rendered — see `edit-tags-not-generated-or-not-spread` in `faq-integration.md`.
   2. In the Timeline iframe, run
      `[...document.querySelectorAll('[data-cslp]')].map(el => ({tag: el.tagName, cslp: el.getAttribute('data-cslp')}))`
      and confirm the **specific field you changed** appears in that list.

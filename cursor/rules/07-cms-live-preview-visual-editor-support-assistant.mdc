@@ -1,5 +1,5 @@
 ---
-description: "Systematically set up and debug Contentstack Live Preview, Visual Editor (also called Visual Builder), and Timeline. Setup follows the official documentation. Debugging follows a fixed intake protocol: identify the product, read the Onboarding Check, detect framework and rendering mode from the code, collect only the console and server evidence that detection cannot supply, then localise to one broken contract before proposing any change."
+description: "Answer any Contentstack Visual Experience question: Live Preview, Visual Editor (also called Visual Builder), Timeline, the Onboarding Check, edit tags, preview tokens and hosts. Use for how they work, first-time integration in any framework, adding Visual Editor or Timeline to a Live Preview site, configuration, or an integration that misbehaves: a blank or unreachable preview pane, edits that never appear, a stuck Onboarding Check, nothing editable on the canvas, lost preview context, stale or cached preview, wrong locale or variant, Timeline showing the wrong version, or one user seeing empty content."
 alwaysApply: false
 ---
 
@@ -8,431 +8,279 @@ alwaysApply: false
 
 ## Description
 
-Systematically set up and debug Contentstack Live Preview, Visual Editor (also called Visual Builder), and Timeline. Setup follows the official documentation. Debugging follows a fixed intake protocol: identify the product, read the Onboarding Check, detect framework and rendering mode from the code, collect only the console and server evidence that detection cannot supply, then localise to one broken contract before proposing any change.
+Answer any question about Contentstack Visual Experience: Live Preview, Visual Editor (also called
+Visual Builder) and Timeline. One flow covers all of it. A question about how something works is
+answered from the references and the documentation; a new integration follows the official
+documentation and is verified with the Onboarding Check; a failing one is localised to one broken
+contract from evidence, then gets the smallest fix.
 
 ## When to Use
 
-Use for any Contentstack Live Preview, Visual Editor, or Timeline question, whether the integration has never worked or works and misbehaves.
+Use for any Visual Experience question: how a feature works or behaves, what a setting or check
+means, setting up an integration, or an integration that misbehaves.
 
-`dx-delivery-sdk` is the neighbouring skill. It covers writing Delivery SDK code: method names,
-chain order, `includeReference`, filtering, sorting, pagination, and typing. Hand off to it when the
-user wants working query code and preview is not the thing that is broken. Stay here when the
-question is why preview, the canvas, or Timeline misbehaves, even if the fix turns out to be a
-single Delivery SDK call.
-
-Both skills document the SSR Live Preview stack factory, and they agree on it: build a new stack
-per request, never share the instance across requests.
+Hand off to `dx-delivery-sdk` when the user wants Delivery SDK query code and preview is not involved.
+Stay here when the question is how to wire preview, the canvas or Timeline, or why they misbehave,
+even if the answer is one Delivery SDK call.
 
 ## Terminology
 
-**Visual Builder and Visual Editor are the same product.** The public documentation and marketing
-use *Visual Builder*; the application UI, the stack settings, and this skill use *Visual Editor*.
-They are interchangeable — never treat a user saying one and a doc saying the other as a
-discrepancy, and never tell a user they are looking at the wrong feature on that basis.
+**Visual Builder and Visual Editor are the same product.** Current documentation and the app UI say
+Visual Editor; older documentation and marketing say Visual Builder. Never treat the two names as a
+discrepancy. Mirror the term the user used.
 
-Mirror whichever term the user used. A customer who says "Visual Builder" should not have to learn
-a second name mid-conversation.
-
-Two related names worth keeping straight:
-
-- **Visual Experience** is the umbrella covering Live Preview, Visual Editor and Timeline. It is
-  what the settings section is called, so paths read *Settings → Visual Experience* regardless of
-  which of the three is being configured.
-- **`mode: "builder"`** is an SDK option and keeps its name. So does the
-  `visual_builder.onboarding-setup-visible` stack setting. Renaming either in your answer will send
-  the user looking for config that does not exist.
+- **Visual Experience** is the umbrella for Live Preview, Visual Editor and Timeline, and the name of
+  the settings section: *Settings → Visual Experience*.
+- **`mode: "builder"`** (SDK option) and **`visual_builder.onboarding-setup-visible`** (stack
+  setting) keep their names. Do not rename them in an answer.
 
 ## User Problem
 
-The same complaint has many unrelated causes. "Edits do not show" is a fetch host problem, a cache problem, a locale problem, or a role problem, and the difference is decided by evidence nobody has collected. Guessing produces a long thread of speculative fixes.
-
-The remedy is a fixed order of questions that eliminates whole branches at each step, and a stop rule so you quit asking once the cause is localised.
+Setup instructions reconstructed from memory drift from the documentation and miss the requirements
+that differ per rendering mode. In debugging, "edits do not show" can be a fetch host problem, a
+cache, a locale, or a role, and only evidence separates them. Guessing produces a long thread of
+speculative fixes.
 
 ## Success Criteria
 
-- Works the intake protocol in order rather than jumping to a plausible cause
-- Establishes the product first, because the three do not share a setup or a check
-- Asks for the Onboarding Check before anything else, and uses what its result already proves
-- Never asks a question the evidence has already answered
-- Stops collecting once one contract is localised
-- Uses the documentation for setup and the failure catalogue for debugging
-- Recognises causes outside the user's application and points the user to Contentstack Support instead of debugging
+- Works the steps in order and reports the checklist back ticked
+- For a new integration, links the documentation page for the framework and mode instead of
+  inventing steps, and does not ask diagnostic questions about code that does not exist yet
+- Reads the Onboarding Check before any other diagnostic question
+- Never asks for what the code or earlier evidence already answers
+- Names one broken contract, with evidence, before proposing a change
+- Recognises causes outside the application and hands them to Contentstack Support
 
 ## Expected Inputs
 
-Collected in the order set out below, not all at once. Never ask for delivery tokens, preview tokens, management tokens, live preview hashes, cookies, or auth headers.
+Collected step by step, never all at once. Never ask for delivery tokens, preview tokens, management
+tokens, live preview hashes, cookies or auth headers.
 
 ## Expected Outputs
 
-- The broken contract or mechanism, and the evidence for it
+- For a new integration: the documentation page, the requirements that apply, and how to verify
+- For a failing one: the broken contract and the evidence for it
 - The smallest correct change, or a plain statement that no application-side fix exists
-- A verification the user runs themselves
-- What to send Contentstack Support, when the cause sits outside the user's code
+- One verification the user runs
+- A Support handover note when the cause is outside the application
+
+## Example User Requests
+
+- "What does the Onboarding Check actually verify?"
+- "How do I set up Live Preview in our Next.js App Router site?"
+- "We have Live Preview working. What do we add for Visual Builder?"
+- "Live Preview loads but my edits never show up."
+- "The preview pane is blank / says it could not connect."
+- "Visual Builder shows Setup Complete but I can't click anything."
+- "Preview worked yesterday and now shows published content."
+- "Timeline always shows the current version."
+
+## Rules
+
+Follow these on every turn that diagnoses a failure.
+
+1. **Stop rule.** Once one contract is localised, stop collecting evidence and move to the fix.
+2. **Observed beats intended.** The Onboarding Check reports what the deployed build did; the code
+   reports what it intends. When they disagree, the check wins.
+3. **Falsification rule.** Before acting on a diagnosis, name the one artifact that would contradict
+   it, and get it.
+4. **Reproduction rule.** No code change without a reproduced failure. State the contract, the
+   evidence, and the action that reproduces it. No reproduction means a hypothesis: keep collecting.
+5. **Transition rule.** Worked then broke, a gate that advanced then regressed, a new error replacing
+   an old one: restart at step 2 and ask what changed, including your own edits this session.
+6. **No resilience while diagnosing.** Add no fallbacks, retries or caches. A fallback to published
+   content hides the exact signal being debugged.
 
 ## Workflow Summary
 
-Work these as a checklist and report it back ticked. An unticked step is a visible gap the user
-can see and question; a silently skipped step is how a wrong diagnosis gets past both of you.
+Report this back ticked. An unticked step is a visible gap.
 
 - [ ] 1. Identify the product.
-- [ ] 2. Setup or regression.
-- [ ] 3. Read the Onboarding Check. Not skippable whenever a preview pane renders.
-- [ ] 4. Detect framework and rendering mode from the code.
-- [ ] 5. Collect only the evidence detection could not supply.
+- [ ] 2. Question, new integration, never worked, or regression? Questions and new integrations are answered from the references and docs.
+- [ ] 3. Read the Onboarding Check.
+- [ ] 4. Detect framework, rendering mode and fetch layer from the code.
+- [ ] 5. Collect only the evidence steps 3 and 4 did not settle.
 - [ ] 6. Localise to one contract.
-- [ ] 7. Fix, verify, or hand to Contentstack Support.
+- [ ] 7. Fix and verify, or hand to Contentstack Support.
 
 ## Instructions
 
-Work these in order. Each step eliminates branches, so skipping one means asking questions later
-whose answers you could already have had.
-
-**Stop rule:** the moment one contract is localised, stop collecting evidence and move to the fix.
-Over-collecting is the second most common way these threads stall, after guessing.
-
-**Falsification rule:** before acting on a diagnosis, name the one artifact that would contradict
-it, and go get it. Confidence is the cue to do this, not the excuse to skip it. The commonest miss is
-a mode assumption: the code reads one way, and the Onboarding Check card or the network tab says
-otherwise. When they disagree, the observed behaviour wins over the intended one.
-
-**Reproduction rule:** no code change without a reproduced failure. Before editing application code,
-state the contract you believe is broken, the evidence for it, and the command or action that
-reproduces the failure. If you cannot reproduce it, you have a hypothesis, not a diagnosis. Keep
-collecting. A fix that "works" without a reproduced baseline may be working for a reason you have not
-identified, and you will not know which.
-
-**Transition rule:** any transition restarts at step 2. Worked then broke, a gate that advanced then
-regressed, a new error replacing an old one: each is a regression from a known state, and the first
-question is what changed since it last worked. Include your own edits in that question, not only the
-user's. Mid-session, the change most likely to have caused a transition is the one you just made, and
-it is also the one you are least likely to suspect. An Onboarding Check gate that goes backwards is
-information, not flakiness; do not answer it with a reload.
-
-**No-resilience rule:** while diagnosing, add no fallbacks, retries, caches, or optimisations.
-Falling back to published content when the preview fetch fails shows an editor published content
-while they believe they are looking at their edit, and hides the very signal being debugged. Fail
-visibly. If SDK-prescribed behaviour looks improvable, find the guard the SDK already has for that
-concern before changing anything; it usually exists.
-
 ### Step 1. Which product?
 
-Ask explicitly. Users say "preview" for all of them, and they do not share a setup path, an
-Onboarding Check, or a failure set.
+Ask explicitly. Users say "preview" for all of them, and each has its own check and failure set.
 
-| Product | What it is | Notes |
-|---|---|---|
-| **Live Preview** | Side-by-side preview pane, content refresh only | The base. Everything else builds on it. |
-| **Visual Editor** (a.k.a. Visual Builder) | Live Preview plus on-canvas editing | Requires working Live Preview **plus** edit tags **plus** `mode: "builder"` in `init()`. `mode: "preview"` fails its Verify Mode gate even with tags present. Not a separate integration. |
-| **Timeline** | Preview at a point in time | Own Onboarding Check with different gates. |
-| **Preview Sharing** | Share a preview link externally | Plan-gated, and a content-manager feature rather than an integration. The skill carries no troubleshooting for it; point at [Preview Sharing](https://www.contentstack.com/docs/content-managers/preview-sharing). |
+| Product | What it is |
+|---|---|
+| **Live Preview** | Preview pane with content refresh. Everything else builds on it. |
+| **Visual Editor** | Live Preview plus on-canvas editing. Needs edit tags **and** `mode: "builder"` in `init()`. |
+| **Timeline** | Preview at a point in time. Needs `preview_timestamp` forwarded with the hash. |
 
-If the user is on Visual Editor, confirm whether plain Live Preview works. If it does not, that is
-the problem, and the Visual Editor symptom is downstream noise.
+On Visual Editor or Timeline, confirm plain Live Preview works. If it does not, that is the problem.
 
-### Step 2. Setup, or regression?
+### Step 2. Question, new, never worked, or regression?
 
-Ask: has this ever worked correctly, for anyone, on any route?
-
-**Never worked** goes to [references/setup-docs.md](references/setup-docs.md). Follow the official
-documentation for the framework and mode. Do not reconstruct setup steps from memory. Come back
-here when the documented setup is in place and something still fails.
-
-**Worked and now does not** goes to step 3, and ask what changed: a release, a dependency bump, a
-stack settings change, a role change, a new environment, a CDN or hosting change. This question is not
-only for intake. Every transition during the session, such as a gate that advanced and then regressed
-or a new error replacing the old one, comes back here, and the list of changes must include every
-edit you made since the last known-good state, not only the user's.
+- **A question about how something works, not a failure** ("what does the Onboarding Check
+  verify?", "does Timeline need anything extra?", "what is the difference between Live Preview and
+  Visual Builder?"): answer it from the relevant reference file and link the documentation page.
+  No diagnostic intake. If the answer reveals a failure, continue at step 3.
+- **Nothing integrated yet, or adding Visual Editor or Timeline:** read the framework and rendering
+  mode from the code, give the matching documentation page and the requirements that apply from
+  [references/setup-docs.md](references/setup-docs.md), and stop there. Do not ask diagnostic
+  questions about code that does not exist yet. When the user has it in place, continue at step 3 to
+  verify.
+- **Integrated, never worked:** continue at step 3.
+- **Worked, now broken:** ask what changed (release, dependency bump, settings, role, environment,
+  CDN or hosting), then continue at step 3.
 
 ### Step 3. Read the Onboarding Check
 
-Ask for a **screenshot** of the floating status card in the preview panel. Do this before any other
-diagnostic question. The product already ran the check you are about to run by hand.
+Ask for a **screenshot** of the check in the preview panel, before any other diagnostic question.
+Code access does not excuse this step. Users paraphrase step names, and each name maps to one gate.
+If the user already quoted a card or item name that matches the tables below word for word, use it
+and skip the screenshot.
 
-**This step is not skippable when a pane renders at all, and repository access does not excuse it.**
-Step 4 reads the code and tells you what the integration *intends*; the card tells you what the editor
-*observed* on the actual deployed build. They can disagree, most often on rendering mode, and when
-they do the card is the one that reflects reality. Do step 3 first, then let step 4 explain it.
+All three products evaluate their gates as a chain that stops at the first failure. **Read the first
+failing item. Everything before it passed; everything after it never ran.**
 
-Ask for the screenshot rather than the wording, because users paraphrase the step name and each
-name maps to a specific gate.
-
-Three products, three different checks. Confirm the product first. Full gate lists and meanings are
-in [references/onboarding-check.md](references/onboarding-check.md).
-
-**Live Preview** shows one card. The gates run as one ordered chain that stops at the first failure,
-so the step shown proves every earlier gate passed:
+Live Preview shows one card:
 
 | Card | Localises to |
 |---|---|
-| Could Not Connect to Website | Frame headers, auth gate, Base URL, certificate, browser blocking localhost |
-| Live Preview SDK Not Initialized | `init()` never ran on the client in the deployed build |
-| Outdated Live Preview SDK Version | Version below the supported minimum |
-| Preview Service Not Enabled | The fetch never switched host and headers |
-| Default Environment Not Set | Setup is fine; no default preview environment on the stack |
-| Setup Complete | Reachability, handshake, version and Preview Service are all fine |
+| Could Not Connect to Website | Network-level failure only: wrong or unreachable Base URL, DNS, bad certificate, mixed content, the browser blocking localhost |
+| Live Preview SDK Not Initialized | No init handshake: `init()` never ran on the client, `enable` not truthy, **or the frame is blank** (frame headers, an auth or password screen) |
+| Outdated Live Preview SDK Version | SDK below 1.4.0 |
+| Preview Service Not Enabled | Content fetch never switched to the preview host and headers |
+| Default Environment Not Set | Integration fine; the stack has no default preview environment |
+| Setup Complete | Reachability, handshake, version and Preview Service all fine |
 
-**Visual Editor shows a six-item list, not a card**, but it still stops evaluating at the first item
-that fails, so read the first incomplete item and ignore the ones under it. Configure environment
-(Default Environment, Base URL), Install SDK, Verify Mode for Live Preview, Preview Token. Two of these bite
-customers who arrived from a Live Preview setup: Verify Mode fails on `mode: "preview"` (Visual
-Editor needs `mode: "builder"`), and Base URL is origin-exact against the page being previewed.
+Visual Editor and Timeline show a status card while checking, then a full-pane overlay ("Set Up
+Visual Editor", "Set Up Timeline") listing their items. Gates, verbatim item text and timing are in
+[references/onboarding-check.md](references/onboarding-check.md). The two Visual Editor items that
+catch users coming from a Live Preview guide: **Verify Mode for Live Preview** fails on
+`mode: "preview"`, and **Validate the Base URL** needs the Base URL origin to match the previewed page
+exactly.
 
-**Timeline runs a third check.** A small status card while it runs, then a full-pane "Set Up
-Timeline" overlay with three items once one fails. The items are chained, so the first empty circle
-is the failure and the ones below it never ran:
+Two readings decide the branch:
 
-| Overlay item | Localises to |
-|---|---|
-| Configure the environment | No environment on the Timeline URL and no default preview environment on the stack |
-| Install the latest Live Preview SDK | The `init()` handshake never reached Timeline, or the SDK major version is below 2 |
-| Generate and use Preview Token | No content request reached the Preview Service before the check stopped waiting |
+- **Setup Complete, nothing editable.** The check never inspects `data-cslp`. Go to contract 2.
+- **Setup Complete, only fields from referenced entries not editable.** Tags are not rebased to the
+  referenced entry: `cslp-not-rebased-to-referenced-entry` in faq-visual-editor.md.
+- **No check at all.** Absence is not a pass. See "When the check does not appear" in
+  onboarding-check.md, then verify the contracts by hand.
 
-The overlay appears ten seconds after the last status change, and item 3 gives up waiting at about
-nine, so a slow site can show an empty circle on a correct setup. Have the user reopen the panel on a warm cache
-before believing it.
+### Step 4. Detect framework, mode and fetch layer
 
-Two readings that decide the whole branch:
+Read the code instead of asking. State what you found and ask only for confirmation.
 
-- **Setup Complete, but nothing is editable.** The check never inspects `data-cslp`. This is edit
-  tags, every time. Go to contract 2 in step 6.
-- **No card at all.** Absence is not a pass. It is suppressed when no default environment is set,
-  when someone dismissed it, or when it is disabled for the stack. Verify the contracts by hand.
-
-### Step 4. Establish framework and rendering mode
-
-**Detect this, do not ask for it.** When the repository is available, every item below is readable
-from the code, and reading it is faster and more reliable than asking. Detection does not replace
-step 3: the card still comes first, because it reports the deployed build rather than the branch you
-are reading. Developers routinely answer
-"Next.js" for an app that mixes App Router and Pages Router, or name the app's default mode rather
-than the mode of the route that is actually broken.
-
-Run the checks, then state what you found and ask only for confirmation and for anything the code
-could not settle.
-
-| Question | Where to look | What it tells you |
+| Check | Where | Why |
 |---|---|---|
-| Framework and version | `package.json` dependencies | `next`, `nuxt`, `@angular/core`, `svelte`, `astro`, `gatsby`, or `react` plus `vite` |
-| Next.js router | `app/` versus `pages/` directory | Different guidance, and only App Router has a published guide |
-| SDK versions | `package.json`, lockfile | Against the minimums in Tooling Notes |
-| One SDK copy | lockfile, plus any `<script type="module">` in the HTML | An npm install alongside a CDN import of another version behaves like a config bug |
-| Rendering mode of the route | `export const dynamic`, `revalidate`, `getStaticProps`, `getServerSideProps`, `output: "export"` | The mode of that route, which is what matters |
-| `ssr` setting | the `init(` call site | Explicit value, or absent and therefore inferred |
-| `stackSdk` passed | the `init(` call site | Mandatory in CSR, and what the SDK uses to default `ssr` |
-| Init placement | the file containing `init(`, and whether it is `"use client"` | Contract 1. Server-only placement is the most common Next.js miss |
-| Edit tags | `addEditableTags` | Contract 2. Absent means Visual Editor cannot work, whatever else is true |
-| Fetch layer | `@contentstack/delivery-sdk` import, raw `fetch`, or a GraphQL client | Decides which form of contract 3 applies |
-| Preview host wiring | `preview_token`, `live_preview`, any hostname constant | Contract 3 |
-| Cache posture | `fetch` cache options, `revalidate`, CDN or middleware config | The "works locally, fails deployed" class |
+| Framework, router | `package.json`; `app/` vs `pages/` | Decides where `init()` may run |
+| SDK versions, one copy | `package.json`, lockfile, any `<script type="module">` | Two copies behave like a config bug |
+| Route's rendering mode | `dynamic`, `revalidate`, `getStaticProps`, `getServerSideProps`, `output: "export"` | The broken route's mode, not the app default |
+| `ssr` | `init(` call site **and** the Stack's `live_preview.ssr` | Stack config overrides `init({ ssr })` |
+| `stackSdk`, `mode` | `init(` call site | `stackSdk` absent defaults `ssr` to `true` |
+| Init placement | file containing `init(`, `"use client"` | Contract 1 |
+| Edit tags | `addEditableTags` | Contract 2 |
+| Fetch layer, host wiring | Delivery SDK, raw `fetch`, GraphQL client; `preview_token`, `live_preview`, hosts | Contract 3 |
+| Cache | fetch cache options, `revalidate`, CDN or middleware | "Works locally, fails deployed" |
 
-That sweep usually settles contracts 1, 2 and 3 in step 6 before you ask the user anything, and it
-often makes step 5 unnecessary.
+The code cannot tell you where the site is served or whether the deployed build matches the branch.
+Ask for both.
 
-Two things the repository cannot tell you. Ask for these:
+Mode decides how updates arrive:
 
-1. **Where it is served**: localhost, a preview deployment, or production.
-2. **Whether the deployed build matches the branch you are reading.** An environment variable that
-   does not parse as a boolean, or a stale deploy, makes correct-looking code behave as if init
-   never ran.
-
-Without repository access, ask for the same list, in this order: framework and version, the mode of
-the affected route, the fetch layer, and the `init()` call site.
-
-The SDK ships no framework adapters, no framework peer dependencies, and no per-framework code
-paths. Framework choice decides only where `init()` may run and whether hydration preserves edit
-tags. Everything else follows from mode and fetch layer.
-
-| Mode | `ssr` | Hash travels via | Updates arrive as |
+| Mode | `ssr` | Hash reaches the fetch via | Updates |
 |---|---|---|---|
-| CSR + REST | `false` | postMessage, into `stackSdk` | `onEntryChange` refetch, no reload |
-| SSR + REST | `true` | `live_preview` query parameter | full iframe reload, driven by the parent. `onEntryChange` subscribers **never fire** in this mode |
-| CSR + GraphQL | `false` | `ContentstackLivePreview.hash` | callback refetch, manual host swap |
-| SSR + GraphQL | `true` | `request.query.live_preview` | full reload, manual host swap |
-| SSG | `false` | postMessage | runs as CSR at runtime |
+| CSR (incl. SSG at runtime) | `false` | postMessage into `stackSdk`; `ContentstackLivePreview.hash` for GraphQL | `onEntryChange` refetch |
+| SSR | `true` | `live_preview` query parameter on the request | Parent reloads the iframe; `onEntryChange` never fires on edits |
 
-**`onEntryChange` is inert under `ssr: true`.** The SDK guards its entry-change dispatch on `!ssr`,
-so any subscriber registered in an SSR app never runs. Registering one to trigger a refetch or
-`router.refresh()` produces a callback that looks correct and does nothing. Under `ssr: true` the
-update path is the parent reloading the iframe with the new hash; the app's only job is to read the
-hash off that request. If you want client-driven refresh, the route has to be CSR (`ssr: false`).
-
-`stackSdk` is mandatory in CSR and is what the SDK uses to default `ssr`. A CSR app that omits it
-silently gets SSR behaviour; an SSG site initialised with `ssr: true` gives blank screens rather
-than an error. Two mode traps to check before prescribing: **SSR** needs a per-request Stack
-instance, because a module-level one leaks one editor's draft into other users' responses; **SSG** is
-supported, but only in CSR mode: a prerendered page never sees the `live_preview` query parameter,
-so the documented setup is `ssr: false` with `stackSdk`, where the hash arrives by postMessage
-instead. **ISR** is the harder case: a regenerated page is still a cached page, and caching has to be off
-on the preview path. There is no published recipe for combining ISR with Live Preview.
-
-Detail and the framework coverage table are in
-[references/rendering-modes.md](references/rendering-modes.md); init placement per framework is in
+Detail per mode, including SSG, ISR and GraphQL, is in
+[references/rendering-modes.md](references/rendering-modes.md). Init placement per framework is in
 [references/frameworks.md](references/frameworks.md).
 
-### Step 5. Collect logs and one request
+### Step 5. Collect what is still open
 
-Only for what step 4 could not settle. With repository access the contracts are often already
-localised, and the single most valuable item left is the request host. Skip whatever you can
-already answer, and ask for the rest in one pass rather than one at a time.
+Ask for the rest in one message, skipping anything already settled:
 
-1. **Browser console, with the preview panel open.** Look for the init handshake, CSP or frame
-   refusals, CORS failures, and framework hydration errors. Ask them to reproduce with the console
-   open, because most of these fire once at load. Read it against the noise list below before
-   drawing any conclusion.
-2. **Server-side logs**, for SSR, middleware, BFF, or proxy setups. This is where a swallowed
-   preview fetch error lives, and it is invisible in the browser. Skip for pure CSR.
-3. **One failing request from the Network tab**: full request URL and host, response status, and
-   response headers. Redacted.
+1. **Browser console** with the preview panel open, reproduced after a reload. Check it against
+   [references/console-noise.md](references/console-noise.md) first: some messages appear on
+   healthy setups and are not evidence.
+2. **Server logs**, for SSR, middleware, BFF or proxy setups. A swallowed preview fetch error lives
+   here.
+3. **One content request from the Network tab**: host, status, response headers, redacted. A
+   delivery CDN host for the stack's region during a preview session means the hash is not reaching
+   the fetch, whatever the symptom.
 
-**Check the console output against [references/console-noise.md](references/console-noise.md)
-before concluding anything from it.** Preview runs the site in an iframe with postMessage between
-two apps, so a healthy setup still produces console chatter — `NO_REQUEST_LISTENER_FOUND` and third-party script errors both appear on working
-integrations. If one of those is the only thing in the console, you have no console evidence, not
-evidence of a problem.
-
-The request host alone settles the most common failure of all. During an active preview
-session, content coming from `cdn.contentstack.io` or `graphql.contentstack.com` means the hash is
-not reaching the fetch, regardless of the reported symptom.
-
-Also ask, in one line each, the questions that separate causes:
-
-- **One user or everyone?** One user points at their role. Preview runs as that user and applies
-  their full ACL — content types, entries, fields, locales, assets — so anything they cannot read
-  comes back empty. Delivery uses a delivery token and applies none, which is why the published
-  page looks fine. This is by design: the fix is usually defensive rendering on the site, not a
-  product issue.
-- **Localhost or deployed?** Working locally and failing deployed is a cache on the preview path,
-  or a frame header.
-- **Consistent or intermittent?** Intermittent and user-dependent under SSR is a shared
-  module-level Stack instance. That one reaches public traffic.
-- **Which locale, and which variant?** Both change the fetch, and both are common false leads.
+And, one line each: one user or everyone (one user points at their role), localhost or deployed
+(deployed-only points at a cache or frame header), consistent or intermittent (intermittent under SSR
+points at a shared Stack instance), which locale and variant.
 
 ### Step 6. Localise to one contract
 
-A working integration needs four independent contracts. They fail separately and complain
-identically. Name which one is unmet, with the evidence, before proposing anything.
-
 | # | Contract | One-look check |
 |---|---|---|
-| 1 | `init()` runs, on the client, in the deployed build | The Live Preview Onboarding Check moves past "Live Preview SDK Not Initialized" — that item clears only when the SDK's init message reaches the app, which happens only from `init()` |
-| 2 | Edit tags are generated and land on DOM elements | Some rendered element carries `data-cslp` |
-| 3 | The hash reaches the fetch, which switches host plus headers | Content requests hit a `*-preview.contentstack.com` host |
-| 4 | The preview target is reachable in an iframe | The pane renders at all |
+| 1 | `init()` runs on the client in the deployed build | Live Preview check gets past "Live Preview SDK Not Initialized" |
+| 2 | Edit tags are generated and land on DOM elements | Rendered elements carry `data-cslp` |
+| 3 | The hash reaches the fetch, which switches host and headers | Content requests hit the region's `*-preview` host |
+| 4 | The site is reachable in an iframe | The pane renders at all |
 
-Contract 1 gates 2 and 3. Contract 4 gates everything. Steps 3, 4 and 5 have usually already decided
-this; if they have, do not re-derive it.
+Contract 4 gates everything; contract 1 gates 2 and 3. Name the unmet one with its evidence.
 
-For contract 2, the one the Onboarding Check cannot see:
+- Contract 2 detail, key conventions and the empty-block contract:
+  [references/edit-tags.md](references/edit-tags.md).
+- Behavioural symptoms: look them up in [references/symptom-index.md](references/symptom-index.md),
+  which routes to [faq-integration.md](references/faq-integration.md),
+  [faq-preview-runtime.md](references/faq-preview-runtime.md),
+  [faq-visual-editor.md](references/faq-visual-editor.md) and
+  [faq-timeline.md](references/faq-timeline.md).
 
-```jsx
-addEditableTags(entry, contentTypeUid, true, locale);
-<h1 {...data.$?.title}>{data.title}</h1>
-```
+### Step 7. Fix and verify, or hand over
 
-`mode: "builder"` does not generate tags; only `addEditableTags()` does. (`mode: "builder"` is
-still required, because Visual Editor's Verify Mode gate fails on `mode: "preview"`.) The call
-mutates the entry and returns nothing, and the third argument must be `true` for React and JSX.
-Call it once per top-level entry: references resolved with `includeReference()` or `include[]`
-carry `uid` and `_content_type_uid`, and their tags are rebased to the referenced entry
-automatically. A separate call is needed only for references merged by hand, or GraphQL nodes
-fetched without `system`. Mirror the data path exactly, because references come back as arrays:
-`post.author[0].$?.name`, not `post.$?.author.name`.
+State contract, evidence and reproduction, then the smallest change at the right layer: init, tags,
+fetch, cache, routing, or stack configuration. The verification is the reproduction run again with
+the opposite result.
 
-Tag leaves **and** containers. A scalar takes `entry.$.field` on the element that renders the value.
-Multiple fields, references and modular blocks take `entry.$.field` on the wrapper plus
-`entry.$["field__" + i]` on each instance; the canvas attaches add and reorder controls only when
-an instance sits inside an element carrying the container tag. An empty multiple or block field
-keeps its wrapper in the DOM while previewing, marked with `VB_EmptyBlockParentClass` and the
-container tag, or the canvas has nothing to draw its add button on.
-
-Enumerate fields from `Object.keys(entry.$)` and diff against what the page renders. Do not eyeball
-the JSX. The full key convention and a per-field-kind checklist are in
-[references/edit-tags.md](references/edit-tags.md).
-
-For contract 3:
-
-```js
-// SSR reads it from the request. CSR uses ContentstackLivePreview.hash.
-const livePreviewHash = request.query.live_preview;
-
-if (livePreviewHash) {
-  headers.append("live_preview", livePreviewHash);
-  headers.append("preview_token", PREVIEW_TOKEN);
-  url.hostname = LIVE_PREVIEW_HOST;   // rest-preview.contentstack.com
-} else {
-  url.hostname = CONTENTSTACK_CDN_HOST; // cdn.contentstack.io
-}
-```
-
-If the symptom is behavioural rather than a failed contract, look it up in
-[references/symptom-index.md](references/symptom-index.md), which routes to
-[faq-setup.md](references/faq-setup.md),
-[faq-preview-runtime.md](references/faq-preview-runtime.md),
-[faq-visual-editor.md](references/faq-visual-editor.md), and
-[faq-timeline.md](references/faq-timeline.md).
-
-For a first-time setup or an end-to-end sweep,
-[references/preflight-checklist.md](references/preflight-checklist.md) runs the contracts as 34
-ordered checks.
-
-### Step 7. Fix, verify, or hand to Contentstack Support
-
-Before proposing any change, satisfy the reproduction rule: contract, evidence, and the action that
-reproduces the failure, stated in that order. Then propose the smallest correct change at the right
-layer: init, tagging, fetch, cache boundary, routing, or stack configuration, and give one verification
-the user runs themselves. The verification is the reproduction step run again with the opposite
-result.
-
-Some causes sit outside the user's application entirely: stack provisioning, plan gating, and
-browser policy. Recognising one early beats any workaround, because no change to the site can
-resolve it. See [references/contact-support.md](references/contact-support.md) for the list, and
-**produce the handover note it defines** — filled from what steps 1–6 already collected — for the
-user to paste into their ticket to Contentstack Support.
+Some causes sit outside the application: provisioning, plan gating, browser policy. No site change
+fixes them. See [references/contact-support.md](references/contact-support.md) and produce its
+handover note from what steps 1 to 6 already collected.
 
 ## Output Format
 
-Lead with the broken contract or mechanism and the evidence for it. Then the smallest correct
-change, as a snippet or diff, or a plain statement that no application-side fix exists. Then one
-verification. Attach mode-specific caveats to the step they affect.
+New integration: follow "Reply shape" in [references/setup-docs.md](references/setup-docs.md).
 
-When you still need evidence, ask for the specific artifact that separates the remaining
-candidates, and say what each possible answer would mean. Do not send a generic list of requests.
+Failing integration: lead with the broken contract and its evidence. Then the smallest change as a snippet or diff, or a
+plain statement that no application-side fix exists. Then one verification.
 
-Say when a behaviour applies only to preview and not production, and say the reverse too, because
-preview output reaching real visitors is a production incident rather than an authoring annoyance.
+When evidence is still missing, ask for the one artifact that separates the remaining candidates and
+say what each answer would mean.
+
+Say whether a behaviour applies to preview only or to production too. Preview output reaching real
+visitors is a production incident.
 
 ## Tooling Notes
 
-Read-only inspection first, with Read, Grep and Glob when the repository is available. Useful
-greps: the `init(` call site, `addEditableTags`, `onEntryChange`, `live_preview`, `preview_token`,
-any hostname constant, and cache configuration on the preview route.
+Read-only inspection with Read, Grep and Glob. Useful greps: `init(`, `addEditableTags`,
+`onEntryChange`, `live_preview`, `preview_token`, hostname constants, cache configuration.
 
-Minimum versions: Live Preview Utils v3.0+ and Delivery SDK v3.20.3+ for Visual Editor, and Live
-Preview Utils v4.4.4+ for `setPageContext()`. Confirm exactly one copy of the preview SDK is
-loaded.
+Minimum versions: Live Preview Utils v3.0+ for Visual Editor (legacy `contentstack` JavaScript SDK
+v3.20.3+); Live Preview Utils v4.4.4+ for `setPageContext()`.
 
-When the repository is not available, run the same protocol against described code and screenshots.
-Do not pretend to have inspected code.
+Without repository access, run the same steps against described code and screenshots. Do not claim
+to have inspected code.
 
 ## Security
 
 ### Defaults
 
-- Never expose delivery tokens, preview tokens, management tokens, or environment secrets.
-- Treat preview tokens and live preview hashes as credentials. Do not ask users to paste them, and
-  redact them if they appear. Ask for redacted logs and screenshots.
-- A management token in client-side Live Preview configuration is an exposure.
+- Never ask for, echo or reconstruct tokens or live preview hashes. Ask for redacted logs and
+  screenshots. If a secret appears, tell the user to rotate it.
+- A management token in client-side configuration is an exposure.
 - Do not recommend enabling Live Preview in production builds. An edit button on a public site is a
   symptom of exactly that.
-- Preview output served to real visitors is a production data-exposure issue, not a cosmetic bug.
-- Validate preview target hosts before suggesting header or CSP changes.
+- Validate preview target hosts before suggesting header or CSP changes, and scope any relaxation to
+  the preview deployment.
 
 ### Destructive Actions
 
-Do not change stack settings, roles, tokens, cache configuration, or environment configuration
-automatically. Propose the change, state the blast radius, and require confirmation.
-
-### Secrets
-
-Never reveal, echo, or reconstruct tokens or hashes. If a secret appears in provided input, tell
-the user to rotate it.
+Do not change stack settings, roles, tokens, cache or environment configuration automatically.
+Propose the change, state the blast radius, and require confirmation.

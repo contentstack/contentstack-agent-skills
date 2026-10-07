@@ -12,12 +12,15 @@ addEditableTags(entry, contentTypeUid, true, locale /*, { useLowerCaseLocale: fa
 
 - Mutates the entry and returns nothing. It attaches a `$` object at every level: the entry, each
   group, each block instance, and each resolved reference.
-- Call it **once per top-level entry**. A resolved reference that carries `uid` and
+- Call it **once per top-level entry**. A resolved reference that carries top-level `uid` and
   `_content_type_uid` (which `includeReference()` and REST `include[]` preserve) gets its own `$`,
   rebased to the referenced entry: `author.<author_uid>.<locale>.title`, not
-  `blog_post.<post_uid>.<locale>.author.0.title`. A separate call per referenced entry is needed
-  only when references were fetched separately and merged by hand, or when a GraphQL query omitted
-  `system { uid content_type_uid locale }`.
+  `blog_post.<post_uid>.<locale>.author.0.title`. The locale segment is the reference's own
+  `locale` when it has one. A separate call per referenced entry is needed when references were
+  fetched separately and merged by hand.
+- **GraphQL never rebases on its own.** A GraphQL node nests `uid` and `content_type_uid` under
+  `system`, and references sit under `edges[].node`, so the rebase condition is never met. Normalise
+  the response first (see `graphql-connection-wrappers-break-cslp` in `faq-visual-editor.md`).
 - The third argument must be `true` in React and JSX so the values are objects you can spread.
 - `locale` and `contentTypeUid` are lowercased; pass `{ useLowerCaseLocale: false }` for stacks with
   mixed-case locale codes.
@@ -104,9 +107,11 @@ Hover and click on the marked wrapper draw no outline; the button is the afforda
 ## Variants
 
 Highlight Variant and audience mode key on v2 tags:
-`v2:<ct>.<entry_uid>_<variant_uid>.<locale>.<field>`. `addEditableTags()` emits them only for fields
-listed in the entry's `_applied_variants`, and the response includes that map only when the request
-carries `include_applied_variants=true`. Pass it as a query parameter on the content request:
+`v2:<ct>.<entry_uid>_<variant_uid>.<locale>.<field>`. `addEditableTags()` emits them for fields
+listed in the entry's applied-variants map (`_applied_variants`, or `system.applied_variants`) and
+for fields nested under a listed path. Each referenced entry uses its own map, not the parent's. The
+response includes the map only when the request carries `include_applied_variants=true`. Pass it as
+a query parameter on the content request:
 
 ```js
 // Honoured: a query parameter on the request itself

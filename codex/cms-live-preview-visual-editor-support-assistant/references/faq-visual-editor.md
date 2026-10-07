@@ -5,18 +5,18 @@ affordance, and what the canvas does with the site's own clicks. Live Preview re
 the canvas misbehaves points here.
 
 If nothing on the canvas is editable at all, start with `edit-tags-not-generated-or-not-spread` in
-`faq-setup.md` — that is setup contract 2, and everything here assumes it is met.
+`faq-integration.md` — that is contract 2, and everything here assumes it is met.
 
 ### cslp-not-rebased-to-referenced-entry
 - **bucket**: visual-editor
 - **symptom**: Edit tags on fields that come from a **referenced** entry do nothing when clicked. Tags on the page's own fields work. Console may show `{code: 'NO_REQUEST_LISTENER_FOUND', message: 'contentstack-adv-post-message: No request listener found for event "scroll"'}`, but that message is routine and appears on healthy setups too — treat it as incidental, not as the identifying evidence. Diagnose from the tags themselves.
 - **frameworks**: React, Next.js, framework-agnostic
 - **rendering_modes**: CSR, SSR
-- **root_cause**: `addEditableTags()` rebases a tag onto the referenced entry only when the resolved reference object carries both `uid` and `_content_type_uid`. Without them the tag stays anchored to the parent entry (`product.<parent_entry_uid>.<locale>.<reference_field>.<index>.<field>`), so there is no entry to navigate to. Common causes: references fetched separately and merged by hand (which drops those keys), or a GraphQL query that omits `system`. Hardcoding `data-cslp` by hand is a related failure — the referenced entry's uid and content type uid are not the ones being edited.
+- **root_cause**: `addEditableTags()` rebases a tag onto the referenced entry only when the resolved reference object carries both `uid` and `_content_type_uid`. Without them the tag stays anchored to the parent entry (`product.<parent_entry_uid>.<locale>.<reference_field>.<index>.<field>`), so there is no entry to navigate to. Common causes: references fetched separately and merged by hand (which drops those keys), or any GraphQL response, where those keys sit under `system` instead of at the top level. Hardcoding `data-cslp` by hand is a related failure — the referenced entry's uid and content type uid are not the ones being edited.
 - **fix**:
   1. Inspect the referenced field in DevTools. Working shape is `<referenced_ct_uid>.<referenced_entry_uid>.<locale>.<field>`. If you see the parent entry's uid, this is the bug.
   2. REST / Delivery SDK: resolve references with `includeReference()` / `include[]` so resolved objects keep `uid` and `_content_type_uid`.
-  3. GraphQL: request `system { uid, content_type_uid, locale }` on every reference.
+  3. GraphQL: request `system { uid, content_type_uid, locale }` on every reference, then normalise each node so `uid` and `_content_type_uid` sit at its top level. See `graphql-connection-wrappers-break-cslp`.
   4. If references are fetched separately, either preserve those two keys when merging, or call `addEditableTags()` on each referenced entry with its own content type uid.
   5. Never hardcode `data-cslp` — always read the value the SDK put on the entry object.
 - **verification**: Click the edit tag on a referenced field; the CMS should open the referenced entry's editor and scroll to that field.
@@ -76,10 +76,11 @@ If nothing on the canvas is editable at all, start with `edit-tags-not-generated
 - **rendering_modes**: any
 - **root_cause**: `addEditableTags()` walks the response object and bakes every traversed layer into the `data-cslp` path. A GraphQL response nests values under `Connection -> edges -> node`, so those wrapper layers end up in the path and no field path resolves against the entry. This is by design — the SDK has no knowledge of GraphQL response shapes — so it needs a normalizer on the application side.
 - **fix**:
-  1. Request `system { uid, content_type_uid }` on every node the page renders, including referenced entries. Without those the tags cannot be attributed to an entry at all.
+  1. Request `system { uid, content_type_uid, locale }` on every node the page renders, including referenced entries. Without those the tags cannot be attributed to an entry at all.
   2. Flatten the response before tagging: collapse each `Connection -> edges -> node` into the plain object or array the REST shape would have produced, so a reference is an array of entries and a field is a direct property.
-  3. Call `addEditableTags()` on the flattened object, never on the raw GraphQL response.
-  4. Confirm the resulting `data-cslp` values contain no `edges` or `node` segments.
+  3. On every entry and referenced entry, copy `system.uid` to `uid` and `system.content_type_uid` to `_content_type_uid`. `addEditableTags()` reads only the top-level keys, so without this references are never rebased and their tags point at the parent entry.
+  4. Call `addEditableTags()` on the normalised object, never on the raw GraphQL response.
+  5. Confirm the resulting `data-cslp` values contain no `edges` or `node` segments.
 - **verification**: Inspect a tagged element. Its `data-cslp` reads `<content_type_uid>.<entry_uid>.<locale>.<field_path>` with no connection segments, and clicking it focuses the field in the form panel.
 
 ---

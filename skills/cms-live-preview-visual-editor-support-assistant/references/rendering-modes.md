@@ -11,29 +11,31 @@ Diagnose against this file. Use `frameworks.md` only for where `init()` is allow
 | Mode | `ssr` | How the hash travels | How updates arrive | Hard requirement |
 |---|---|---|---|---|
 | CSR + REST | `false` | postMessage; the SDK injects it into `stackSdk` | `onEntryChange` / `onLiveEdit` refetch, no reload | `stackSdk` is mandatory |
-| SSR + REST | `true` | `live_preview` query parameter on the request | full iframe reload, parent-driven; `onEntryChange` subscribers never fire | a fresh Delivery SDK instance per request |
+| SSR + REST | `true` | `live_preview` query parameter on the request | full iframe reload, parent-driven; `onEntryChange` never fires on edits | a fresh Delivery SDK instance per request |
 | CSR + GraphQL | `false` | `ContentstackLivePreview.hash` | callback refetch | manual host swap plus headers |
 | SSR + GraphQL | `true` | `request.query.live_preview` | full iframe reload | manual host swap plus headers |
 | SSG | `false` | postMessage | runs in CSR mode at runtime | `stackSdk`, and `init()` must be browser-only |
 
-## `onEntryChange` does not fire under `ssr: true`
+## `onEntryChange` does not fire on edits under `ssr: true`
 
-The SDK dispatches entry-change events only when `ssr` is `false`. In SSR mode the parent reloads
-the iframe with the new hash and the app never receives a client-side event. A subscriber registered
-in an SSR app is silently inert, so a `router.refresh()` or refetch wired into it never runs, and the
-integration looks correct while doing nothing on edit. Drive SSR updates from the request, not from a
-subscriber; if client-driven refresh is wanted, the route must be CSR.
+The SDK dispatches edit events to subscribers only when `ssr` is `false`. In SSR mode the parent
+reloads the iframe with the new hash instead. A subscriber registered in an SSR app still runs once at
+page load, which makes it look wired up, and then never runs again on an edit. A `router.refresh()` or
+refetch wired into it does nothing. Drive SSR updates from the request; if client-driven refresh is
+wanted, the route must be CSR.
 
 ## How `ssr` is resolved
 
 Precedence is `stackSdk.live_preview.ssr`, then `init({ ssr })`, then the automatic default.
 
-The automatic default keys off `stackSdk`: present means `ssr: false`, absent means `ssr: true`.
-This is the trap behind several setup failures. A CSR app that omits `stackSdk` silently gets SSR
-behaviour, and an SSG site initialized with `ssr: true` produces blank and black screens rather
-than a clean error.
+- An `ssr` in the Delivery SDK's `live_preview` config silently overrides `init({ ssr })`. Check
+  both places before trusting either.
+- The automatic default keys off `stackSdk`: present means `ssr: false`, absent means `ssr: true`.
+  A CSR app that omits `stackSdk` silently gets SSR behaviour.
+- An SSG site running with `ssr: true` reloads on every edit and re-serves its prerendered HTML, so
+  edits never appear. Users report it as blank screens, flicker or "nothing happens".
 
-Set it explicitly. Do not rely on the default.
+Set `ssr` explicitly, in one place.
 
 ## Mode-specific failures worth knowing before you prescribe
 
@@ -56,19 +58,19 @@ parameter, and a prerendered page never sees a query parameter, so the fetch is 
 The documented answer is not to fight that, it is to run the preview path in **CSR mode**, where
 the hash arrives by postMessage instead and never needs the URL.
 
-Per [Set Up Live Preview for Static-Site Generator (SSG)](https://www.contentstack.com/docs/developers/set-up-live-preview/set-up-live-preview-for-static-site-generator-ssg):
+Per [Set Up Live Preview for Static-Site Generator (SSG)](https://www.contentstack.com/docs/headless-cms/set-up-live-preview-for-static-site-generator-ssg):
 
 - Initialise Live Preview Utils with `ssr: false`
 - Pass `stackSdk`, which is mandatory in CSR mode
 - Configure the Delivery SDK with
-  `live_preview: { preview_token, enable: true, host: "rest-preview.contentstack.com" }`
+  `live_preview: { preview_token, enable: true, host: <region preview host> }`
 - Refresh through `onLiveEdit()`, so the browser refetches on each edit
 
 So an SSG site previews without a rebuild. The static build serves the shell, and the preview
 content is fetched client-side during the session.
 
-The common failure here is not SSG itself, it is an SSG site initialised with `ssr: true`. That
-produces blank and black screens rather than a clean error.
+The common failure here is not SSG itself, it is an SSG site running with `ssr: true`, which
+reloads into the same prerendered HTML on every edit.
 
 ### ISR: the genuinely hard case
 
