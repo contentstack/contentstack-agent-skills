@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "contentstack-skills",
-      "source": ".",
+      "source": "./",
       "description": "Contentstack agent skills for Claude Code, Cursor, Codex, and Gemini."
     }
   ]
