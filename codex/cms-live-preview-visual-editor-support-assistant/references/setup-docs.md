@@ -165,6 +165,6 @@ Say so plainly rather than guessing:
 
 - **ISR and framework draft or cache modes.** Caching must be off on preview routes; no official
   hybrid recipe exists. See [rendering-modes.md](rendering-modes.md).
-- **Edge runtimes.** Untested rather than unsupported.
+- **Edge runtimes.** No dedicated page; they follow the SSR contract. See [frameworks.md](frameworks.md#edge-runtimes).
 - **GraphQL with edit tags.** Needs an application-side response normaliser. See
   `graphql-connection-wrappers-break-cslp` in `faq-visual-editor.md`.

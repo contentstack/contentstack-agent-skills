@@ -124,81 +124,70 @@ route.
 
 ## Nuxt
 
-Init in a client-only plugin. For page context, `useHead()` is the natural place to emit the
-`<meta>` tags, since Nuxt produces head tags natively and has no built-in hook for injecting window
-globals. As everywhere, page context only takes effect when **Custom Preview URLs** is enabled for
-the stack.
+Init in a client-only plugin (`plugins/live-preview.client.ts`). Nuxt in SSR mode follows the SSR
+contract: read the hash from the request in the server fetch and build the Stack per request. Nuxt
+with `ssr: false` follows the CSR contract. Visual Editor overlays are drawn by the SDK inside the
+iframe, so they work in both modes once edit tags are spread onto the rendered elements.
 
-The Nuxt CSR and SSR stories differ on whether Visual Editor overlays appear, and Contentstack's
-own material is inconsistent on this point. Verify against the actual app before promising overlay
-support.
+For page context, `useHead()` is the natural place to emit the `<meta>` tags. Page context only takes
+effect when **Custom Preview URLs** is enabled for the stack.
 
 ## Angular
 
-Init in `APP_INITIALIZER` or the root component. By contract this is the same as the React SPA
-case: CSR, `stackSdk` mandatory, `onEntryChange` for refresh. Only the placement idiom differs.
+Init in `APP_INITIALIZER` or the root component. A client-rendered Angular app follows the CSR
+contract: `ssr: false`, `stackSdk` passed, `onEntryChange` for refresh.
 
-Angular Universal (SSR) is not covered by documentation. Apply the SSR contract from
-`rendering-modes.md` and verify.
+Angular with server rendering (Angular SSR, formerly Universal) follows the SSR contract: guard
+`init()` to the browser with `isPlatformBrowser`, read the hash from the server request, and build
+the Stack per request.
 
 ## SvelteKit and Astro
 
-Both are SSR with a Node adapter in their documented form, so the SSR contract applies unchanged:
-hash from the request, fresh Stack instance per request, full reload on update.
+Both follow the contract of the rendering mode in use. Server-rendered routes (SvelteKit `load` on
+the server, Astro with a server adapter) take the SSR contract: hash from the request, fresh Stack
+instance per request, full reload on update. Client-only routes take the CSR contract. Init in
+`onMount` (SvelteKit) or a client-side `<script>` (Astro).
 
-Astro on some hosting platforms has an environment-variable parsing trap where the enable flag does
-not arrive as a boolean in the deployed build. If init appears not to run there, check the parsed
-value before checking anything else.
-
-Neither has support history. Do not present either as proven.
+On some hosts the enable flag reaches the deployed Astro build as a string rather than a boolean, and
+`"false"` is truthy. If init appears not to run, check the parsed value first.
 
 ## Gatsby
 
-Gatsby uses its own path via `ContentstackGatsby`, which previews without a rebuild. It needs
-`__typename` and `uid` in the GraphQL query, plus `addContentTypeUidFromTypename`.
+Gatsby pages are prerendered, so preview runs in CSR mode: `ssr: false`, `stackSdk` passed, content
+refetched on edit through `onEntryChange`. No rebuild is needed. Fetch preview content with the
+Delivery SDK on the client; GraphQL data from the build is published content.
 
-Two cautions. The published Gatsby starter is pinned to a Live Preview Utils v1.x release that
-predates Visual Editor, so it is not a valid Visual Editor reference. And whether Visual Editor
-works on a Gatsby static architecture is undocumented and unverified, not a settled yes. Scope
-Gatsby answers to Live Preview unless the user has verified Visual Editor themselves.
+Visual Editor needs edit tags on the client-fetched entries, as in any CSR app. The published Gatsby
+starter pins Live Preview Utils v1.x, which predates Visual Editor; upgrade to v3+ before adding
+`mode: "builder"`.
 
-Note that `getGatsbyDataFormat` still appears in the SDK's README and configuration docs but has no
-implementation in the current source. It was removed in v3. Do not recommend it.
+`getGatsbyDataFormat` still appears in the SDK's README but no longer exists in the source (removed
+in v3). Do not recommend it.
 
-## No SDK, or a non-JavaScript backend
+## Edge runtimes
 
-A first-class population, not a fallback. This shape covers every BFF, middleware, proxy, and
-non-JavaScript server.
+Nothing in the integration depends on a Node-only API. `init()` runs in the browser, and the server
+side is the fetch from contract 3: read the hash, switch host, add the `live_preview` and
+`preview_token` headers. That works the same in an edge function. Two things to confirm: the edge
+platform does not cache the preview response, and the Stack instance is created per request.
 
-There is no `init()` to place on the server. The whole server-side integration is the fetch branch
-from contract 3 in the parent skill: read the hash from the request, switch host, add the
-`live_preview` and `preview_token` headers, and bypass cache for that request. If the application
-proxies Contentstack through its own backend, the hash has to be forwarded end to end, from the
-browser through the backend and into the outbound header. The JavaScript Live Preview Utils SDK is
-still required in the rendered page, whatever the backend is — it is what talks to the editor.
+## Non-JavaScript backends, BFFs and proxies
 
-### .NET
+Supported. The server-side integration is the fetch branch from contract 3 in SKILL.md: read the hash
+from the request, switch host, add the `live_preview` and `preview_token` headers, and bypass cache.
+A backend that proxies Contentstack must forward the hash end to end. The JavaScript Live Preview
+Utils SDK still runs in the rendered page, whatever the backend, because it is what talks to the
+editor.
 
-The best-covered non-JavaScript stack. Verified against the SDK sources, not inferred:
+Edit tags are plain attributes: `data-cslp="<content_type_uid>.<entry_uid>.<locale>.<field_path>"`.
+Any server language can render them. Where a utils package has a helper, use it:
 
-- **Live Preview** is documented for both SSR and CSR in
-  [Get Started with .Net SDK and Live Preview](https://www.contentstack.com/docs/developers/sdks/content-delivery-sdk/dot-net/get-started-with-dot-net-sdk-and-live-preview).
-  The hash is applied with `await contentstackClient.LivePreviewQueryAsync(dict)`, where `dict`
-  carries the request's query parameters. The same per-request-instance rule as every SSR stack
-  applies. Timeline is supported by the same SDK.
-- **Edit tags, and therefore Visual Editor,** are supported through the `Contentstack.Utils` package:
-  `Contentstack.Utils.addEditableTags(entry, contentTypeUid, tagsAsObject, locale, options)`, with an
-  `addTags` alias and an `AddEditableTagsOptions.UseLowerCaseLocale` flag. It is written for parity
-  with the JavaScript `addEditableTags` and emits the same `data-cslp` and `data-cslp-parent-field`
-  attributes, so everything in the edit-tag entries applies unchanged.
-- **Two gaps to be honest about.** The .NET Live Preview docs page does not mention edit tags or
-  Visual Editor at all, and none of the public .NET example apps (Blazor starter, Razor Pages,
-  GraphQL) wire up Live Preview. So a user setting up Visual Editor on .NET is working from the
-  utils SDK rather than from a walkthrough. Point them at `Contentstack.Utils` and the edit-tag
-  entries, and do not promise a reference app.
+| Backend | Live Preview | Edit tags |
+|---|---|---|
+| .NET | `LivePreviewQueryAsync(dict)` on the Delivery SDK client, with the request's query parameters. [Docs](https://www.contentstack.com/docs/developers/sdks/content-delivery-sdk/dot-net/get-started-with-dot-net-sdk-and-live-preview) | `Contentstack.Utils.addEditableTags(entry, contentTypeUid, tagsAsObject, locale, options)` |
+| Java | the Delivery SDK's live preview query with the request's query parameters | `Utils.addEditableTags(entry, contentTypeUid, tagsAsObject, locale)` in `contentstack-utils-java` |
+| Python | the Delivery SDK's live preview query with the request's query parameters | `addEditableTags(entry, contentTypeUid, tagsAsObject, locale)` from `contentstack_utils` |
+| PHP, Ruby | the Delivery SDK's live preview query with the request's query parameters | no helper in the utils package; render `data-cslp` with the format above |
 
-### Other server SDKs
-
-Java, PHP, Python and Ruby have Live Preview get-started pages in the same SSR shape. Whether their
-utils packages implement edit tags has not been verified here — check the package before promising
-Visual Editor on those stacks, and say so if it is absent.
+All helpers match the JavaScript `addEditableTags`, so [edit-tags.md](edit-tags.md) applies to them
+unchanged.

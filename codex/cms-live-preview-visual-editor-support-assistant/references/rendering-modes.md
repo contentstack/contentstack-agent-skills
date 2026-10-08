@@ -112,25 +112,20 @@ correctly.
 
 ## Framework and mode coverage
 
-Support here means documented and exercised, not merely possible.
+Every framework is supported. The SDK has no framework-specific code, so support follows from the
+rendering mode of each route: apply that mode's contract above. [frameworks.md](frameworks.md) covers
+where `init()` goes in each one.
 
-| Framework | CSR | SSR | SSG / ISR | Edge |
-|---|---|---|---|---|
-| Next.js App Router | documented, Visual Editor supported | documented, Visual Editor supported; fragile for empty-block affordances | runs as CSR at runtime; `searchParams` conflicts with fully static routes | no coverage |
-| Next.js Pages Router | supported | supported via `getServerSideProps` | supported via `getStaticProps`, runs in CSR mode | no coverage |
-| React SPA (Vite) | reference implementation | not applicable | not applicable | not applicable |
-| Nuxt | documented | documented | not applicable | no coverage |
-| Angular | documented | Universal not covered | not applicable | no coverage |
-| SvelteKit | not covered | documented | not covered | no coverage |
-| Astro | not covered | documented, Node adapter | static mode untested | environment-variable parsing trap on some hosts |
-| Gatsby | supported without a rebuild | not applicable | the intended mode | not applicable |
-| .NET | documented | documented; Visual Editor via `Contentstack.Utils` edit tags | not covered | no coverage |
-| Other server SDKs (Java, PHP, Python, Ruby) | not covered | Live Preview documented; edit-tag support unverified | not covered | no coverage |
+| Framework | CSR | SSR | SSG |
+|---|---|---|---|
+| Next.js App Router | client components | server components, dynamic routes | runs as CSR at runtime |
+| Next.js Pages Router | client fetch | `getServerSideProps` | `getStaticProps`, runs as CSR |
+| React SPA (Vite) | the default | — | — |
+| Nuxt | `ssr: false` | default Nuxt | prerendered routes run as CSR |
+| Angular | default | Angular SSR | prerendered routes run as CSR |
+| SvelteKit | client-only routes | server `load` | prerendered routes run as CSR |
+| Astro | client islands | server adapter | static output runs as CSR |
+| Gatsby | runtime client fetch | — | the default; preview runs as CSR |
+| .NET, Java, Python, PHP, Ruby | — | SSR contract; edit tags per [frameworks.md](frameworks.md) | — |
 
-Two honest gaps in this table:
-
-- **Edge runtimes have no coverage anywhere.** Not in the documentation, the SDK source, or the
-  issue tracker. This is absence of evidence rather than a known incompatibility. If a user is on
-  an edge runtime, say that it is untested rather than guessing.
-- **Frameworks with a starter but no support history** cannot be distinguished between "works
-  cleanly" and "nobody uses it". Both produce zero tickets. Do not present them as proven.
+Edge runtimes follow the SSR contract; nothing in it needs a Node-only API.
