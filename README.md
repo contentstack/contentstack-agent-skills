@@ -57,7 +57,7 @@ npx skills add <this-repo>@<skill-slug>
 | `cms-data-modeling-best-practices` | Contentstack Data Modeling Best Practices | CMS | Content type design, references, global fields, groups, modular blocks, JSON RTE, taxonomy, tags, and model simplification. |
 | `cms-entries` | Entries | CMS | Entry querying, localization, versioning, publishing, CDA usage, reference expansion, pagination, bulk operations, and Sync API patterns. |
 | `cms-environments-publishing` | Contentstack Environments & Publishing | CMS | Environment setup, publishing behavior, delivery and preview tokens, Sync API usage, CDN behavior, and publish queues. |
-| `cms-live-preview-visual-builder-support-assistant` | Live Preview and Visual Builder Support Assistant | Developer Experience | Live Preview and Visual Builder setup or debugging across CSR, SSR, SSG, middleware/BFF, and edit-tag flows. |
+| `cms-live-preview-visual-editor-support-assistant` | Live Preview and Visual Editor Support Assistant | Developer Experience | Any Visual Experience question: how Live Preview, Visual Editor (also called Visual Builder) and Timeline work, setting them up, and debugging them across CSR, SSR, SSG and GraphQL. |
 | `cms-localization` | Contentstack Localization | CMS | Language setup, fallback chains, localized and unlocalized entries, non-localizable fields, and multi-locale publishing. |
 | `cms-releases` | Releases | CMS | Coordinated content deployment, release scheduling, staged deployment, webhook storm prevention, and CI/CD integration. |
 | `cms-roles-permissions` | Roles & Permissions | CMS | Built-in roles, custom roles, teams, permission merging, token capabilities, and least-privilege access design. |
