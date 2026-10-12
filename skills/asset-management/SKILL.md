@@ -1,6 +1,6 @@
 ---
 name: asset-management
-description: "Advise on Contentstack Assets, the standalone digital asset management (DAM) product. Cover spaces and workspaces, folders, asset types and metadata, AI tagging and alt text, duplicate management, versions, trash and restore, visual markups, image editing, and linking to CMS stacks. Not for the CMS stack asset library; use cms-assets for that."
+description: "Advise on Contentstack Assets, the standalone digital asset management (DAM) product. Cover spaces and workspaces, folders, asset types and metadata, localization, saved views, AI tagging and alt text, duplicate management, versions, trash and restore, visual markups, and linking to CMS stacks. Not for the CMS stack asset library; use cms-assets for that."
 allowed-tools: Read Grep Glob
 ---
 
@@ -8,7 +8,7 @@ allowed-tools: Read Grep Glob
 
 ## Description
 
-Advise on Contentstack Assets, the standalone DAM product (also called "Asset Management" in some docs). Cover spaces and workspaces, folders, roles, asset types and metadata, AI-assisted metadata, duplicate management, versions, trash and restore, visual markups, image editing, and CMS integration.
+Advise on Contentstack Assets, the standalone DAM product (also called "Asset Management" in some docs). Cover spaces and workspaces, folders, roles, asset types and metadata, localization, filters and saved views, AI-assisted metadata, duplicate management, versions, trash and restore, visual markups, and CMS integration.
 
 ## When to Use
 
@@ -46,6 +46,8 @@ Teams adopting Contentstack Assets need to structure spaces and workspaces sensi
 
 - How should I split my brands and regions across spaces and workspaces?
 - How do I add custom fields to my images?
+- How do I add a language to a workspace?
+- Can I save a set of filters and reuse it?
 - Can Assets tag my images and write alt text automatically?
 - How do I find and remove duplicate images?
 - I deleted a folder by mistake. Can I get it back?
@@ -87,10 +89,18 @@ Teams adopting Contentstack Assets need to structure spaces and workspaces sensi
 
 - Metadata comes in layers: **system metadata** (read-only: file name, UID, URLs, MIME type, size, created and modified details), **general metadata**, and **user-defined metadata** from custom fields.
 - Each **asset type** maps to one MIME type and one file extension. On upload, a matching type applies automatically and its fields appear. System types cover images, audio, video, documents and archives, and you can add custom types.
-- User-defined fields are reusable across asset types. Documented field types include single line textbox, multi line textbox, link, select (dropdown, radio buttons or checkboxes), number, date, boolean and group.
-- The set of supported field types has been expanding. Tell the user to confirm the current list in the Asset Modeling docs before designing around a specific type.
+- User-defined fields are reusable across asset types. The supported field types are single line text, number, select and group. Do not suggest other types, such as multi line text, date, boolean or link.
 - Mandatory fields must be filled before an upload or save can finish. Use them sparingly so uploads are not blocked on optional information.
 - Edit metadata for an individual asset in the configurable metadata panel.
+- **Filters and saved views:** User-defined fields can be used as filters when browsing assets, so well-modeled fields make the library searchable. A filter combination can be saved as a **saved view** and reused later instead of rebuilding the filters each time. Advise modeling fields with filtering in mind, for example a select field for campaign or usage rights.
+
+### Localization
+
+- Assets supports localized asset versions within a space.
+- Adding a language is a two-step process:
+  1. Add the language in product settings.
+  2. Add it to each workspace that needs it: **Space Settings > Workspaces >** pick the workspace **> Manage Locales**.
+- Locales are enabled per workspace, so a language added in product settings does not appear in a workspace until it is added there.
 
 ### AI tags, alt text and colors
 
@@ -139,11 +149,6 @@ Teams adopting Contentstack Assets need to structure spaces and workspaces sensi
 - **Suggest Markup with AI** proposes bounding boxes with confidence scores. Review them before saving.
 - Per markup you can edit, duplicate, hide or delete. Bulk actions can hide all markups or **delete all markups, which is permanent**.
 - Markups are for interactive and shoppable content. Do not describe them as review comments or annotation threads.
-
-### Image editing
-
-- The public documentation for editing images inside Assets is limited. Describe only what the user's current docs confirm, and point them to the Assets docs for the editing options available to them.
-- Do not confuse this with delivery-time transformations (crop, fit, orient and so on) in the Image Delivery API, or with the Image Cropper extension. Those belong to the CMS side.
 
 ### CMS integration and delivery
 
