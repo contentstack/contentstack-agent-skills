@@ -1,6 +1,6 @@
 # Contentstack Skills
 
-A bundle of 21 ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools, covering CMS implementation, Brand Kit guidance, delivery SDK development, migration workflows, Developer Hub app architecture, and Launch automation.
+A bundle of 22 ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools, covering CMS implementation, Brand Kit guidance, delivery SDK development, migration workflows, Developer Hub app architecture, and Launch automation.
 
 ## What's in here?
 
@@ -51,6 +51,7 @@ npx skills add <this-repo>@<skill-slug>
 
 | Slug | Title | Product | What it helps with |
 | --- | --- | --- | --- |
+| `asset-management` | Asset Management | Assets | Assets DAM spaces and workspaces, folders, asset types and metadata, AI tagging and alt text, duplicate management, versions, trash and restore, visual markups, and CMS integration. |
 | `brand-kit-assistant` | Brand Kit Assistant | Brand Kit | Brand Kit concepts, setup, governance, Voice Profiles, Knowledge Vault, on-brand AI generation, and API-task routing. |
 | `cms-assets` | Contentstack Assets | CMS | Asset organization, image transformations, publishing lifecycle, CDN behavior, and asset limits. |
 | `cms-branches-aliases` | Branches & Aliases | CMS | Isolated content development, alias-based deployments, CI/CD integration, merge behavior, and rollback patterns. |

@@ -1,7 +1,12 @@
 {
   "exported_at": "2026-04-28T08:27:32.000Z",
-  "skill_count": 21,
+  "skill_count": 22,
   "skills": [
+    {
+      "slug": "asset-management",
+      "title": "Asset Management",
+      "product": "Assets"
+    },
     {
       "slug": "brand-kit-assistant",
       "title": "Brand Kit Assistant",
