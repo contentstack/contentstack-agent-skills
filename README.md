@@ -1,6 +1,6 @@
 # Contentstack Skills
 
-A bundle of 21 ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools, covering CMS implementation, Brand Kit guidance, delivery SDK development, migration workflows, Developer Hub app architecture, and Launch automation.
+A bundle of 22 ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools, covering CMS implementation, Brand Kit guidance, delivery SDK development, migration workflows, Developer Hub app architecture, Launch automation, and Contentstack Studio.
 
 ## What's in here?
 
@@ -72,6 +72,7 @@ npx skills add <this-repo>@<skill-slug>
 | `launch-sync-environment-variables-from-env-example` | Sync Launch environment variables from .env.example | Launch | Comparing a local `.env.example` with Launch environment variables and patching missing keys without printing secrets. |
 | `launch-trigger-and-monitor-launch-deployments` | Trigger and Monitor Launch Deployments | Launch | Triggering Launch deployments, polling deployment status, retrieving failure logs, and summarizing likely causes and next steps. |
 | `migration-companion` | Contentstack Migration Companion | Developer Experience | Guided Contentful-to-Contentstack migration workflow covering prerequisites, content migration, code migration, bundled validation scripts, and completion reporting. |
+| `studio` | Studio | Studio | Contentstack Studio end to end: SDK install, project provisioning, component registration, sections and templates, data binding, canvas and preview routes, verification, and troubleshooting. A router skill that loads one of 109 bundled specialist files per task. |
 
 ## How it works
 
