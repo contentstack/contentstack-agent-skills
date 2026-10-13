@@ -3,6 +3,8 @@ description: "Advise users on Contentstack Brand Kit concepts, setup, governance
 alwaysApply: false
 ---
 
+> This skill's bundled files are in `skills/brand-kit-assistant/` at the root of the contentstack-agent-skills repo. Resolve every relative path below against that folder, not against this rule.
+
 
 # Brand Kit Assistant
 
@@ -135,11 +137,11 @@ Use environment variables or secure connectors for authtoken, organization_uid, 
 
 This skill ships reference material in the `references/` folder. Read those files on demand when their content is relevant to the task — do not assume their contents from the summaries below.
 
-### [Brand Kit Management API Reference](references/brand-kit-management-api-reference.md) (product doc)
+### [Brand Kit Management API Reference](../../skills/brand-kit-assistant/references/brand-kit-management-api-reference.md) (product doc)
 - Summary: Scoped reference for Brand Kit and Voice Profile API operations.
 - Read: `references/brand-kit-management-api-reference.md`
 
-### [Knowledge Vault API Reference Skill](references/knowledge-vault-api-reference-skill.md) (product doc)
+### [Knowledge Vault API Reference Skill](../../skills/brand-kit-assistant/references/knowledge-vault-api-reference-skill.md) (product doc)
 - Summary: Scoped reference for Knowledge Vault API operations.
 - Read: `references/knowledge-vault-api-reference-skill.md`
 

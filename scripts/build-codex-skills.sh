@@ -4,7 +4,8 @@
 # Emits:
 #   codex/AGENTS.md         — router, copied from skills/CLAUDE.md with link paths rewritten
 #   codex/<slug>/SKILL.md   — one per skill, frontmatter stripped, body only
-#   codex/<slug>/*          — bundled skill assets such as references/ and scripts/
+#   codex/<slug>/*          — bundled skill assets such as references/ and scripts/,
+#                             as relative symlinks into skills/<slug>/ rather than copies
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -31,8 +32,13 @@ for dir in "$SKILLS_DIR"/*/; do
     awk 'BEGIN{fm=0} /^---$/{fm++; next} fm>=2{print}' "$skill_md"
   } > "$OUT_DIR/$slug/SKILL.md"
 
-  find "$dir" -mindepth 1 -maxdepth 1 ! -name "SKILL.md" ! -name "__pycache__" -exec cp -R {} "$OUT_DIR/$slug/" \;
-  find "$OUT_DIR/$slug" \( -name "__pycache__" -type d -o -name "*.pyc" -type f \) -prune -exec rm -rf {} +
+  # Link, don't copy: skills/ stays the single copy of every bundled file. Never
+  # prune through these links; that would delete from skills/ itself.
+  for asset in "$dir"*; do
+    name="$(basename "$asset")"
+    case "$name" in SKILL.md|__pycache__|*.pyc) continue ;; esac
+    ln -s "../../skills/$slug/$name" "$OUT_DIR/$slug/$name"
+  done
 done
 
 echo "Wrote codex tree to $OUT_DIR"

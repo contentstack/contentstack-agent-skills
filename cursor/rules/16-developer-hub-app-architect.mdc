@@ -3,6 +3,8 @@ description: "Turn Contentstack Developer Hub and Marketplace app ideas into con
 alwaysApply: false
 ---
 
+> This skill's bundled files are in `skills/developer-hub-app-architect/` at the root of the contentstack-agent-skills repo. Resolve every relative path below against that folder, not against this rule.
+
 
 # Developer Hub App Architect
 
@@ -152,7 +154,7 @@ Use environment variables for server-side configuration only. Do not place secre
 
 This skill ships reference material in the `references/` folder. Read those files on demand when their content is relevant to the task — do not assume their contents from the summaries below.
 
-### [Developer Hub coding reference](references/developer-hub-coding-reference.md) (playbook, required)
+### [Developer Hub coding reference](../../skills/developer-hub-app-architect/references/developer-hub-coding-reference.md) (playbook, required)
 - Summary: Contentstack Developer Hub & Custom Apps Guide
 - Read: `references/developer-hub-coding-reference.md`
 

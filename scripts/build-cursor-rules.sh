@@ -4,6 +4,10 @@
 # Reads each skills/<slug>/SKILL.md, extracts its YAML frontmatter, and emits:
 #   cursor/rules/00-router.mdc        — alwaysApply router, copied from skills/CLAUDE.md
 #   cursor/rules/NN-<slug>.mdc        — one per skill, with cursor frontmatter
+#
+# A rule lives in cursor/rules/, not next to its skill's bundled files, so
+# relative links in the body are rewritten to ../../skills/<slug>/, and a skill
+# that bundles files gets a note naming the folder its relative paths resolve in.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -46,8 +50,12 @@ for dir in "$SKILLS_DIR"/*/; do
     fi
     printf 'alwaysApply: %s\n' "$always"
     printf -- '---\n\n'
-    # Body = SKILL.md with frontmatter stripped
-    awk 'BEGIN{fm=0} /^---$/{fm++; next} fm>=2{print}' "$skill_md"
+    if [ -n "$(find "$dir" -mindepth 1 -maxdepth 1 ! -name SKILL.md -print -quit)" ]; then
+      printf '> This skill'"'"'s bundled files are in `skills/%s/` at the root of the contentstack-agent-skills repo. Resolve every relative path below against that folder, not against this rule.\n\n' "$slug"
+    fi
+    # Body = SKILL.md with frontmatter stripped, relative link targets rewritten
+    awk 'BEGIN{fm=0} /^---$/{fm++; next} fm>=2{print}' "$skill_md" |
+      SLUG="$slug" perl -pe 's{\]\((?!(?:[a-z][a-z0-9+.-]*:|#|/))(?:\./)?}{](../../skills/$ENV{SLUG}/}gi'
   } > "$out"
 
   i=$((i + 1))

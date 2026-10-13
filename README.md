@@ -29,11 +29,11 @@ After install, the router at `skills/CLAUDE.md` is loaded into context and Claud
 
 ### Cursor
 
-Install via Cursor's plugin marketplace, **or** copy `cursor/rules/*.mdc` into your project's `.cursor/rules/` directory. The `00-router.mdc` rule is marked `alwaysApply: true`, so Cursor always knows which skill to reach for.
+Install via Cursor's plugin marketplace, **or** copy `cursor/rules/*.mdc` into your project's `.cursor/rules/` directory and copy `skills/` to your project root. The `00-router.mdc` rule is marked `alwaysApply: true`, so Cursor always knows which skill to reach for. Rules link to their bundled files (such as the Studio pack's specialist files) at `../../skills/<slug>/`, which is your project's `skills/` folder.
 
 ### Codex / OpenAI agents
 
-Point your agent at this repo or copy the `codex/` directory into your project. The entry point is [`codex/AGENTS.md`](codex/AGENTS.md).
+Point your agent at this repo or copy the `codex/` directory into your project. The entry point is [`codex/AGENTS.md`](codex/AGENTS.md). Bundled files under `codex/<slug>/` are symlinks into `skills/<slug>/`, so copy with links followed: `cp -RL codex/ <your-project>/codex/`.
 
 ### Gemini CLI
 
@@ -76,7 +76,7 @@ npx skills add <this-repo>@<skill-slug>
 
 ## How it works
 
-`skills/` is the source of truth. Every other tool-specific tree (`cursor/rules/`, `codex/`) is generated from it by the scripts in `scripts/`. A GitHub Action regenerates the derived trees on every push to `main` and fails PRs that forget to regenerate, so the copies never drift.
+`skills/` is the source of truth. Every other tool-specific tree (`cursor/rules/`, `codex/`) is generated from it by the scripts in `scripts/`. Generated trees never duplicate a skill's bundled files: Cursor rules link to them in `skills/`, and `codex/` symlinks to them. A GitHub Action regenerates the derived trees on every push to `main` and fails PRs that forget to regenerate, so the copies never drift.
 
 ```
 skills/<slug>/SKILL.md     ──► cursor/rules/NN-<slug>.mdc

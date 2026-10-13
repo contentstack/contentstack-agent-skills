@@ -3,6 +3,8 @@ description: "Help agents write correct, production-ready TypeScript using `@con
 alwaysApply: false
 ---
 
+> This skill's bundled files are in `skills/dx-delivery-sdk/` at the root of the contentstack-agent-skills repo. Resolve every relative path below against that folder, not against this rule.
+
 
 # dx-delivery-sdk
 
@@ -136,7 +138,7 @@ Use `process.env` placeholders in examples. Prefer required non-null assertions 
 
 This skill ships reference material in the `references/` folder. Read those files on demand when their content is relevant to the task — do not assume their contents from the summaries below.
 
-### [Delivery SDK Spec](references/delivery-sdk-spec.md) (product doc, required)
+### [Delivery SDK Spec](../../skills/dx-delivery-sdk/references/delivery-sdk-spec.md) (product doc, required)
 - Source: Official Docs (https://www.contentstack.com/docs/developers/sdks/content-delivery-sdk/typescript/reference.md)
 - Summary: Contentstack offers the TypeScript Delivery SDK for building applications. Below, is an in-depth guide and valuable resources to initiate your journey with our TypeScript Delivery SDK. Additionally, the SDK supports the creating applications for Node.js and React Native environments.
 - Read: `references/delivery-sdk-spec.md`
