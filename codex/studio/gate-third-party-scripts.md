@@ -1,1 +1,0 @@
-../../skills/studio/gate-third-party-scripts.md

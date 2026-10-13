@@ -1,1 +1,0 @@
-../../skills/studio/pin-query-to-freeform.md

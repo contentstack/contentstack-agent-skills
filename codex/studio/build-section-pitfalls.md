@@ -1,1 +1,0 @@
-../../skills/studio/build-section-pitfalls.md

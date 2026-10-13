@@ -1,1 +1,0 @@
-../../skills/studio/decompose-site.md

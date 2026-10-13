@@ -1,1 +1,0 @@
-../../skills/studio/adapt-collection-component.md

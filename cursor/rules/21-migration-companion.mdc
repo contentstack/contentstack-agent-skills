@@ -3,8 +3,6 @@ description: Migration companion for moving to Contentstack from another CMS. Gu
 alwaysApply: false
 ---
 
-> This skill's bundled files are in `skills/migration-companion/` at the root of the contentstack-agent-skills repo. Resolve every relative path below against that folder, not against this rule.
-
 
 # contentstack-migration-companion
 

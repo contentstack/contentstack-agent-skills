@@ -1,1 +1,0 @@
-../../skills/studio/choose-connected-vs-freeform.md

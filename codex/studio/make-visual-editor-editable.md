@@ -1,1 +1,0 @@
-../../skills/studio/make-visual-editor-editable.md

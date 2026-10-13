@@ -1,1 +1,0 @@
-../../skills/studio/install-playwright-mcp.md

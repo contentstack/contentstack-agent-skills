@@ -1,1 +1,0 @@
-../../skills/studio/setup-section-preview.md

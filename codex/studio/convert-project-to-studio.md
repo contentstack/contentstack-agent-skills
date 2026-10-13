@@ -1,1 +1,0 @@
-../../skills/studio/convert-project-to-studio.md

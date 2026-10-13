@@ -1,1 +1,0 @@
-../../skills/studio/install-contentstack-mcp.md

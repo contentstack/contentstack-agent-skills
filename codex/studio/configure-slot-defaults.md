@@ -1,1 +1,0 @@
-../../skills/studio/configure-slot-defaults.md

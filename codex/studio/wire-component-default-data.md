@@ -1,1 +1,0 @@
-../../skills/studio/wire-component-default-data.md

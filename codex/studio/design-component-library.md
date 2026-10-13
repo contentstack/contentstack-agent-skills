@@ -1,1 +1,0 @@
-../../skills/studio/design-component-library.md

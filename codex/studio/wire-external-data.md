@@ -1,1 +1,0 @@
-../../skills/studio/wire-external-data.md

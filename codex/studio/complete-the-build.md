@@ -1,1 +1,0 @@
-../../skills/studio/complete-the-build.md

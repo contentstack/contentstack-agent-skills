@@ -1,1 +1,0 @@
-../../skills/studio/troubleshoot-ssr-rendering.md

@@ -1,1 +1,0 @@
-../../skills/studio/discover-sections.md

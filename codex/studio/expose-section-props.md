@@ -1,1 +1,0 @@
-../../skills/studio/expose-section-props.md

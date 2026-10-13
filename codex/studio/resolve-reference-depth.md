@@ -1,1 +1,0 @@
-../../skills/studio/resolve-reference-depth.md

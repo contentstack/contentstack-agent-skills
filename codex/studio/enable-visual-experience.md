@@ -1,1 +1,0 @@
-../../skills/studio/enable-visual-experience.md

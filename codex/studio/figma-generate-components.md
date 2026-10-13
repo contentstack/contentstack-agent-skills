@@ -1,1 +1,0 @@
-../../skills/studio/figma-generate-components.md

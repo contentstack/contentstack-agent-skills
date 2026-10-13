@@ -1,1 +1,0 @@
-../../skills/studio/understand-authoring-headlessly.md

@@ -1,1 +1,0 @@
-../../skills/studio/author-without-code.md

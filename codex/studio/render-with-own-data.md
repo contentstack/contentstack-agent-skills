@@ -1,1 +1,0 @@
-../../skills/studio/render-with-own-data.md

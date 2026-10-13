@@ -1,1 +1,0 @@
-../../skills/studio/author-composition-static-values.md

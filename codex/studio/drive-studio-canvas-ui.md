@@ -1,1 +1,0 @@
-../../skills/studio/drive-studio-canvas-ui.md

@@ -1,1 +1,0 @@
-../../skills/studio/understand-bring-your-own-data.md

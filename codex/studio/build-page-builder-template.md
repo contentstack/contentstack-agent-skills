@@ -1,1 +1,0 @@
-../../skills/studio/build-page-builder-template.md

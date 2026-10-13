@@ -1,1 +1,0 @@
-../../skills/studio/provision-studio-stack.md

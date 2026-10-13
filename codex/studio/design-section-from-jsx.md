@@ -1,1 +1,0 @@
-../../skills/studio/design-section-from-jsx.md

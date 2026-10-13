@@ -1,1 +1,0 @@
-../../skills/studio/understand-auto-binding.md

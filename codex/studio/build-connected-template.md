@@ -1,1 +1,0 @@
-../../skills/studio/build-connected-template.md

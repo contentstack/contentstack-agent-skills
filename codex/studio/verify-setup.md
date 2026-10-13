@@ -1,1 +1,0 @@
-../../skills/studio/verify-setup.md

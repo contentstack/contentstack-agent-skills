@@ -1,1 +1,0 @@
-../../skills/studio/authenticate-cma.md

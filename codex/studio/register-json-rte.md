@@ -1,1 +1,0 @@
-../../skills/studio/register-json-rte.md

@@ -1,1 +1,0 @@
-../../skills/studio/wire-studio-state.md

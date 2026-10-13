@@ -1,1 +1,0 @@
-../../skills/studio/classify-existing-component.md

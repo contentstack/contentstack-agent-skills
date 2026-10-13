@@ -1,1 +1,0 @@
-../../skills/studio/migrate-page-to-studio.md

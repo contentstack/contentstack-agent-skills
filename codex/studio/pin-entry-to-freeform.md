@@ -1,1 +1,0 @@
-../../skills/studio/pin-entry-to-freeform.md

@@ -1,1 +1,0 @@
-../../skills/studio/upgrade-studio-sdk.md

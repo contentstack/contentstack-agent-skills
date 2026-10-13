@@ -1,1 +1,0 @@
-../../skills/studio/use-section-slot.md

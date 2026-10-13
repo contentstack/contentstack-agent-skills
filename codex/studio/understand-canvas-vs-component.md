@@ -1,1 +1,0 @@
-../../skills/studio/understand-canvas-vs-component.md

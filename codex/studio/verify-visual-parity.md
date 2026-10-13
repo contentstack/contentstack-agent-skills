@@ -1,1 +1,0 @@
-../../skills/studio/verify-visual-parity.md

@@ -1,1 +1,0 @@
-../../skills/studio/start-here-zero-knowledge.md

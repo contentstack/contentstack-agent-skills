@@ -1,1 +1,0 @@
-../../skills/studio/deploy-studio-site.md

@@ -1,1 +1,0 @@
-../../skills/studio/studio-tour.md

@@ -1,1 +1,0 @@
-../../skills/studio/analyze-project-fit.md

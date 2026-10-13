@@ -5,10 +5,12 @@
 #   cursor/rules/00-router.mdc        — alwaysApply router, copied from skills/CLAUDE.md
 #   cursor/rules/NN-<slug>.mdc        — one per skill, with cursor frontmatter
 #
-# A rule lives in cursor/rules/, not next to its skill's bundled files, so
-# relative links in the body are rewritten to ../../skills/<slug>/, and a skill
-# that bundles files gets a note naming the folder its relative paths resolve in.
+# Skills in IN_PLACE_SKILLS keep their bundled files in skills/<slug>/ only.
+# Their rule's relative links are rewritten to ../../skills/<slug>/, and a note
+# says where relative paths resolve, since a rule does not sit next to them.
 set -euo pipefail
+
+IN_PLACE_SKILLS="studio"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILLS_DIR="$ROOT/skills"
@@ -50,12 +52,17 @@ for dir in "$SKILLS_DIR"/*/; do
     fi
     printf 'alwaysApply: %s\n' "$always"
     printf -- '---\n\n'
-    if [ -n "$(find "$dir" -mindepth 1 -maxdepth 1 ! -name SKILL.md -print -quit)" ]; then
-      printf '> This skill'"'"'s bundled files are in `skills/%s/` at the root of the contentstack-agent-skills repo. Resolve every relative path below against that folder, not against this rule.\n\n' "$slug"
-    fi
-    # Body = SKILL.md with frontmatter stripped, relative link targets rewritten
-    awk 'BEGIN{fm=0} /^---$/{fm++; next} fm>=2{print}' "$skill_md" |
-      SLUG="$slug" perl -pe 's{\]\((?!(?:[a-z][a-z0-9+.-]*:|#|/))(?:\./)?}{](../../skills/$ENV{SLUG}/}gi'
+    # Body = SKILL.md with frontmatter stripped
+    case " $IN_PLACE_SKILLS " in
+      *" $slug "*)
+        printf '> This skill'"'"'s files are in `skills/%s/` at the root of the contentstack-agent-skills repo. Resolve every relative path below against that folder, not against this rule.\n\n' "$slug"
+        awk 'BEGIN{fm=0} /^---$/{fm++; next} fm>=2{print}' "$skill_md" |
+          SLUG="$slug" perl -pe 's{\]\((?!(?:[a-z][a-z0-9+.-]*:|#|/))(?:\./)?}{](../../skills/$ENV{SLUG}/}gi'
+        ;;
+      *)
+        awk 'BEGIN{fm=0} /^---$/{fm++; next} fm>=2{print}' "$skill_md"
+        ;;
+    esac
   } > "$out"
 
   i=$((i + 1))

@@ -1,1 +1,0 @@
-../../skills/studio/byoc-end-to-end.md

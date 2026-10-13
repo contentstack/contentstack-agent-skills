@@ -1,1 +1,0 @@
-../../skills/studio/migrate-ct-schema.md

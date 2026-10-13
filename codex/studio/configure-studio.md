@@ -1,1 +1,0 @@
-../../skills/studio/configure-studio.md

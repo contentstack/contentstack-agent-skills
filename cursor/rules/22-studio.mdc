@@ -3,7 +3,7 @@ description: Router skill for Contentstack Studio and the Contentstack stack beh
 alwaysApply: false
 ---
 
-> This skill's bundled files are in `skills/studio/` at the root of the contentstack-agent-skills repo. Resolve every relative path below against that folder, not against this rule.
+> This skill's files are in `skills/studio/` at the root of the contentstack-agent-skills repo. Resolve every relative path below against that folder, not against this rule.
 
 
 # Studio router

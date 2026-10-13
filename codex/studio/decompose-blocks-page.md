@@ -1,1 +1,0 @@
-../../skills/studio/decompose-blocks-page.md

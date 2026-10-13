@@ -1,1 +1,0 @@
-../../skills/studio/compose-marketing-section.md

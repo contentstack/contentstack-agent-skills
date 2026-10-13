@@ -1,1 +1,0 @@
-../../skills/studio/plan-studio-architecture.md

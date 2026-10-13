@@ -1,1 +1,0 @@
-../../skills/studio/setup-template-preview-routes.md
