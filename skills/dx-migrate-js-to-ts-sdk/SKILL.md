@@ -1,6 +1,6 @@
 ---
 name: dx-migrate-js-to-ts-sdk
-description: "Migrate Contentstack Delivery SDK code from JavaScript to TypeScript. Rewrite setup, initialization, Stack, Entries, Assets, Query, pagination, cache, utils, taxonomy, and image transform usage while preserving behavior and calling out TypeScript-specific differences."
+description: "Migrate Contentstack Delivery SDK code from JavaScript to TypeScript. Rewrite setup, initialization, Stack, Entries, Assets, Query, pagination, cache, utils, taxonomy, and image transform usage while preserving behavior and calling out TypeScript-specific differences. Use when a user wants to migrate Contentstack Delivery SDK code from JavaScript to TypeScript."
 argument-hint: "[javascript-snippet | file]"
 allowed-tools: Read Grep Glob
 context: fork

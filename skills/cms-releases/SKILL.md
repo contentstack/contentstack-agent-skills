@@ -1,6 +1,6 @@
 ---
 name: cms-releases
-description: "Advise developers on using Contentstack Releases for coordinated, atomic content deployment. Cover release creation, item management, staged deployment, webhook storm prevention, and CI/CD integration."
+description: "Advise developers on using Contentstack Releases for coordinated, atomic content deployment. Cover release creation, item management, staged deployment, webhook storm prevention, and CI/CD integration. Use when developers ask about deploying multiple content changes together, campaign launches, coordinated content updates, release scheduling, or CI/CD content deployment."
 allowed-tools: Read Grep Glob
 ---
 

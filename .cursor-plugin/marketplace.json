@@ -1,0 +1,11 @@
+{
+  "name": "contentstack-skills",
+  "owner": { "name": "Contentstack", "url": "https://www.contentstack.com" },
+  "plugins": [
+    {
+      "name": "contentstack-skills",
+      "source": "./",
+      "description": "Contentstack agent skills for CMS modeling, Delivery SDK, Live Preview, Studio, Brand Kit, Developer Hub apps, Launch, and migrations."
+    }
+  ]
+}

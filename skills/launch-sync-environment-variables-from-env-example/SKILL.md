@@ -1,6 +1,6 @@
 ---
 name: launch-sync-environment-variables-from-env-example
-description: "Fetch environment variables from a Contentstack Launch project, compare them with a local `.env.example` file, and patch the target environment to add any missing keys."
+description: "Fetch environment variables from a Contentstack Launch project, compare them with a local `.env.example` file, and patch the target environment to add any missing keys. Use when a Launch environment must match the keys defined in a local `.env.example` file."
 argument-hint: "[project_uid] [environment_uid] [env_example_path]"
 disable-model-invocation: true
 allowed-tools: Read Grep Glob Bash

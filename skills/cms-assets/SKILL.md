@@ -1,6 +1,6 @@
 ---
 name: cms-assets
-description: "Advise developers on organizing, delivering, and transforming assets in Contentstack. Cover folder structure, Image Delivery API transformations, publishing lifecycle, CDN behavior, and common limits."
+description: "Advise developers on organizing, delivering, and transforming assets in Contentstack. Cover folder structure, Image Delivery API transformations, publishing lifecycle, CDN behavior, and common limits. Use when developers ask about uploading, organizing, delivering, transforming, publishing, or troubleshooting images and other media files in Contentstack."
 allowed-tools: Read Grep Glob
 ---
 

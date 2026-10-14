@@ -1,6 +1,6 @@
 ---
 name: launch-trigger-and-monitor-launch-deployments
-description: "Trigger a Launch deployment for a specific environment, then poll its status until completion. If the deployment fails or is cancelled, fetch the deployment log and diagnose likely causes with next-step recommendations."
+description: "Trigger a Launch deployment for a specific environment, then poll its status until completion. If the deployment fails or is cancelled, fetch the deployment log and diagnose likely causes with next-step recommendations. Use when you need to automate Launch deployments for a known project and environment, monitor progress, and surface failure diagnostics. This is appropriate for CI/CD or operator workflows that need a deterministic deploy status check and log-based troubleshooting."
 argument-hint: "[project_uid] [environment_uid]"
 disable-model-invocation: true
 allowed-tools: Read Write Bash
@@ -28,14 +28,14 @@ Deployment is triggered against the intended project and environment.
 Status is polled at a fixed interval until a terminal state is reached.
 The process exits non-zero on failed or cancelled deployments.
 If the deployment fails, the deployment log is retrieved and summarized with likely causes and next steps.
-Production targets are validated and require explicit confirmation before deployment.
+Every deployment requires explicit confirmation of the project and environment before it is triggered; production targets are additionally validated.
 
 ## Expected Inputs
 
 - project_uid
 - environment_uid
 - Optional deployment payload or build reference
-- Confirmation for production deployment when applicable
+- Explicit confirmation before every deployment (production or not)
 - Any available context about the app, branch, or build source
 
 ## Expected Outputs
@@ -56,7 +56,7 @@ Production targets are validated and require explicit confirmation before deploy
 ## Workflow Summary
 
 Validate the project and environment identifiers.
-Confirm the target is allowed; require explicit approval for production.
+Confirm the target is allowed, then get explicit approval for this deployment before triggering it, whatever the environment.
 Trigger the deployment with the Launch API.
 Poll deployment status every 10 seconds until it reaches a terminal state.
 If status is failed or cancelled, fetch the deployment log and analyze it.
@@ -97,7 +97,7 @@ Use a non-zero exit code for failed or cancelled deployments.
 Use the Launch API for deployment trigger and status checks.
 Use the deployment detail/log endpoint for failure analysis.
 Validate the target environment before deploying.
-Require explicit confirmation for production deployments.
+Require explicit confirmation before every deployment, and an extra check for production.
 Never auto-deploy to production without review.
 
 ## Security
@@ -106,12 +106,12 @@ Never auto-deploy to production without review.
 
 - Never expose deployment tokens or environment secrets.
 - Validate deployment targets before triggering.
-- Require confirmation for production deployments.
+- Require explicit confirmation before every deployment.
 - Never auto-deploy to production without review.
 
 ### Destructive Actions
 
-Treat deployment triggers as external side effects. Require explicit user confirmation before executing production deployments. Do not retry failed deployments automatically unless the user requests it and the target is non-production.
+Treat deployment triggers as external side effects. Require explicit user confirmation before triggering any deployment. Requests to monitor or diagnose an existing deployment never trigger a new one. Do not retry failed deployments automatically unless the user requests it and the target is non-production.
 
 ### Secrets
 
@@ -127,7 +127,7 @@ Accept configuration via environment variables when needed, but never reveal the
 - - Description: Contentstack Launch: hosting, deployment, edge delivery, serverless functions, environment management, and CI/CD for Contentstack-powered frontends.
 - - Product safety rules: - Never expose deployment tokens or environment secrets.
 - Validate deployment targets before triggering.
-- Require confirmation for production deployments.
+- Require explicit confirmation before every deployment.
 - Never auto-deploy to production without review.
 - - Default tools: ["Launch API", "Projects", "Environments", "Deployments", "Serverless Functions", "Edge Delivery", "Custom Domains"]
 - - Default connectors: ["Launch Proxy", "GitHub", "CI/CD Pipelines"]

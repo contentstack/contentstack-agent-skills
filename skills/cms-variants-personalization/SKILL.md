@@ -1,6 +1,6 @@
 ---
 name: cms-variants-personalization
-description: "Advise developers on using Contentstack Variants and Personalize for audience-targeted content. Explain when to use variants versus separate entries, how variant groups work, and how to integrate Personalize with the CMS."
+description: "Advise developers on using Contentstack Variants and Personalize for audience-targeted content. Explain when to use variants versus separate entries, how variant groups work, and how to integrate Personalize with the CMS. Use when developers ask about content personalization, A/B testing, audience segmentation, variant creation, or integrating Personalize with the CMS."
 allowed-tools: Read Grep Glob
 ---
 

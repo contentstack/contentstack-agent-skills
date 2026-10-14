@@ -1,6 +1,6 @@
 ---
 name: cms-taxonomy
-description: "Advise developers on using Contentstack Taxonomy for structured, hierarchical content classification and delivery-side filtering. Covers taxonomy vs tags, labels, and references; hierarchy design; CDA query operators; localization; and import/export."
+description: "Advise developers on using Contentstack Taxonomy for structured, hierarchical content classification and delivery-side filtering. Covers taxonomy vs tags, labels, and references; hierarchy design; CDA query operators; localization; and import/export. Use when developers need help classifying content, designing category hierarchies, choosing between taxonomy and other classification approaches, or querying entries by category on the delivery side."
 allowed-tools: Read Grep Glob
 ---
 
