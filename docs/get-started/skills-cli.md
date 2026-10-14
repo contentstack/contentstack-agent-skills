@@ -5,25 +5,31 @@ description: Pull one Contentstack skill on demand with the skills CLI instead o
 
 # Use a single skill via the skills CLI
 
-When you only need one capability, the [`skills` CLI](https://github.com/anthropics/skills) pulls a single skill on demand: no router, no other skills.
+When you only need one capability, or your agent has no plugin system, the [`skills` CLI](https://github.com/vercel-labs/skills) installs individual skills on demand. It writes them into the right folder for Claude Code, Cursor, Codex, Copilot, Gemini, Windsurf, Cline, and other agents.
 
 ## Install one skill
 
 ```
-npx skills add contentstack/contentstack-agent-skills@<skill-slug>
+npx skills add contentstack/contentstack-agent-skills --skill <skill-slug>
 ```
 
 For example, to add just the Delivery SDK skill:
 
 ```
-npx skills add contentstack/contentstack-agent-skills@dx-delivery-sdk
+npx skills add contentstack/contentstack-agent-skills --skill dx-delivery-sdk
+```
+
+To see every skill in the bundle:
+
+```
+npx skills add contentstack/contentstack-agent-skills --list
 ```
 
 Repository: [github.com/contentstack/contentstack-agent-skills](https://github.com/contentstack/contentstack-agent-skills)
 
 ## Finding the slug
 
-The slug is the skill's directory name. Find it in the [skills reference](../skills/index.md) or in `manifest.json`. Common ones:
+The slug is the skill's directory name (and its `name` field). Find it with `--list` or in the [skills reference](../skills/index.md). Common ones:
 
 | Slug | Skill |
 | --- | --- |
@@ -35,13 +41,13 @@ The slug is the skill's directory name. Find it in the [skills reference](../ski
 
 ## When to use this vs the full bundle
 
-- **Single skill** → you want one focused capability and don't need automatic routing across many topics.
-- **Full bundle** (Claude Code, Cursor, Codex, Gemini) → you want the agent to choose the right skill automatically across all 22. See [Supported tools](../overview/supported-tools.md).
+- **Single skill** → you want one focused capability, or your agent isn't covered by a plugin install.
+- **Full bundle** (Claude Code, claude.ai, Cursor, Codex, Copilot, Gemini) → you want all 22 skills available and kept up to date through your tool's plugin system. See [Supported tools](../overview/supported-tools.md).
 
-## Note on routing
+## Note on selection
 
-The `skills` CLI installs exactly the skill you name. There is no router and no auto-selection. The agent uses the one skill you added. If you want intent-based routing across the whole catalog, install a full-bundle format instead.
+Skills installed this way work exactly like the bundled ones: the agent loads a skill when your request matches its description. With fewer skills installed, there's simply less to choose from. See [How skill selection works](../how-it-works/router.md).
 
 ## Update
 
-Re-run `npx skills add contentstack/contentstack-agent-skills@<skill-slug>` to fetch the latest version of that skill.
+Re-run `npx skills add contentstack/contentstack-agent-skills --skill <skill-slug>` to fetch the latest version of that skill.

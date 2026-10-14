@@ -58,4 +58,4 @@ The bundle includes 22 skills across five Contentstack products. Each links to a
 
 ## How skills get selected
 
-You don't pick skills manually for full-bundle installs: the [router](../how-it-works/router.md) matches your request automatically. Many tasks pull in more than one skill (for example, Releases + Webhooks). To force a specific skill, name it in your prompt.
+You don't pick skills manually: the agent [matches your request to a skill's description](../how-it-works/router.md) automatically. Many tasks pull in more than one skill (for example, Releases + Webhooks). To force a specific skill, name it in your prompt.

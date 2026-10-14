@@ -11,18 +11,19 @@ These conventions keep skills consistent, parseable by agents, and safe. Follow 
 
 Follow the section outline described in [Anatomy of a SKILL.md](../how-it-works/skill-anatomy.md): Description, When to Use, User Problem, Success Criteria, Expected Inputs/Outputs, Example User Requests, Workflow Summary, Instructions, Output Format, Tooling Notes, Security, Product Context, References, Examples.
 
-Not every skill needs every section, but keep the order consistent so agents (and the generated docs) find things in predictable places.
+Not every skill needs every section, but keep the order consistent so agents (and readers of the docs) find things in predictable places.
 
 ## Frontmatter
 
-- `name` and `description` are required. The `description` is used for routing: make it match the kind of request that should trigger the skill.
+- `name` and `description` are required. `name` must equal the folder name (lowercase letters, digits, single hyphens, max 64 characters).
+- The `description` says what the skill does and includes a "Use when…" sentence, max 1024 characters. It's the only text agents see before loading the skill, so it does the routing. See below.
 - Set `allowed-tools` to the minimum needed. Advisory skills are almost always `Read Grep Glob` (read-only).
 - Use `argument-hint` for action skills that take parameters.
 - Use `disable-model-invocation: true` for skills that should run only when explicitly invoked (e.g. the Launch action skills).
 
-## Write the "When to Use" as the routing trigger
+## Write the description as the trigger
 
-The router pulls intent from each skill's trigger. Phrase **When to Use** as the user intents that should activate the skill, mirroring the row you add to `skills/CLAUDE.md`. Keep them aligned.
+Agents choose a skill by matching your request against its description (see [How skill selection works](../how-it-works/router.md)). Make the "Use when…" clause list the concrete requests, tools, and terms a user would mention: "Delivery SDK", "Live Preview", "pagination", not "helps with content". Keep the **When to Use** section in the body consistent with it, and avoid overlap with neighboring skills' descriptions.
 
 ## Security is mandatory
 
@@ -56,6 +57,6 @@ Tag them (`few shot`, `edge case`) consistently with the rest of the bundle.
 
 Skills favor direct, actionable guidance over background theory. Lead with the recommendation; explain tradeoffs only when they change the decision.
 
-## Don't hand-edit generated trees
+## Validate before you push
 
-All edits go in `skills/`. The `cursor/rules/` and `codex/` trees are generated. See [Add or edit a skill](add-or-edit-a-skill.md).
+Run `node scripts/validate.mjs`. It checks names, descriptions, relative links, and manifest versions. See [Add or edit a skill](add-or-edit-a-skill.md).

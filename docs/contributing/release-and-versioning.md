@@ -1,63 +1,64 @@
 ---
 title: Release & versioning
-description: How the Contentstack Agent Skills bundle is versioned and released across its five formats.
+description: How the Contentstack Agent Skills bundle is versioned and released to every supported tool.
 ---
 
 # Release & versioning
 
-The bundle ships as a single versioned package across all five formats. Versioning and release stay simple because everything derives from one source.
+The bundle ships as a single versioned package to every tool. Releases stay simple because every tool installs the same `skills/` folder.
 
 ## Version source
 
-The package version lives in the plugin manifests:
+The version lives in the plugin manifests, and they must all match:
 
 - `.claude-plugin/plugin.json`
+- `.claude-plugin/marketplace.json` (the plugin entry's `version`)
 - `.cursor-plugin/plugin.json`
+- `plugin.json`
 - `gemini-extension.json`
 
-Keep these in sync when bumping a version. The `manifest.json` `skill_count` and `skills` list should match what's actually in `skills/`.
+`node scripts/validate.mjs` reads every manifest, including `.cursor-plugin/marketplace.json` and `.agents/plugins/marketplace.json`, and fails if any declared versions disagree.
+
+## Why the version matters
+
+Plugin-based tools decide whether to update by comparing version numbers. Claude Code in particular only updates an installed plugin when the version changes, so changes merged to `main` without a version bump don't reach existing users.
 
 ## What a release contains
 
-A release is the current state of `skills/` plus its regenerated artifacts:
+A release is the current state of the repository on `main`:
 
-- `skills/`: source of truth (skills, router, references, scripts)
-- `cursor/rules/`: generated Cursor rules
-- `codex/`: generated Codex tree
-- The plugin/extension manifests and `manifest.json`
+- `skills/`: the skills, with their references and scripts
+- The plugin, marketplace, and extension manifests
 
-Because the generated trees are committed and verified by CI, any tagged commit on `main` is a coherent, installable release for every tool.
+There are no generated artifacts, so any validated commit on `main` is a coherent, installable release for every tool.
 
 ## Release checklist
 
 1. Make changes under `skills/` (see [Add or edit a skill](add-or-edit-a-skill.md)).
-2. Regenerate derived trees:
-   ```bash
-   bash scripts/build-cursor-rules.sh
-   bash scripts/build-codex-skills.sh
-   ```
-3. Update `manifest.json` if skills were added or removed.
-4. Bump the version in the plugin/extension manifests.
-5. Confirm CI passes (the drift check must be green).
-6. Tag the release.
+2. Bump `version` to the same new value in every file listed above.
+3. Run `node scripts/validate.mjs`.
+4. Confirm CI passes on the pull request.
+5. Merge to `main` and tag the release.
 
 ## How updates reach users
 
 | Tool | How users update |
 | --- | --- |
-| Claude Code | Re-run `/plugin install` / update the marketplace |
-| Cursor | Update via the marketplace, or re-copy `cursor/rules/*.mdc` |
-| Codex | Re-copy the `codex/` tree or re-sync the repo |
-| Gemini CLI | Re-run `gemini extensions install contentstack/contentstack-agent-skills` |
-| `skills` CLI | Re-run `npx skills add contentstack/contentstack-agent-skills@<slug>` |
+| Claude Code | `/plugin marketplace update contentstack-skills`, or marketplace auto-update |
+| claude.ai / Cowork | Automatic: the marketplace stays linked to the repository |
+| Cursor | Update the plugin from **Settings → Plugins** |
+| Codex | `codex plugin marketplace upgrade contentstack-skills`, then `codex plugin add contentstack-skills@contentstack-skills` |
+| GitHub Copilot | Re-run `copilot plugin install contentstack-skills@contentstack-skills`, or update in VS Code |
+| Gemini CLI | `gemini extensions update contentstack-skills` |
+| `skills` CLI | Re-run `npx skills add contentstack/contentstack-agent-skills --skill <slug>` |
 
-Because all formats are generated from one source, every tool receives the same change set in a release.
+Because every tool installs the same files, every tool receives the same change set in a release.
 
 ## Compatibility
 
-- Adding a skill is backward compatible: existing skills and routes are unaffected.
-- Changing a slug is a breaking change for `skills` CLI users who reference it; avoid renaming slugs once published.
-- Changing routing triggers can change which skill activates for a given request; review the router (`skills/CLAUDE.md`) when editing triggers.
+- Adding a skill is backward compatible: existing skills are unaffected.
+- Changing a slug is a breaking change for `skills` CLI users and anyone invoking the skill by name; avoid renaming slugs once published.
+- Changing a `description` can change which skill activates for a given request. Review the descriptions of neighboring skills when editing triggers so they don't overlap.
 
 ## Related
 

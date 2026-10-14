@@ -1,31 +1,35 @@
 ---
 title: Supported tools & compatibility
-description: The five formats Contentstack Agent Skills ship in, what each install produces, and how to choose.
+description: The tools Contentstack Agent Skills install into, what each install gives you, and how to choose.
 ---
 
 # Supported tools & compatibility
 
-The same 22 skills are packaged in five formats. You only need to install one: pick the row that matches your assistant.
+The same 22 skills install into every tool below. Each one reads the [Agent Skills](https://agentskills.io) format natively, so there's no tool-specific copy: just a different way to install. Pick the row that matches your assistant.
 
-| Tool                      | What you install                                                                     | What it produces                                                          | Install guide                                                    |
-| ------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| **Claude Code**           | A plugin from the marketplace                                                        | The router is loaded into context; Claude auto-selects the matching skill | [Install for Claude Code](../get-started/install-claude-code.md) |
-| **Cursor**                | The plugin, or `cursor/rules/*.mdc` copied into `.cursor/rules/`                     | An always-on router rule plus one rule per skill                          | [Install for Cursor](../get-started/install-cursor.md)           |
-| **Codex / OpenAI agents** | The `codex/` markdown tree                                                           | `codex/AGENTS.md` router plus `codex/<slug>/SKILL.md` per skill           | [Install for Codex](../get-started/install-codex.md)             |
-| **Gemini CLI**            | The extension via `gemini extensions install contentstack/contentstack-agent-skills` | The extension manifest wires the skills into Gemini                       | [Install for Gemini](../get-started/install-gemini.md)           |
-| **`skills` CLI**          | A single skill on demand                                                             | Just the one skill you name                                               | [Use the skills CLI](../get-started/skills-cli.md)               |
+| Tool                         | What you install                                         | Install guide                                                         |
+| ---------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------- |
+| **Claude Code**              | The `contentstack-skills` plugin from the marketplace    | [Install for Claude Code](../get-started/install-claude-code.md)      |
+| **claude.ai / Claude Cowork** | The same plugin, added as a marketplace in Customize     | [Install for claude.ai and Cowork](../get-started/install-claude-ai.md) |
+| **Cursor**                   | The plugin, added from the GitHub repository             | [Install for Cursor](../get-started/install-cursor.md)                |
+| **Codex**                    | The plugin from the Codex marketplace                    | [Install for Codex](../get-started/install-codex.md)                  |
+| **GitHub Copilot**           | The plugin in Copilot CLI or VS Code                     | [Install for GitHub Copilot](../get-started/install-copilot.md)       |
+| **Gemini CLI**               | The extension from the GitHub repository                 | [Install for Gemini](../get-started/install-gemini.md)                |
+| **`skills` CLI**             | One or more skills you name, into any supported agent    | [Use the skills CLI](../get-started/skills-cli.md)                    |
+
+Every full install gives you all 22 skills with their `references/` and `scripts/`.
 
 ## How to choose
 
-- **You use one assistant for everything** → install the bundle for that tool (Claude Code, Cursor, Codex, or Gemini). The router ships with it, so the agent picks skills automatically.
+- **You use one assistant for everything** → install the plugin or extension for that tool. The agent picks skills automatically.
 - **You only want one capability** (e.g. just the Delivery SDK skill) → use the [`skills` CLI](../get-started/skills-cli.md) to pull that single skill.
-- **Your team standardizes on a repo** → vendor the relevant tree (`cursor/rules/` or `codex/`) into your project so every contributor gets the same behavior.
+- **Your agent isn't listed** → the `skills` CLI also installs into Windsurf, Cline, and other agents that read the Agent Skills format.
 
 ## What "auto-selection" means
 
-For the four full-bundle formats, the **router** is included and loaded into the agent's context. When you make a request, the agent reads the routing table, matches your intent to a skill, then loads and follows that skill. You don't name skills explicitly, though you can, if you want to force a specific one.
+Agents load only each skill's `name` and `description` at startup. When you make a request, the agent matches it against the "Use when…" part of those descriptions, then loads and follows the matching skill. You don't name skills explicitly, though you can if you want to force a specific one. See [How skill selection works](../how-it-works/router.md).
 
-The `skills` CLI is different: it installs exactly the skill you name and nothing else, so there's no router and no auto-selection.
+This works the same whether you installed the whole bundle or a single skill with the `skills` CLI; with one skill there's simply less to choose from.
 
 ## Requirements
 
@@ -34,4 +38,4 @@ The `skills` CLI is different: it installs exactly the skill you name and nothin
 
 ## Keeping skills current
 
-Because all formats are generated from a single source, every tool gets the same behavior and the same updates. When the bundle is updated, re-running your tool's install (or pulling the latest repo) brings the generated trees up to date. See [Architecture](../how-it-works/architecture.md) for how the trees are kept in sync.
+Every tool installs from the same `skills/` folder, so every tool gets the same behavior and the same updates. Each install guide has an **Update** section. Plugin-based tools pick up a new release when the bundle's version number changes. See [Release & versioning](../contributing/release-and-versioning.md).

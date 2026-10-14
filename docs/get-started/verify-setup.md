@@ -1,26 +1,28 @@
 ---
 title: Verify your setup
-description: Confirm the router loaded and that your AI assistant is applying Contentstack Agent Skills.
+description: Confirm the skills loaded and that your AI assistant is applying Contentstack Agent Skills.
 ---
 
 # Verify your setup
 
-After installing, run these checks to confirm the router is active and skills are being applied.
+After installing, run these checks to confirm the skills are available and being applied.
 
-## 1. Confirm the router is loaded
+## 1. Confirm the skills are loaded
 
 Ask your assistant:
 
 > Which Contentstack skills do you have available?
 
-A correctly installed bundle answers from the routing table. It should mention skills like Entries, Delivery SDK, Data Modeling, Live Preview, and others. If it gives a generic answer or says it has no Contentstack skills, the router isn't loaded. Re-check your install:
+A correctly installed bundle lists skills by name and description. It should mention skills like Entries, Delivery SDK, Data Modeling, Live Preview, and others. If it gives a generic answer or says it has no Contentstack skills, the plugin isn't loaded. Re-check your install:
 
-- [Claude Code](install-claude-code.md)
-- [Cursor](install-cursor.md). Confirm `00-router.mdc` is in `.cursor/rules/` and keeps `alwaysApply: true`
-- [Codex](install-codex.md). Confirm the agent loads `codex/AGENTS.md`
-- [Gemini](install-gemini.md)
+- [Claude Code](install-claude-code.md). Confirm `contentstack-skills` is installed and enabled in `/plugin`
+- [claude.ai and Cowork](install-claude-ai.md). Confirm the plugin is enabled under **Customize → Plugins**
+- [Cursor](install-cursor.md). Confirm the plugin is enabled under **Settings → Plugins**
+- [Codex](install-codex.md)
+- [GitHub Copilot](install-copilot.md)
+- [Gemini](install-gemini.md). Confirm the extension appears in `gemini extensions list`
 
-## 2. Confirm routing works
+## 2. Confirm skill selection works
 
 Ask a question that clearly maps to one skill:
 
@@ -46,7 +48,7 @@ The answer should reflect the documented chain order (references before `.query(
 
 ## Still not working?
 
-- Make sure you installed only **one** format and that it's enabled.
-- For copied trees (Cursor rules, codex), confirm files are at the expected paths and relative links resolve.
-- Restart your assistant session so it reloads context.
-- Re-run the install to pull the latest version.
+- Make sure the plugin or extension is enabled, not just installed.
+- If you installed the same skills twice (for example, the plugin and the `skills` CLI), remove one so the agent doesn't see duplicates.
+- Restart your assistant session so it reloads the skill list.
+- Update to the latest version. Plugin-based tools only pick up changes when the bundle's version changes.

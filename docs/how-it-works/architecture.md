@@ -1,11 +1,11 @@
 ---
 title: Architecture
-description: How Contentstack Agent Skills are authored once and generated into tool-specific formats that never drift.
+description: How Contentstack Agent Skills are authored once and installed into every tool through small plugin manifests.
 ---
 
 # Architecture
 
-Contentstack Agent Skills follow a **single-source, generated-artifacts** model. You author each skill once; the tool-specific formats are produced by build scripts and kept in sync automatically.
+Contentstack Agent Skills follow a **single-source, no-copies** model. Each skill is authored once in the open [Agent Skills](https://agentskills.io) format, and every supported tool reads that format directly. Nothing is generated, so nothing can drift.
 
 ## Source of truth
 
@@ -13,66 +13,62 @@ Everything starts in `skills/`:
 
 ```
 skills/
-  CLAUDE.md                  # the router (intent → skill table)
   <slug>/
     SKILL.md                 # the canonical skill definition
     references/              # optional, read-on-demand docs
-    scripts/                # optional, executable helpers
+    scripts/                 # optional, executable helpers
 ```
 
 `skills/` is the **only** place you edit. See [Add or edit a skill](../contributing/add-or-edit-a-skill.md).
 
-## Generated trees
+## Plugin manifests
 
-Build scripts transform the source into each tool's format:
+Each tool finds the skills through its own manifest. They all point at the same `skills/` folder:
 
-```
-skills/<slug>/SKILL.md     ──►  cursor/rules/NN-<slug>.mdc
-                           ──►  codex/<slug>/SKILL.md
-skills/CLAUDE.md (router)  ──►  cursor/rules/00-router.mdc
-                           ──►  codex/AGENTS.md
-```
+| Manifest | Used by |
+| --- | --- |
+| `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json` | Claude Code, claude.ai / Cowork (synced), Copilot CLI |
+| `plugin.json` (Agent Plugins 1.0) | Codex, Cursor, VS Code |
+| `.agents/plugins/marketplace.json` | Codex marketplace |
+| `.cursor-plugin/plugin.json` + `.cursor-plugin/marketplace.json` | Cursor |
+| `gemini-extension.json` | Gemini CLI (bundles `skills/` automatically) |
 
-- **Cursor**: `scripts/build-cursor-rules.sh` writes `cursor/rules/`. The router becomes `00-router.mdc` with `alwaysApply: true`; each skill becomes `NN-<slug>.mdc`.
-- **Codex**: `scripts/build-codex-skills.sh` writes `codex/`. The router becomes `AGENTS.md`; each skill becomes `<slug>/SKILL.md` with YAML frontmatter stripped and its `references/` and `scripts/` copied alongside.
-- **Claude Code**: consumes `skills/` directly via the plugin manifests in `.claude-plugin/`.
-- **Gemini CLI**: consumes the bundle via `gemini-extension.json`.
-- **`skills` CLI**: pulls individual `skills/<slug>/` directories on demand.
+The **`skills` CLI** needs no manifest: it reads `skills/<slug>/` directly and copies the folder into the agent you choose.
 
-## Why generated, not hand-maintained
+## Why one copy
 
-Maintaining five copies of 22 skills by hand would guarantee drift. Instead:
+Maintaining a separate copy of 22 skills per tool would guarantee drift. Because every tool now reads `SKILL.md` natively:
 
 1. Authors edit only `skills/`.
-2. Build scripts regenerate `cursor/rules/` and `codex/`.
-3. CI enforces that the generated trees match the source.
+2. Every tool installs those same files, frontmatter, `references/` and `scripts/` included.
+3. A change ships to every tool at once when the version is bumped.
 
-This keeps every tool's behavior identical and every update consistent.
+## Validation (CI)
 
-## Drift protection (CI)
+`scripts/validate.mjs` checks the repository:
 
-The GitHub Action in `.github/workflows/build.yml`:
+- Every skill's `name` matches its folder name and follows the naming rules (lowercase letters, digits, single hyphens, max 64 characters).
+- Every `description` exists, includes "Use when…", and stays within 1024 characters.
+- Relative links inside each `SKILL.md` resolve.
+- Every manifest parses and they all declare the same `version`.
 
-- **On pull requests**: regenerates the trees and **fails the build** if anything differs from what's committed. This forces contributors to run the build scripts and commit the result.
-- **On push to `main`**: regenerates the trees and commits any drift automatically (as `github-actions[bot]`).
-
-The practical rule: never edit `cursor/rules/` or `codex/` directly. Your change will be reverted by the next regeneration.
+Run it locally with `node scripts/validate.mjs`. The GitHub Action in `.github/workflows/validate.yml` runs it on every pull request and on push to `main`.
 
 ## Repository layout
 
 ```
-.claude-plugin/        Claude Code plugin + marketplace manifests
-.cursor-plugin/        Cursor plugin manifest
-.github/workflows/     CI that regenerates cursor/rules and codex
-codex/                 Generated Codex tree: do not edit
-cursor/rules/          Generated Cursor rules: do not edit
-scripts/               Build scripts
-skills/                Source of truth: edit here
-docs/                  This documentation
-manifest.json          Machine-readable index of all skills
-gemini-extension.json  Gemini CLI extension manifest
+skills/<slug>/SKILL.md            Source of truth: one folder per skill
+.claude-plugin/                   Claude Code / claude.ai / Copilot CLI plugin and marketplace
+.cursor-plugin/                   Cursor plugin and marketplace
+.agents/plugins/marketplace.json  Codex marketplace
+plugin.json                       Agent Plugins manifest (Codex, Cursor, VS Code)
+gemini-extension.json             Gemini CLI extension
+.github/workflows/validate.yml    CI that runs the validator
+scripts/validate.mjs              Validates skills and manifests
+docs/                             This documentation
+CLAUDE.md                         Contributor guide (AGENTS.md links to it)
 ```
 
 ## Implications for docs
 
-Because skill pages mirror their `SKILL.md`, the [skills reference](../skills/index.md) is best kept in sync the same way, generated from `skills/*/SKILL.md` plus `manifest.json`. So it can't drift from the skills themselves. See [Authoring conventions](../contributing/authoring-conventions.md).
+Skill pages mirror their `SKILL.md`, so keep the [skills reference](../skills/index.md) in step with `skills/` when you add or change a skill. See [Add or edit a skill](../contributing/add-or-edit-a-skill.md).

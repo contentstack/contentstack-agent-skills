@@ -9,7 +9,7 @@ Every skill is a single `SKILL.md` file at `skills/<slug>/SKILL.md`. Skills shar
 
 ## Frontmatter
 
-YAML at the top of the file configures how the skill is loaded:
+YAML at the top of the file configures how the skill is loaded. This follows the [Agent Skills](https://agentskills.io) format, so every supported tool reads it as-is:
 
 ```yaml
 ---
@@ -19,18 +19,18 @@ allowed-tools: Read Grep Glob
 ---
 ```
 
-Common keys:
+`name` and `description` are required. Common keys:
 
 | Key | Purpose |
 | --- | --- |
-| `name` | The skill's display name / identifier. |
-| `description` | One-paragraph summary used for routing and discovery. |
+| `name` | The skill's identifier. Must equal the folder name: lowercase letters, digits and hyphens, max 64 characters. |
+| `description` | What the skill does plus "Use when…" triggers, max 1024 characters. The only text agents see before loading the skill, so it drives selection. |
 | `allowed-tools` | Restricts which tools the agent may use (most advisory skills are `Read Grep Glob`: read-only). |
 | `argument-hint` | Hints expected arguments for action skills (e.g. `[project_uid] [environment_uid]`). |
-| `disable-model-invocation` | Marks a skill that should only run when explicitly invoked, not auto-routed (used by the Launch action skills). |
+| `disable-model-invocation` | Marks a skill that should only run when explicitly invoked, never picked automatically (used by the Launch action skills). |
 | `context` / `agent` | Execution hints (e.g. `context: fork`, `agent: general-purpose` or `agent: plan`). |
 
-When generated for Codex, frontmatter is stripped: the body becomes the instructions.
+Every tool installs the file unchanged, frontmatter included. See [How skill selection works](router.md) for how the description is used.
 
 ## Body sections
 
@@ -39,7 +39,7 @@ The Markdown body follows a repeatable outline. Not every skill uses every secti
 | Section | What it captures |
 | --- | --- |
 | **Description** | What the skill does. |
-| **When to Use** | The routing trigger: the user intents that should activate it. |
+| **When to Use** | The user intents that should activate it, expanding on the description's "Use when…". |
 | **User Problem** | The underlying need the skill addresses. |
 | **Success Criteria** | What a correct answer looks like. |
 | **Expected Inputs** | What the agent should gather (UIDs, locale, framework, etc.). |
@@ -84,6 +84,6 @@ Many skills end with worked **User → Assistant** pairs, often tagged `few shot
 
 A predictable structure means:
 
-- Agents can find the routing trigger, the rules, and the guardrails in the same place every time.
-- Documentation pages map almost 1:1 to skill sections, so the [skills reference](../skills/index.md) can be generated from source.
+- Agents can find the triggers, the rules, and the guardrails in the same place every time.
+- Documentation pages map almost 1:1 to skill sections, so the [skills reference](../skills/index.md) is easy to keep in step with source.
 - Authors have a template to follow. See [Authoring conventions](../contributing/authoring-conventions.md).

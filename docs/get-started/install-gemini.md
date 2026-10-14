@@ -10,14 +10,14 @@ Gemini CLI installs the bundle as an **extension** described by `gemini-extensio
 ## Install
 
 ```
-gemini extensions install contentstack/contentstack-agent-skills
+gemini extensions install https://github.com/contentstack/contentstack-agent-skills
 ```
 
-> Repository: [github.com/contentstack/contentstack-agent-skills](https://github.com/contentstack/contentstack-agent-skills). Replace `contentstack/contentstack-agent-skills` with your fork or local path if needed.
+> Repository: [github.com/contentstack/contentstack-agent-skills](https://github.com/contentstack/contentstack-agent-skills). Replace the URL with your fork or local path if needed.
 
 ## What gets installed
 
-The extension manifest (`gemini-extension.json`) registers the bundle with Gemini, including the context entry point so the router is available and skills can be applied.
+The extension manifest (`gemini-extension.json`) registers the bundle as the `contentstack-skills` extension. Gemini picks up the extension's `skills/` folder automatically, so all 22 skills are available with their `references/` and `scripts/`.
 
 ## Verify
 
@@ -33,13 +33,15 @@ Ask Contentstack questions in natural language:
 
 > How do I deploy a campaign of 50 entries together without my static site rebuilding hundreds of times?
 
-routes to the **Releases** skill (and references **Webhooks** for the rebuild storm).
+loads the **Releases** skill (and **Webhooks** for the rebuild storm).
 
 ## Update
 
-Re-run `gemini extensions install` against the latest version, or update through the Gemini extension workflow.
+```
+gemini extensions update contentstack-skills
+```
 
 ## Troubleshooting
 
-- **The extension installed but skills don't apply** → confirm the extension is enabled and that Gemini loaded the manifest's context file.
+- **The extension installed but skills don't apply** → run `gemini extensions list` to confirm `contentstack-skills` is enabled, then restart Gemini.
 - **You want only one capability** → use the [`skills` CLI](skills-cli.md) instead to pull a single skill.

@@ -1,33 +1,22 @@
 ---
 title: Install for Cursor
-description: Install Contentstack Agent Skills in Cursor via the plugin marketplace or by copying rule files.
+description: Install Contentstack Agent Skills in Cursor as a plugin from the GitHub repository.
 ---
 
 # Install for Cursor
 
-Cursor uses **rule files**. The bundle ships a generated `cursor/rules/` tree: one always-on router rule plus one rule per skill.
+Cursor installs the bundle as a **plugin** described by `.cursor-plugin/plugin.json`. Cursor reads the skills in their native format; there are no rule files to copy.
 
-## Option A: Plugin marketplace
+## Install
 
-Install Contentstack Agent Skills from Cursor's plugin marketplace. This wires up the rules for you.
-
-## Option B: Copy the rule files
-
-Copy the rule files into your project:
-
-```
-git clone https://github.com/contentstack/contentstack-agent-skills.git
-cp contentstack-agent-skills/cursor/rules/*.mdc your-project/.cursor/rules/
-```
-
-This is the best option when you want the skills committed to a specific repository so every contributor gets them.
+1. Open **Settings → Plugins**.
+2. Choose **Add from GitHub repository**.
+3. Enter `https://github.com/contentstack/contentstack-agent-skills`.
 
 ## What gets installed
 
-- `cursor/rules/00-router.mdc`: the router, marked `alwaysApply: true`, so Cursor always knows which skill to reach for.
-- `cursor/rules/NN-<slug>.mdc`: one rule per skill (for example `05-cms-entries.mdc`, `17-dx-delivery-sdk.mdc`).
-
-These files are **generated** from `skills/`. Don't edit them by hand. See [Architecture](../how-it-works/architecture.md).
+- All 22 skills under `skills/<slug>/SKILL.md`, with their bundled `references/` and `scripts/`.
+- The plugin and marketplace manifests from `.cursor-plugin/`.
 
 ## Verify
 
@@ -35,7 +24,7 @@ Open the Cursor chat and ask:
 
 > Which Contentstack skills do you have available?
 
-The `00-router.mdc` rule is always applied, so Cursor should answer from the routing table. See [Verify your setup](verify-setup.md) for more.
+It should list skills from the bundle. See [Verify your setup](verify-setup.md) for more.
 
 ## Use it
 
@@ -43,13 +32,13 @@ Ask Contentstack questions normally:
 
 > How do I set up Contentstack Live Preview for SSR in Next.js?
 
-Cursor consults the router and applies the matching skill (here, **Live Preview & Visual Builder Support**).
+Cursor matches the request to a skill description and applies it (here, **Live Preview & Visual Builder Support**).
 
 ## Update
 
-If you installed via the marketplace, update through it. If you copied the files, re-copy `cursor/rules/*.mdc` from the latest bundle.
+Update the plugin from **Settings → Plugins**. A new release is picked up when the bundle's version number changes.
 
 ## Troubleshooting
 
-- **Rules don't seem to apply** → confirm the `.mdc` files are in `.cursor/rules/` at the project root and that `00-router.mdc` retains its `alwaysApply: true` frontmatter.
-- **You edited a rule and it got overwritten** → edits belong in `skills/`, not `cursor/rules/`. The generated tree is rebuilt from source. See [Add or edit a skill](../contributing/add-or-edit-a-skill.md).
+- **Skills don't seem to apply** → confirm the plugin is listed and enabled under **Settings → Plugins**, then start a new chat.
+- **You want to change a skill** → edits belong in `skills/<slug>/SKILL.md` in the repository, not in your local install. See [Add or edit a skill](../contributing/add-or-edit-a-skill.md).

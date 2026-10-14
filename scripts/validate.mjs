@@ -30,6 +30,16 @@ for (const slug of slugs) {
     const m = fm[1].match(new RegExp(`^${key}:\\s*(.*)$`, "m"));
     if (!m) return undefined;
     const v = m[1].trim();
+    // YAML block scalars (`>` folded, `|` literal): join the indented lines that follow.
+    if (/^[>|][+-]?$/.test(v)) {
+      const lines = fm[1].slice(m.index + m[0].length).split("\n").slice(1);
+      const body = [];
+      for (const line of lines) {
+        if (line.trim() && !/^\s/.test(line)) break;
+        body.push(line.trim());
+      }
+      return body.join(v.startsWith(">") ? " " : "\n").trim();
+    }
     if (v.startsWith('"') && v.endsWith('"')) return v.slice(1, -1).replace(/\\"/g, '"');
     if (v.startsWith("'") && v.endsWith("'")) return v.slice(1, -1).replace(/''/g, "'");
     return v;

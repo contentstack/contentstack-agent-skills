@@ -36,17 +36,18 @@ The 22 skills span five Contentstack product areas:
 
 See the full [skills reference](../skills/index.md) for a description of each.
 
-## One source, five formats
+## One source, every tool
 
-Every skill is authored once as a `SKILL.md` file and packaged for five tools:
+Every skill is authored once as a `SKILL.md` file in the open [Agent Skills](https://agentskills.io) format. These tools read that format natively, so they all install the same files:
 
-- **Claude Code**: installable plugin
-- **Cursor**: rule files (`.mdc`)
-- **Codex / OpenAI agents**: a markdown tree
-- **Gemini CLI**: an extension manifest
-- **[`skills` CLI](https://github.com/anthropics/skills)**: pulls any single skill on demand
+- **Claude Code**, **claude.ai**, and **Claude Cowork**: a plugin from the marketplace
+- **Cursor**: a plugin added from the GitHub repository
+- **Codex**: a plugin from the marketplace
+- **GitHub Copilot**: a plugin for Copilot CLI or VS Code
+- **Gemini CLI**: an extension
+- **[`skills` CLI](https://github.com/vercel-labs/skills)**: pulls any single skill into almost any agent
 
-You install only one. The bundle lives at [github.com/contentstack/contentstack-agent-skills](https://github.com/contentstack/contentstack-agent-skills). The [supported tools](supported-tools.md) page explains what each format produces, and [how skills work](../how-it-works/architecture.md) explains how the formats stay in sync.
+You install only one. The bundle lives at [github.com/contentstack/contentstack-agent-skills](https://github.com/contentstack/contentstack-agent-skills). The [supported tools](supported-tools.md) page compares the install options, and [Architecture](../how-it-works/architecture.md) explains how one folder serves every tool.
 
 ## Next steps
 
