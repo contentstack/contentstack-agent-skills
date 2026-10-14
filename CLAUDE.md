@@ -12,7 +12,7 @@ This repository bundles [Contentstack](https://www.contentstack.com) agent skill
 
 ## Releasing
 
-Bump `version` to the same value in `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `.cursor-plugin/plugin.json`, `plugin.json` and `gemini-extension.json`. Installed Claude Code plugins only update when the version changes.
+Bump `version` to the same value in `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `.cursor-plugin/plugin.json`, `plugin.json` and `gemini-extension.json`. Installed Claude Code plugins only update when the version changes. Add a section to `CHANGELOG.md` for the release.
 
 ## Contentstack references
 

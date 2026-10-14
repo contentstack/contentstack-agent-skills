@@ -36,9 +36,10 @@ There are no generated artifacts, so any validated commit on `main` is a coheren
 
 1. Make changes under `skills/` (see [Add or edit a skill](add-or-edit-a-skill.md)).
 2. Bump `version` to the same new value in every file listed above.
-3. Run `node scripts/validate.mjs`.
-4. Confirm CI passes on the pull request.
-5. Merge to `main` and tag the release.
+3. Add a section for the new version to [`CHANGELOG.md`](../../CHANGELOG.md), calling out renamed or removed skills.
+4. Run `node scripts/validate.mjs`.
+5. Confirm CI passes on the pull request.
+6. Merge to `main` and tag the release.
 
 ## How updates reach users
 

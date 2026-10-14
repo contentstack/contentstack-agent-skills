@@ -55,11 +55,20 @@ for (const slug of slugs) {
   else if (description.length > 1024) fail(`skills/${slug}: description is ${description.length} chars (max 1024)`);
   else if (!/\bUse when\b/.test(description)) fail(`skills/${slug}: description should say "Use when ..." so agents know when to load it`);
 
-  // Relative links in the body must resolve inside the skill folder.
-  for (const [, target] of text.matchAll(/\]\((?!https?:|#|mailto:)([^)\s]+)\)/g)) {
-    const path = target.split("#")[0];
-    if (path && !existsSync(join(skillsDir, slug, path))) fail(`skills/${slug}/SKILL.md: broken link ${target}`);
+  // Relative links in every markdown file of the skill must resolve.
+  for (const md of markdownFiles(join(skillsDir, slug))) {
+    const rel = md.slice(skillsDir.length + 1);
+    for (const [, target] of readFileSync(md, "utf8").matchAll(/\]\((?!https?:|#|mailto:)([^)\s]+)\)/g)) {
+      const path = target.split("#")[0];
+      if (path && !existsSync(join(dirname(md), path))) fail(`skills/${rel}: broken link ${target}`);
+    }
   }
+}
+
+function markdownFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? markdownFiles(join(dir, e.name)) : e.name.endsWith(".md") ? [join(dir, e.name)] : [],
+  );
 }
 
 // --- Manifests ------------------------------------------------------------

@@ -51,13 +51,14 @@ VS Code: add `"contentstack/contentstack-agent-skills"` to the `chat.plugins.mar
 gemini extensions install https://github.com/contentstack/contentstack-agent-skills
 ```
 
-### skills CLI (one skill, any agent)
+### skills CLI (any agent)
 
 ```
 npx skills add contentstack/contentstack-agent-skills --skill cms-entries
+npx skills add contentstack/contentstack-agent-skills --skill cms-entries --skill cms-assets
 ```
 
-Use `--list` to see every skill. The CLI installs into the right folder for Claude Code, Cursor, Codex, Copilot, Gemini, Windsurf, Cline and others.
+Use `--list` to see every skill, or leave out `--skill` to install them all. The CLI installs into the right folder for Claude Code, Cursor, Codex, Copilot, Gemini, Windsurf, Cline and others.
 
 ## Skills included
 
@@ -109,7 +110,7 @@ scripts/validate.mjs              Validates skills and manifests (runs in CI)
 1. Add or edit `skills/<slug>/SKILL.md`. The `name` must match the folder, and the `description` must say what the skill does and include "Use when…" (1024 characters max).
 2. Add a row to the table above.
 3. Run `node scripts/validate.mjs`.
-4. For a release, bump `version` in every manifest. The validator fails if they disagree. Claude Code only updates installed plugins when the version changes.
+4. For a release, bump `version` in every manifest. The validator fails if they disagree. Claude Code only updates installed plugins when the version changes. Add a `CHANGELOG.md` entry.
 
 ## Learn more about Contentstack
 
