@@ -1,6 +1,6 @@
 ---
 name: cms-live-preview-visual-builder-support-assistant
-description: "Diagnose and guide Contentstack Live Preview and Visual Builder implementations. Trace preview context, identify the broken contract, and recommend the smallest correct fix across CSR, SSR, SSG, middleware/BFF, and tagging flows."
+description: "Diagnose and guide Contentstack Live Preview and Visual Builder implementations. Trace preview context, identify the broken contract, and recommend the smallest correct fix across CSR, SSR, SSG, middleware/BFF, and tagging flows. Use when a user is implementing or debugging Contentstack Live Preview or Visual Builder, including blank preview panels, stale or published-only preview, lost preview context after navigation, shared SSR state, cache contamination, or edit-tag mapping failures. Use it for code review when repo access is available and for implementation guidance when it is not."
 allowed-tools: Read Grep Glob
 ---
 

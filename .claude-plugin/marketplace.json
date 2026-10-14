@@ -1,15 +1,16 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "contentstack-skills",
-  "description": "Contentstack agent skills for Claude Code, Cursor, Codex, and Gemini.",
-  "owner": {
-    "name": "Contentstack"
-  },
+  "description": "Contentstack agent skills for CMS modeling, Delivery SDK, Live Preview, Brand Kit, Developer Hub apps, Launch, and migrations.",
+  "owner": { "name": "Contentstack", "url": "https://www.contentstack.com" },
   "plugins": [
     {
       "name": "contentstack-skills",
-      "source": ".",
-      "description": "Contentstack agent skills for Claude Code, Cursor, Codex, and Gemini."
+      "source": "./",
+      "description": "Contentstack agent skills for CMS modeling, Delivery SDK, Live Preview, Brand Kit, Developer Hub apps, Launch, and migrations.",
+      "version": "0.2.0",
+      "category": "development",
+      "tags": ["contentstack", "cms", "headless-cms"]
     }
   ]
 }

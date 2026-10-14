@@ -1,6 +1,6 @@
 ---
 name: cms-tokens-authentication
-description: "Advise developers on choosing the right Contentstack authentication method and token type for frontend, backend, automation, and third-party app use cases. Include security guidance, rate-limit awareness, and SSO considerations."
+description: "Advise developers on choosing the right Contentstack authentication method and token type for frontend, backend, automation, and third-party app use cases. Include security guidance, rate-limit awareness, and SSO considerations. Use when developers ask about authentication, token types, API keys, rate limits, SSO integration, or credential security."
 allowed-tools: Read Grep Glob
 context: fork
 agent: general-purpose

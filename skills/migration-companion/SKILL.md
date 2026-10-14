@@ -1,9 +1,9 @@
 ---
-name: contentstack-migration-companion
-description: Migration companion for moving to Contentstack from another CMS. Guides content and application migration through a structured, step-by-step workflow. Currently supports migrations from Contentful, with additional source platforms planned. Use when users want to migrate, move, switch, port, or re-platform to Contentstack, including content models, content, assets, locales, application integrations, or website code. Trigger on requests such as "migrate to Contentstack", "move to Contentstack", "switch to Contentstack", "migrate from Contentful", "move my Contentful space", "port my CMS", or similar migration-related requests. The skill validates prerequisites, guides the migration process, provides progress checkpoints, and delivers a completion summary. Prefer this skill whenever a Contentstack migration is requested.
+name: migration-companion
+description: 'Migration companion for moving to Contentstack from another CMS. Guides content and application migration through a structured, step-by-step workflow. Currently supports migrations from Contentful, with additional source platforms planned. Use when users want to migrate, move, switch, port, or re-platform to Contentstack, including content models, content, assets, locales, application integrations, or website code. Trigger on requests such as "migrate to Contentstack", "move to Contentstack", "switch to Contentstack", "migrate from Contentful", "move my Contentful space", "port my CMS", or similar migration-related requests. The skill validates prerequisites, guides the migration process, provides progress checkpoints, and delivers a completion summary. Prefer this skill whenever a Contentstack migration is requested.'
 ---
 
-# contentstack-migration-companion
+# Contentstack Migration Companion
 
 Guide a user through migrating a project from **Contentful** to **Contentstack** —
 first the **content** (content types, entries, assets, locales) via the Contentstack
@@ -33,11 +33,11 @@ Follow these throughout — they matter more than any single command:
   substitute the absolute path of the directory this `SKILL.md` was loaded from — i.e. the
   skill's own install directory. **Do not assume a fixed path.** The location differs by AI
   assistant, by OS, and by whether the skill was installed per-project or per-user — for example
-  it may be `<project>/.claude/skills/contentstack-migration-companion`,
-  `~/.claude/skills/contentstack-migration-companion`, or a Windows path like
-  `%USERPROFILE%\.claude\skills\contentstack-migration-companion`. Determine the real path once
+  it may be `<project>/.claude/skills/migration-companion`,
+  `~/.claude/skills/migration-companion`, or a Windows path like
+  `%USERPROFILE%\.claude\skills\migration-companion`. Determine the real path once
   (it is the folder you read this `SKILL.md` from; if unsure, search the workspace and home
-  directory for `*/contentstack-migration-companion/SKILL.md`), and for shell commands set it as
+  directory for `*/migration-companion/SKILL.md`), and for shell commands set it as
   a variable up front (`SKILL_DIR="<that absolute path>"`) so bundled scripts can be invoked as
   `"$SKILL_DIR/scripts/<name>"`. The bundled scripts self-locate their own siblings, so once you
   invoke them by absolute path they work regardless of your current directory.
