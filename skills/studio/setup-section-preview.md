@@ -158,7 +158,7 @@ Only once 1 to 3 hold, continue.
        return [{
          source: '/:path*',
          headers: [
-           { key: 'Content-Security-Policy', value: 'frame-ancestors *;' },
+           { key: 'Content-Security-Policy', value: "frame-ancestors 'self' https://*.contentstack.com;" },
            { key: 'Access-Control-Allow-Origin', value: '*' },
          ],
        }];
@@ -166,7 +166,7 @@ Only once 1 to 3 hold, continue.
    };
    ```
 
-   **Why both:** `allowedHosts: true` (Vite) prevents the "host not allowed" 403 from the dev server. The `frame-ancestors *` CSP header tells the browser the page may be embedded in any frame. Without either, Studio's iframe stays blank with no console error, a particularly hard failure to diagnose.
+   **Why both:** `allowedHosts: true` (Vite) prevents the "host not allowed" 403 from the dev server. `frame-ancestors` says who may embed the page: `*` locally, only `https://*.contentstack.com` (every region) when deployed. Without either, Studio's iframe stays blank with no console error.
 
 6. **Sanity check.** Tell the user to:
    1. Open Studio at the project's Compositions list

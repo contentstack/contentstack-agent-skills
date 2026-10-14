@@ -52,7 +52,12 @@ Reference: `docs/20-bring-your-own-components/set-component-default-data.md`.
    ```tsx
    const { specOptions } = useCompositionData(/* ... */);
    const [extData, setExtData] = useState(null);
-   useEffect(() => { getLivePricing(sku).then(setExtData); }, [sku]);
+   useEffect(() => {
+     let stale = false;
+     setExtData(null); // new SKU: don't render the old price
+     getLivePricing(sku).then((d) => { if (!stale) setExtData(d); });
+     return () => { stale = true; }; // a slower old-SKU response is ignored
+   }, [sku]);
    if (!specOptions?.spec || !extData) return null;
    return <StudioComponent specOptions={specOptions} data={{ livePricing: extData }} />;
    ```

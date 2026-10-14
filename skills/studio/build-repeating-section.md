@@ -43,7 +43,7 @@ The pattern:
 registerComponent({
   type: "doc-card-list",
   component: CardList,
-  schema: {
+  props: {
     cards: { type: "array" }, // <-- bound to a multi-Reference field on the section's linked schema
   },
 });

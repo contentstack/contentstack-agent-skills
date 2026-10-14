@@ -109,7 +109,7 @@ Use existing compositions for verification where possible. Any temporary authori
      ```bash
      curl -I -sS --max-time 5 ${canvasAppUrl} | grep -iE 'content-security-policy|access-control-allow-origin'
      ```
-     Pass: `Content-Security-Policy: frame-ancestors *` AND `Access-Control-Allow-Origin: *` present. Fail: missing, so see `setup-section-preview` for the Vite/Next config block. The Studio iframe will silently fail to embed without these.
+     Pass: `frame-ancestors` (`*` or `https://*.contentstack.com`) plus `Access-Control-Allow-Origin: *`. Fail: missing, so see `setup-section-preview` for the Vite/Next config block. The Studio iframe will silently fail to embed without these.
 
    - **5d. Arity ≥ 1 on every registered component**:
      ```bash

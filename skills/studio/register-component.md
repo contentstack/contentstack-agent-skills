@@ -62,7 +62,7 @@ Reference: `docs/20-bring-your-own-components/register-components.md`, `docs/20-
    | plain-text-only `string` | `plaintext` (Single / Multi Line only) |
    | `number` | `number` |
    | `boolean` | `boolean` |
-   | `string` constrained to known values (union literal, enum) | `choice` (set `options:` to the literal values. `defaultValue` is the **bare value** for single-select (`"centered"`) and an **array** only when `multiSelect: true`) |
+   | `string` constrained to known values (union literal, enum) | `choice` (set `options:` to the literal values. `defaultValue` is an **array** (`["centered"]`), single- or multi-select. See `wire-component-default-data`) |
    | URL string used as `href` | `href` |
    | URL string used as image `src` | `imageurl` |
    | ISO date string | `datestring` |
@@ -105,7 +105,7 @@ Reference: `docs/20-bring-your-own-components/register-components.md`, `docs/20-
 
    This is a **resolver-level** behavior (`retrievePropValue`), so it bites UI / picker-authored bindings exactly as it bites API-authored ones, not an API-only footgun. It is also **not specific to Modular Blocks**: any single-key object collapses: a Group with one sub-field, a single-item wrapper, a block carrying one field plus `_metadata`. Rule of thumb: whenever the value you want is an object or a list, type the prop `object` / `array`. `any` is safe only for a genuine primitive.
 
-   **These 12 strings govern YOUR registered components only.** Studio's built-in nodes (`header`, `plain-text`, `rich-text`, `image`, …) carry their own prop-type vocabulary, e.g. the built-in Header's text prop is typed **`plaintext`**, which is not in the list above and is not valid in a `registerComponent` schema. Reading an existing composition and copying a built-in's prop type into your registration is a silent rejection. The two vocabularies overlap in places and diverge in others. Never transplant between them. Built-in node types are cataloged in [`author-composition-via-api`](author-composition-via-api.md) § Built-in node `type` values.
+   **These 14 strings govern YOUR registered components only.** Studio's built-in nodes (`header`, `plain-text`, `rich-text`, `image`, …) carry their own prop-type vocabulary. Reading an existing composition and copying a built-in's prop type into your registration is a silent rejection. The two vocabularies overlap in places and diverge in others. Never transplant between them. Built-in node types are cataloged in [`author-composition-via-api`](author-composition-via-api.md) § Built-in node `type` values.
 
 4. **Set `defaultValue` for every prop** where the component has a default value in its source. The default appears as the palette tile preview. Without it, the tile renders blank and authors don't know what the component looks like. Use `defaultValue:` exactly, NOT `default:` (the latter is silently ignored).
 
@@ -244,7 +244,7 @@ This skill succeeds only when ALL of the following are true.
 - [ ] Every prop on the source component's TypeScript interface (or propTypes) appears in the `props:` object, no prop dropped silently.
 - [ ] Every `type:` value is one of the 13 allowed strings (`string`, `boolean`, `number`, `choice`, `href`, `imageurl`, `datestring`, `array`, `object`, `slot`, `json_rte`, `any`, `action`), not `text`, `link`, `color`, or `image`.
 - [ ] **Any callback an author should control is an `action` prop**, not a hardcoded handler. Otherwise the component's behavior is fixed at build time. See [`wire-studio-state`](wire-studio-state.md).
-- [ ] A `choice` prop's `defaultValue` shape follows `multiSelect`: **multi-select (`multiSelect: true`) must be an array** (`["centered"]`). **Single-select takes the bare value** (`"centered"`). Single-select still accepts a one-element array, but only for backward compatibility, prefer the bare value. Source: `SingleChoiceProp = PropBase<…, string | string[]>` and `MultiChoiceProp = PropBase<…, string[]>` in `studio-registry`.
+- [ ] A `choice` prop's `defaultValue` is an array (`["centered"]`). Multi-select requires it, and single-select accepts it on every SDK version (newer versions also convert a bare value).
 - [ ] `defaultValue:` (not `default:`) is set on every prop where the source component has a default. **Exception: `slot` props never carry a `defaultValue`**, they start empty until template authors fill them.
 - [ ] Choice props include an `options:` array of the allowed literal values.
 - [ ] The registration file is imported once at app startup, verified by grep for the import in `main.tsx` / `_app.tsx` / `App.tsx`.
