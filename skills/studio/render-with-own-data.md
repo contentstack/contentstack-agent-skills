@@ -8,7 +8,7 @@ Render a Studio composition (page or standalone section) against data you alread
 
 Use when you already hold the data (a group-array element, a commerce record, a request-time value) and must render a composition against it with no SDK data fetch. Phrases: "render this section per array item", "section per product", "render a composition with my data". Do NOT use for route rendering: that's `setup-template-preview-routes` + `wire-external-data`.
 
-> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Render a Composition With Your Own Data
 
@@ -71,13 +71,20 @@ This is not `<StudioComponent />`. That one owns a route and resolves compositio
    ```tsx
    "use client";
    import { StudioComposition } from "@contentstack/studio-react";
+   // Your own skeleton and not-found components:
+   import { SectionSkeleton } from "@/components/SectionSkeleton";
+   import NotFound from "@/components/NotFound";
 
-   <StudioComposition
-     compositionUid="hero_section"
-     context={element}
-     loadingFallback={<SectionSkeleton />}
-     errorFallback={<NotFound />}
-   />;
+   export function HeroFor({ element }: { element: Record<string, unknown> }) {
+     return (
+       <StudioComposition
+         compositionUid="hero_section"
+         context={element}
+         loadingFallback={<SectionSkeleton />}
+         errorFallback={<NotFound />}
+       />
+     );
+   }
    ```
 
    In a CSR app you can also pre-fetch in `useEffect` and hold the `StudioSpec` in state, worth it when several mounts share one composition.

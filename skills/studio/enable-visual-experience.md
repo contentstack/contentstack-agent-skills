@@ -8,7 +8,7 @@ Enable Live Preview + Visual Experience at the stack level: prerequisite before 
 
 Use as the FIRST step before `install-studio`, `install-live-preview`, `configure-studio`, or any Studio setup skill. Phrases: "enable Live Preview", "set up Visual Experience", "canvas is blank", "preview events not arriving". Also when `verify-setup` reports Layer 2 failing or `troubleshoot-canvas` finds canvas blank with no preview events. Not doable from CLI: click-through in the Contentstack web app, gates downstream skills.
 
-> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Enable Visual Experience + Live Preview at the stack level
 
@@ -28,22 +28,29 @@ Studio, Live Preview, and Visual Editor share **one stack-level checkbox**: `Sta
 
 > **Auth: OAuth first.** Snippets here write `-H "$CS_AUTH"`, resolved once per run. **Assume there is no session `authtoken`**: the user authenticates with OAuth (MCP `--auth` / `csdx auth:login --oauth`) and never pastes one. Resolution order, scope headers (`organization_uid` vs `api_key`), the expiry/refresh rule and the 401/422 signature table: [`authenticate-cma`](authenticate-cma.md). `<stack>`: MCP-registration key ([`understand-contentstack-mcp`](understand-contentstack-mcp.md)), user-confirmed.
 
-**Correction (2026-08-23):** earlier versions of this skill declared the Live Preview toggle a hard CMA boundary. That was wrong: it was the wrong endpoint. Both the toggle and the preview token are scriptable, verified end to end on a prod test stack. Prefer this path. Fall back to the UI walkthrough when you have no CMA authtoken.
+Both the Live Preview toggle and the preview token are scriptable. Prefer this path. Fall back to the UI walkthrough when no CMA credential resolves (OAuth first; a session `authtoken` only as the last rung per [`authenticate-cma`](authenticate-cma.md), never as the reason to skip the API path).
+
+**This changes stack settings: confirm first.** Tell the user which stack and environment, show the current `live_preview` block from the read, state the change, and get approval before the write.
 
 ### 1. Enable Live Preview: `POST /v3/stacks/settings`
 
-Read first, flip the flag, write the whole object back:
+Read first, merge the flag into the existing settings with `jq`, write the whole object back:
 
 ```bash
-curl -s -H "api_key: <stack>" -H "$CS_AUTH" \
-  "https://<cma-host>/v3/stacks/settings"        # → { "stack_settings": { … } }
+# requires: CS_AUTH (see authenticate-cma), STACK_API_KEY, CMA_HOST, ENV_UID, jq
+SETTINGS="$(mktemp)"; trap 'rm -f "$SETTINGS"' EXIT
 
-curl -s -X POST -H "api_key: <stack>" -H "$CS_AUTH" \
-  -H "Content-Type: application/json" \
-  "https://<cma-host>/v3/stacks/settings" \
-  -d '{"stack_settings":{ …every existing key…,
-        "live_preview":{"enabled":true,"default-env":"<environment-uid>","default-url":"",
-                        "is-always-open-in-new-tab":false,"lp-onboarding-setup-visible":true}}}'
+curl -s -H "api_key: $STACK_API_KEY" -H "$CS_AUTH" \
+  "https://$CMA_HOST/v3/stacks/settings" > "$SETTINGS"      # → { "stack_settings": { … } }
+jq '.stack_settings.live_preview' "$SETTINGS"                # show the before state; confirm with the user
+
+jq --arg env "$ENV_UID" '{stack_settings: (.stack_settings
+      | .live_preview = ((.live_preview // {}) + {enabled: true, "default-env": $env,
+                          "default-url": (.live_preview["default-url"] // "")}))}' \
+  "$SETTINGS" \
+| curl -s -X POST -H "api_key: $STACK_API_KEY" -H "$CS_AUTH" \
+    -H "Content-Type: application/json" \
+    "https://$CMA_HOST/v3/stacks/settings" --data-binary @-
 # → 201 Created, and it persists
 ```
 
@@ -72,7 +79,7 @@ Read one back later with `GET /v3/stacks/delivery_tokens/<uid>?include_preview_t
 | Token creation on a branch-enabled stack without a branch scope | `error_code 141`, "Delivery Token creation failed. Please try again.". The real reason hides in `errors["scope.branch_or_alias"]` | Add `{"module":"branch","branches":["main"],"acl":{"read":true}}` to `scope` | <!-- style-lint: allow -->
 | Reading LP state from `GET /v3/stacks?include_settings=true` and finding `{}` | That is genuinely "off": the field is readable, so **verify instead of asking the user** | - |
 
-**Verified with a session `authtoken`. OAuth Bearer is untested on this endpoint, attempt it first and branch on the response** ([`authenticate-cma`](authenticate-cma.md) § Which credential each service takes carries the probe). Whether a stack-scoped **management token** is accepted for the settings write is untested. If it 401s, fall back to the UI steps.
+**Attempt OAuth Bearer first and branch on the response** ([`authenticate-cma`](authenticate-cma.md) § Which credential each service takes carries the probe). Whether a stack-scoped **management token** is accepted for the settings write is untested. If it 401s, fall back to the UI steps.
 
 **Method note worth keeping:** this was believed impossible for two sessions because the wrong endpoint answered `200`. It was settled by opening the Network tab in DevTools while a human ticked the checkbox. When a CMA operation looks impossible, capture what the product's own UI calls before writing it off.
 
@@ -171,11 +178,11 @@ Tell the user verbatim:
 > 2. Open the Delivery Token your app uses. The token must be scoped to a **Publishing Environment** that matches what you want to preview: `{{previewEnvironmentName}}` for the standard case (visible as a radio button under Publishing Environments on the token edit page).
 > 3. On the token edit page, scroll past the Stack API Key and Delivery Token (read-only) fields. You'll see a button labeled **Create Preview Token** with helper text: "Live Preview relies on the Preview token. We strongly recommend using this token instead of a read-only Management token."
 > 4. Click **Create Preview Token**.
-> 5. After the click, the button **disappears** and a new **Preview Token (read only)** field shows up directly below the Delivery Token. The value starts with `cs` (e.g. `cs449d1c52e12fd4fea68ad6d0`).
-> 6. Copy the Preview Token value. This is what goes into your app's `.env.local` as `*_PREVIEW_TOKEN`:
->    - Vite: `VITE_CS_PREVIEW_TOKEN=cs...`
->    - Next: `NEXT_PUBLIC_CS_PREVIEW_TOKEN=cs...`
->    - CRA: `REACT_APP_CS_PREVIEW_TOKEN=cs...`
+> 5. After the click, the button **disappears** and a new **Preview Token (read only)** field shows up directly below the Delivery Token. The value starts with `cs` (e.g. `csxxxxxxxxxxxxxxxxxxxxxxxx`).
+> 6. Copy the Preview Token value. This is what goes into your app's gitignored `.env.local` as `*_CONTENTSTACK_PREVIEW_TOKEN` (don't paste it into chat):
+>    - Vite: `VITE_CONTENTSTACK_PREVIEW_TOKEN=<preview-token>`
+>    - Next: `NEXT_PUBLIC_CONTENTSTACK_PREVIEW_TOKEN=<preview-token>`
+>    - CRA: `REACT_APP_CONTENTSTACK_PREVIEW_TOKEN=<preview-token>`
 >
 > **Important:** there is **no delete / revoke button** for the Preview Token in this UI. Once you click Create Preview Token, the token exists for the lifetime of the Delivery Token. The only way to invalidate it is to delete the Delivery Token itself. So **only click it on the Delivery Token you intend to use for previewing.**
 >

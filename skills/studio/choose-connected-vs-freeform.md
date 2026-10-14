@@ -8,7 +8,7 @@ Decide whether a new page is a Connected (content-type-bound) or Freeform (one-o
 
 Use at the start of authoring a new page, before any template is created. Phrases: "Connected or Freeform?", "what kind of template", "should this be a landing page". Emits a recommendation (Connected default, Freeform only when justified by the Three-AND rule) and the next skill to run. Do NOT use to actually build the template.
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Choose Connected vs Freeform Template
 
@@ -50,16 +50,16 @@ Genuine Freeform cases are rare and usually internal-tool-ish: a merchandiser da
    - (iii) Is the visible content **100% assembled from existing entries**: pinned entries, pinned queries, references into existing CTs?
 
    If the user confirms all three, the answer is **Freeform**. If even one answer wavers or is "yes, but a hero title", flip back to **Connected** with a single-entry CT (or a `campaign` CT for recurring campaign shapes). Hero copy / page-specific copy means owned content. Owned content means Connected.
-4. Print the recommendation in this exact shape:
+5. Print the recommendation in this exact shape:
    ```
    Recommendation: <Connected | Freeform> template
    Rationale: <one sentence tying back to the inputs>
    Next skill: <build-connected-template | build-freeform-template>
    ```
-5. If the recommendation is Freeform, append TWO reminder lines:
+6. If the recommendation is Freeform, append TWO reminder lines:
    - `Reconsider: did you rule out Connected via a single-entry CT or an extended CT? Freeform is the exception, not the default — re-check before proceeding.`
    - `Before running build-freeform-template, verify the project-level "Enable Freeform Feature" toggle is on (Studio → Settings → Configuration). Many teams keep it OFF deliberately to enforce the every-page-maps-to-a-CT discipline; if your project has it off, the right move is usually to leave it off and model a CT.`
-6. Stop. Do not create the template yourself. The user (or the next skill invocation) runs the chosen build skill.
+7. Stop. Do not create the template yourself. The user (or the next skill invocation) runs the chosen build skill.
 
 ## Inputs needed from the user
 

@@ -53,7 +53,7 @@ The template's `section-composition` node carries a `props` map keyed by the exp
   "uid": "INST-1",
   "metadata": {
     "compositionUID": "<section's entry uid, blt…>",
-    "sectionBindingOverride": { "selectedField": "…" }   // (P23 — separate concern)
+    "sectionBindingOverride": { "selectedField": "…" }   // (selectedField priority — separate concern)
   },
   "props": {
     "exp-tone-1": {                            // keyed by section's exposure uid

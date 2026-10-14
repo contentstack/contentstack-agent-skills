@@ -10,7 +10,7 @@ Part of the API-authoring set. Start at [`author-composition-via-api`](author-co
 
 ## The composition entry: what you actually write to the CMA
 
-A composition is a single entry on the compositions CT. The fields (see § Complete example below for a real published Freeform composition):
+A composition is a single entry on the compositions CT. The fields (see [`author-composition-templates`](author-composition-templates.md) § Complete example for a real published Freeform composition):
 
 | Field | Type | Holds |
 |---|---|---|
@@ -26,11 +26,11 @@ A composition is a single entry on the compositions CT. The fields (see § Compl
 | `url_metadata` | group | **Required on every template composition** (`place_composition_as: "page"`): `url_source` + `url_queries`. Never write `url` without it. See § `url` + `url_metadata`: a matched pair below. Sections carry neither `url` nor `url_metadata` |
 | `linked_schemas` | **group-multiple** | Sections only. Declares parent CT + `selectedField` the section scopes to. `[]` for templates / freeform |
 | `linked_sections` | reference (multiple) | Template's references to section-composition entries placed in its `ui` tree. `[]` for freeform / sections |
-| `ui_preview` | file (asset uid) | **Required on every section composition** (`place_composition_as: "section"`). The editor writes this for itself by screenshotting the canvas on save. **The CMA never populates it**, so an API-created Section stays blank in the Sections palette forever and nothing errors. Supply an asset uid. See § Section thumbnails Fix C for the two calls. Templates don't need it |
+| `ui_preview` | file (asset uid) | **Required on every section composition** (`place_composition_as: "section"`). The editor writes this for itself by screenshotting the canvas on save. **The CMA never populates it**, so an API-created Section stays blank in the Sections palette forever and nothing errors. Supply an asset uid. See [`author-composition-thumbnails`](author-composition-thumbnails.md) § Fix C for the calls. Templates don't need it |
 
 After write, publish the entry. Studio queries by `composable_uid` + published status. An unpublished entry won't appear in the project's Compositions list or load in the canvas.
 
-**A section write is not finished until `ui_preview` is set.** It fails the way publish state does (silently, with a correct-looking `200` and a page that renders), so it is invisible until an author opens the palette and finds unlabeled gray tiles. Set it in the same pass as the create, per § Section thumbnails: screenshot or generate the image, `POST /v3/assets`, then `PUT { entry: { ui_preview: <assetUid> } }`. Batching it to "later" is how a whole project ends up with none. Measured: 254 API-authored Sections in one project, zero thumbnails, while the UI-authored Sections beside them all had one.
+**A section write is not finished until `ui_preview` is set.** It fails the way publish state does (silently, with a correct-looking `200` and a page that renders), so it is invisible until an author opens the palette and finds unlabeled gray tiles. Set it in the same pass as the create, per [`author-composition-thumbnails`](author-composition-thumbnails.md): screenshot or generate the image, `POST /v3/assets`, then `PUT { entry: { ui_preview: <assetUid> } }`. Batching it to "later" is how a whole project ends up with none. Measured: 254 API-authored Sections in one project, zero thumbnails, while the UI-authored Sections beside them all had one.
 
 **Reading publish state back requires an explicit flag.** A plain `GET /v3/content_types/<ct>/entries/<uid>` returns **no `publish_details`**. The field is simply absent, which reads identically to "not published" and makes the verification step above unfalsifiable. Ask for it:
 
@@ -52,7 +52,7 @@ A published entry returns an array with one object per environment/locale. `[]` 
 **Why this matters.** Omitting `url_metadata` doesn't fail the CMA write and often doesn't break delivery either: a Connected template with `url: "{{entry.url}}"` can return 200 on the live route off the pattern alone. That green page is exactly what makes the omission expensive. It's discovered later, in the editor, not at write time:
 
 - **Studio's URL panel loses the derivation.** The editor can't show that the URL comes from the connected CT's `url_pattern`, so the Edit-URL modal renders it as an opaque hand-typed string. First author who touches it re-authors the pattern by hand and the CT link is gone for good.
-- **Candidate-set risk.** The SDK's composition-candidate query filters on `url_metadata.$exists: true` (see [`troubleshoot-composition-resolution` § Symptom matrix](troubleshoot-composition-resolution.md)). A composition with no `url_metadata` at all is not guaranteed to enter the candidate set. One code path resolving it today is not the same as every path resolving it.
+- **Candidate-set risk.** The SDK's composition-candidate query filters on `url_metadata.$exists: true` (see [`troubleshoot-composition-resolution` § Symptom-to-stage matrix](troubleshoot-composition-resolution.md)). A composition with no `url_metadata` at all is not guaranteed to enter the candidate set. One code path resolving it today is not the same as every path resolving it.
 - **`legacy_url` semantics are stricter.** They match against a `url` field populated on every entry, with a leading slash. A pattern written for `content_type_url_pattern` semantics but resolved under `legacy_url` fails the moment the entry set grows past the one you tested.
 
 #### Which `url_source` to write
@@ -72,7 +72,7 @@ A published entry returns an array with one object per environment/locale. `[]` 
 
 #### What each `url_source` actually does: and the editor error it produces
 
-Verified in the Studio app (`iframe-url/resolvePreviewEntry.ts`, `useResolvedPreviewEntry.ts`). The editor picks a **preview entry** by querying the connected CT, and the query shape depends entirely on `url_source`:
+Observed behavior in the Studio editor: the editor picks a **preview entry** by querying the connected CT, and the query shape depends entirely on `url_source`:
 
 | `url_source` | Editor's query | Variable substitution? | Error when nothing matches |
 |---|---|---|---|
@@ -91,7 +91,7 @@ Two consequences that bite in practice:
 
 `prepareResolution` bails with `no-fetch` / reason `no-composition` when the composition has **no `url_metadata` at all**. The editor then has nothing to derive a preview URL from, so the template won't open, while SSR resolves the same composition off the `url` pattern and the entry's `url` and serves the page perfectly.
 
-Same asymmetry family as `linked_sections` (P27) and `ui_preview`: the editor depends on metadata the UI writes for itself and the API path silently omits. **A passing SSR render is not evidence the template opens in Studio.** Verify both: load the route AND open the template in the editor. Cross-reference [`troubleshoot-composition-resolution` § Editor vs SSR: URL derivation](troubleshoot-composition-resolution.md#editor-vs-ssr-url-derivation).
+Same asymmetry family as `linked_sections` and `ui_preview`: the editor depends on metadata the UI writes for itself and the API path silently omits. **A passing SSR render is not evidence the template opens in Studio.** Verify both: load the route AND open the template in the editor. Cross-reference [`troubleshoot-composition-resolution` § Editor vs SSR: URL derivation](troubleshoot-composition-resolution.md#editor-vs-ssr-url-derivation).
 
 #### Two authoring hazards worth avoiding up front
 

@@ -8,7 +8,7 @@ Take a **whole-site design** (multiple templates / page kinds) and emit one cons
 
 Use when the greenfield build has 3+ page kinds sharing common atoms (Hero, Cards, Footer), **or when the input is one Figma board holding many section shapes rather than whole pages** (§ Step 1b). Phrases: "decompose this whole site", "here are all the page designs", "build the marketing site", "multi-page decomposition", "site-wide plan", "here's the whole Figma board", "build every section in this file", "all the hero variants", "turn this design file into sections". Do NOT use for single-page builds (use `decompose-design` directly). Do NOT use as a substitute for the taxonomy. This skill assumes you already understand Layer 1 / 2 / 3.
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 > **Reuse preflight: mandatory when the project already has compositions.** Before naming a single new atomic, component or Section, run [`match-existing-pattern`](match-existing-pattern.md) § Step 1b: it groups existing Sections by the schema they bind and ranks the component palette by real usage. Decomposition is where reuse has to bite. Once this step names `Heading` instead of the project's `alpha-atom-heading`, the duplicate survives into the plan and into the build. Mark every row reuse, extend, or new, and never new without having looked.
 
@@ -219,7 +219,7 @@ An agent accepting all five drives the full site build with no manual canvas cli
 ## Inputs needed from the user
 
 1. The whole-site design (Figma URL, folder of screenshots, description doc, or sitemap).
-2. Target Contentstack stack UID + management token (via env or explicit).
+2. Target Contentstack stack UID + a CMA credential resolved per [`authenticate-cma`](authenticate-cma.md) (OAuth first); a management token only if the user prefers one.
 3. Any existing schema / components in the stack that should be reused rather than re-created.
 4. Which page kinds are in scope (in case the design has out-of-scope pages).
 
@@ -243,14 +243,14 @@ An agent accepting all five drives the full site build with no manual canvas cli
 | Emitting one giant build sheet instead of per-template files | Unusable for per-page focus. Downstream skills expect one sheet per template. | One `<template-slug>-build-sheet.md` per page kind. Site plan is the index. |
 | Skipping the "confirm page kinds" step | User's design has 30 frames but only 8 are unique page kinds. You decompose 30 identical things | Ask the user to confirm the list of page kinds after Step 1 before proceeding. |
 | Treating a variant board as N page kinds | Six hero treatments become six Sections and six near-identical component sets. The palette becomes unusable and a copy change means six edits | Run Step 1b first. Collapse appearance-only axes into `choice` props. Only a different field set earns a new Section. |
-| Waiting for the content model before building any Section | The board has 22 frames and the CT does not exist yet, so nothing gets built and the design is never validated against the primitives | Author skeletons first: structure with static values, bind later. [`author-composition-via-api`](author-composition-via-api.md) § Skeleton first, bind later. |
+| Waiting for the content model before building any Section | The board has 22 frames and the CT does not exist yet, so nothing gets built and the design is never validated against the primitives | Author skeletons first: structure with static values, bind later. [`author-composition-practice`](author-composition-practice.md) § Skeleton first, bind later. |
 
 ## See also
 
 - [`design-component-library`](design-component-library.md): the pattern the multi-page decomposition converges on. Every atom + layout deduplicated across templates should map to one of the 10 primitives (or become a candidate addition to the library, per the additive-growth rule).
 - [`decompose-design`](decompose-design.md): per-template skill this orchestrator loops. Same output format per template.
 - [`build-page-builder-template`](build-page-builder-template.md): assembles the collapsed Sections into one template an author can compose per page.
-- [`author-composition-via-api`](author-composition-via-api.md) § Skeleton first, bind later: build the Sections before the schema exists.
+- [`author-composition-practice`](author-composition-practice.md) § Skeleton first, bind later: build the Sections before the schema exists.
 - [`plan-studio-architecture`](plan-studio-architecture.md): requirements-first planner. Complementary. Use `plan-studio-architecture` when the input is a requirements doc. Use `decompose-site` when the input is a visual design covering multiple pages.
 - [`provision-studio-stack`](provision-studio-stack.md): schema provisioning. Chained by Offer 1.
 - [`register-component`](register-component.md): component registration. Chained by Offer 2.

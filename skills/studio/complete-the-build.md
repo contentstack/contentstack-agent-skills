@@ -10,7 +10,7 @@ Phrases: "is this finished", "anything missed", "why is the palette all blank ti
 
 Do NOT use for: debugging a component that renders wrong (`troubleshoot-data-binding`), a canvas that won't load (`troubleshoot-canvas`), or first-time install (`install-studio`).
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Complete the build: the ten things that are never optional
 
@@ -23,9 +23,9 @@ Each is owned by exactly one skill. This file is the checklist and the gate: rea
 | # | Deliverable | Applies to | Owner skill | Failure when missing |
 |---|---|---|---|---|
 | 1 | `cslp: { appendTags: true }` in SDK init | once per project | [`install-live-preview`](install-live-preview.md) | Both tag bags arrive empty everywhere at once, no component fix helps |
-| 2 | `studioAttributes` spread on the root **and** `wrap: false` in the register entry, plus `$prop` twins on bound elements | **every** registered component | [`register-component`](register-component.md) § The `studioAttributes` contract | Element renders but Visual Editor can't select or inline-edit it. `wrap: false` without the spread is worse: the node is unselectable entirely |
+| 2 | `studioAttributes` spread on the root **and** `wrap: false` in the register entry, plus `$prop` twins on bound elements | **every** registered component | [`register-component-cslp`](register-component-cslp.md) § The `studioAttributes` contract | Element renders but Visual Editor can't select or inline-edit it. `wrap: false` without the spread is worse: the node is unselectable entirely |
 | 3 | `thumbnailUrl` data URI | **every** `registerComponent` call | [`register-component`](register-component.md) | Palette renders a text placeholder. A 20-component palette is an unbrowsable text wall |
-| 4 | `ui_preview` asset | **every** Section composition | [`author-composition-via-api`](author-composition-via-api.md) § Section thumbnails | Blank tile in the Sections accordion, authors can't tell sections apart. The CMA never populates it: a scripted build leaves every Section blank and nothing errors |
+| 4 | `ui_preview` asset | **every** Section composition | [`author-composition-thumbnails`](author-composition-thumbnails.md) § Section thumbnails | Blank tile in the Sections accordion, authors can't tell sections apart. The CMA never populates it: a scripted build leaves every Section blank and nothing errors |
 | 5 | Live Preview enabled on the stack + preview token | once per project | [`enable-visual-experience`](enable-visual-experience.md) | Canvas blank / edits never reflect. Looks like a broken install |
 | 6 | The `/canvas` route mounted | once per project | [`setup-section-preview`](setup-section-preview.md) | `MISSING_CANVAS_URL`. Nothing can be authored at all |
 | 7 | **Published** to the environment the project targets | **every** Section and Template, and again after every tree edit | [`author-composition-via-api`](author-composition-via-api.md) | Delivery serves the previous version, or nothing. The CMA looks perfect and the canvas resolves the composition |
@@ -91,13 +91,24 @@ curl -s "<new entry URL>" | grep -o 'data-cslp="[^"]*"' | sort -u
 #    Filtering on `type` matches nothing and reports a clean run having inspected zero
 #    sections — a false pass, measured on a live project holding 94.
 # ⛔ `limit` is capped at 100 server-side. Page with `skip`, or you audit the first 100 only.
-curl -s -H "api_key: $API_KEY" -H "$CS_AUTH" \
-  "https://api.contentstack.io/v3/content_types/compositions/entries?limit=100&include_count=true" \
-| python3 -c "import sys,json; d=json.load(sys.stdin); e=d['entries']; \
+# requires:
+#   CMA_HOST   your region's CMA host, e.g. api.contentstack.io
+#   API_KEY    the stack api_key (the CMA scope header)
+#   CS_AUTH    one auth header resolved per authenticate-cma, e.g. "authorization: Bearer $CS_OAUTH_ACCESS_TOKEN"
+#   COMP_CT    the compositions content type uid (the Studio project's contentTypeUid)
+skip=0; all='[]'
+while :; do
+  page=$(curl -s -H "api_key: $API_KEY" -H "$CS_AUTH" \
+    "https://$CMA_HOST/v3/content_types/$COMP_CT/entries?limit=100&skip=$skip&include_count=true")
+  count=$(jq '.count' <<<"$page")
+  all=$(jq -n --argjson a "$all" --argjson b "$(jq '.entries' <<<"$page")" '$a + $b')
+  skip=$((skip + 100)); [ "$skip" -ge "$count" ] && break
+done
+echo "$all" | COUNT="$count" python3 -c "import os,sys,json; e=json.load(sys.stdin); \
 sec=[x for x in e if x.get('place_composition_as')=='section']; \
 blank=[x['title'] for x in sec if not x.get('ui_preview')]; \
 unpub=[x['title'] for x in sec if not (x.get('publish_details') or [])]; \
-print(f'read {len(e)} of {d.get(\"count\")} | {len(sec)} sections | {len(blank)} blank | {len(unpub)} UNPUBLISHED'); \
+print(f'read {len(e)} of {os.environ[\"COUNT\"]} | {len(sec)} sections | {len(blank)} blank | {len(unpub)} UNPUBLISHED'); \
 print('blank:', *blank[:20], sep='\n  '); \
 print('unpublished:', *unpub[:20], sep='\n  ')"
 ```
@@ -106,7 +117,7 @@ print('unpublished:', *unpub[:20], sep='\n  ')"
 
 ```bash
 curl -s -H "api_key: $API_KEY" -H "$CS_AUTH" \
-  "https://api.contentstack.io/v3/content_types/compositions" \
+  "https://$CMA_HOST/v3/content_types/$COMP_CT" \
 | python3 -c "import sys,json; f=[x['uid'] for x in json.load(sys.stdin)['content_type']['schema']]; \
 print('ui_preview field:', 'present' if 'ui_preview' in f else 'MISSING - writes will no-op')"
 ```
@@ -162,7 +173,7 @@ Print them under a heading like **"What you'll be able to do yourself"**: the ap
 | Fixing `thumbnailUrl` and calling section thumbnails done (or vice versa) | Two unrelated systems, two different panels | See § The two thumbnail systems |
 | `thumbnailUrl` pointing at a CDN / asset / `/public` URL | The palette renders inside Studio's iframe. External requests fail silently, which leaves a blank or broken tile, identical to no thumbnail | Inline SVG data URI |
 | Auditing components one by one when tags are missing everywhere | Almost always `cslp.appendTags` off (#1), not a component bug | Check the SDK config first |
-| Screenshotting a Section's own canvas to fill `ui_preview` | A section canvas has no preview entry, so every bound prop renders its default, measured 0 to 1.2% ink coverage. Near-identical "Your headline here" tiles are worse than blank, because they stop reading as empty and every capture-when-missing pass then skips that section forever | Re-save in the editor (real render), pick an image in the Edit Section modal, or generate a schematic from the composition's own `ui`, [`author-composition-via-api`](author-composition-via-api.md) § Fix D |
+| Screenshotting a Section's own canvas to fill `ui_preview` | A section canvas has no preview entry, so every bound prop renders its default, measured 0 to 1.2% ink coverage. Near-identical "Your headline here" tiles are worse than blank, because they stop reading as empty and every capture-when-missing pass then skips that section forever | Re-save in the editor (real render), pick an image in the Edit Section modal, or generate a schematic from the composition's own `ui`, [`author-composition-thumbnails`](author-composition-thumbnails.md) § Fix D |
 
 ## See also
 

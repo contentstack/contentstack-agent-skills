@@ -85,7 +85,7 @@ A modular-block item is shaped `{ <block_uid>: { …fields } }`. That block-uid 
 
 Omitting the block uid fails silently, for the reason given in § [Where a reference path must terminate](author-composition-repeater-recipes.md#reference-path-termination). Read that first if this is new to you. It is also where the numeric-prefix and CT-uid rules live.
 
-**Where it goes:** on the **parent template** composition, keyed `"template"`, never on the Section composition, even though the reference is nested inside the Section's linked field. Same placement rule as every other reference iteration (§ Authoring a Section composition: scoping rules).
+**Where it goes:** on the **parent template** composition, keyed `"template"`, never on the Section composition, even though the reference is nested inside the Section's linked field. Same placement rule as every other reference iteration ([`author-composition-sections`](author-composition-sections.md) § Authoring a Section composition: scoping rules).
 
 ```jsonc
 // Template composition — MB field `blocks`, block uid `feature_block`,
@@ -97,4 +97,4 @@ One entry **per block uid** that contains a reference. Blocks are independent sh
 
 ### The key pitfall
 
-Setting the inner Repeater's `items` binding to `type: "template"` with path `{ footer_columns: { 0: { links: {} } } }` is the **nested-`.0.` trap**, same family as the "all cards identical" trap from #14/P19, but one level up. A fixed index doesn't substitute. Inner repeater would always read column-0's links, so every outer iteration's links list is identical. Use `type: "repeater"` with the outer UID instead.
+Setting the inner Repeater's `items` binding to `type: "template"` with path `{ footer_columns: { 0: { links: {} } } }` is the **nested-`.0.` trap**, same family as the "all cards identical" fixed-index (`.0.`) trap, but one level up. A fixed index doesn't substitute. Inner repeater would always read column-0's links, so every outer iteration's links list is identical. Use `type: "repeater"` with the outer UID instead.

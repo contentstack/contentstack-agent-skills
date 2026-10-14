@@ -14,9 +14,9 @@ Part of the API-authoring set. Start at [`author-composition-via-api`](author-co
 
 **Symptom:** every API-authored Section shows a blank/placeholder tile in Studio's **Sections** accordion, while UI-authored ones show a picture of the section. Nothing errors.
 
-**Why.** Studio's Sections accordion renders `section.ui_preview.url` (`ComponentTab/SectionsAccordion`: `ui_preview` is a `file` field holding an asset). When an author saves a Section **in the Studio UI**, the app screenshots the canvas node (`GET_NODE_SCREENSHOT`), converts the base64 to a blob, uploads it as an asset, and PUTs `{ entry: { ui_preview: <assetUid> } }` on the composition entry, fire-and-forget, master locale, then invalidates the sections query so the tile appears without a reload. **That whole chain lives in the editor.** A composition entry created by CMA has `ui_preview` empty forever.
+**Why.** Studio's Sections accordion renders `section.ui_preview.url` (`ui_preview` is a `file` field holding an asset). When an author saves a Section **in the Studio UI**, the app screenshots the canvas node, converts the base64 to a blob, uploads it as an asset, and PUTs `{ entry: { ui_preview: <assetUid> } }` on the composition entry, fire-and-forget, master locale, then invalidates the sections query so the tile appears without a reload. **That whole chain lives in the editor.** A composition entry created by CMA has `ui_preview` empty forever.
 
-Same asymmetry family as `linked_sections` (P27): the UI populates a field behind the scenes, so API authoring must do it explicitly.
+Same asymmetry family as `linked_sections`: the UI populates a field behind the scenes, so API authoring must do it explicitly.
 
 ### Fix A: zero-script backfill (best when the sections already exist)
 

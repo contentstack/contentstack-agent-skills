@@ -18,7 +18,7 @@ If the user's message contains any phrase in the left column, Read the skill in 
 >
 > **Mandatory plan-first rule: applies before every build row below.** If the request is to build/create/implement anything larger than one already-scoped piece ("build me a rewards page", "implement this design", "add this page to Studio", "build the site", "migrate this route"), Read [`plan-studio-architecture`](plan-studio-architecture.md) **first** and get the plan explicitly approved. Only then run the build skills it names. Skipping this is what produces a single monolithic template with no Sections, no Section Slots and no reuse, forcing the user to re-prompt. Straight to a build skill only when the user is iterating on a piece from an already-approved plan. **Exception: a whole-project ask** ("convert my project to Studio", "make it Studio-compatible") routes to [`convert-project-to-studio`](convert-project-to-studio.md) and its scoping gate first. `plan-studio-architecture` runs only if the user picks the one-page or full-site option there.
 
-> **Mandatory auth preflight: applies before every row below.** Settle the credential before the first API call, OAuth-first per `authenticate-cma`. Never ask for a session `authtoken` up front; it is the last rung, only after a freshly refreshed OAuth token fails. If nothing resolves, hand the user `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (interactive, so it cannot be run for them). `403 error_code 316` means wrong org, not missing auth.
+> **Mandatory auth preflight: applies before every row below.** Settle the credential before the first API call, OAuth-first per `authenticate-cma`: `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, hand the user `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (interactive, so it cannot be run for them). `403 error_code 316` means wrong org, not missing auth.
 
 > **Mandatory done-rule: applies after every build row below.** Eight deliverables are mandatory on every build and all eight fail silently: `cslp.appendTags`, `studioAttributes` + `$`-twins per component, `thumbnailUrl` per registration, `ui_preview` per Section, stack Live Preview + preview token, the `/canvas` route, **publishing every Section and Template** (an edit creates an unpublished version. Delivery keeps serving the old one), and **a template actually composed of Sections**. A single component bound to the whole page body renders perfectly and fails no other check, so count `section-composition` nodes before reporting done. Read `complete-the-build`. It is the handover gate, and `plan-studio-architecture` commits to it up front. Never report a build finished with any row outstanding.
 
@@ -106,7 +106,7 @@ If the user's message contains any phrase in the left column, Read the skill in 
 | compress the ui spec, zlib encode composition, preflight validate the ui tree | `author-composition-encoding` |
 | repeat a card over a multi-reference, repeat over group-multiple, repeater recipe by API | `author-composition-repeater-recipes` |
 | nested repeaters by API, list inside each iterated item, repeaterUID chain | `author-composition-nested-repeaters` |
-| author a section by API, selectedField priority, section scoping P22, section-slot node shape | `author-composition-sections` |
+| author a section by API, selectedField priority, section scoping, section-slot node shape | `author-composition-sections` |
 | Pattern B by API, fill a section slot by API, wrapper section with a slot | `author-composition-section-slot-fill` |
 | exposed section props by API, per-instance override headlessly | `author-composition-exposed-props` |
 | section thumbnail missing after API create, API never sets thumbnail | `author-composition-thumbnails` |
@@ -253,7 +253,7 @@ Grouped by intent. Use when the user's message is Studio-shaped but no trigger p
 
 - **author-composition-via-api**: write composition JSON directly via the CMA (headless / seed / migration).
 - **author-without-code**: end-to-end authoring path for content teams on an already-installed project.
-- **use-compositions-api**: create/read/list/update/delete compositions via the managed Studio API service (validated, `ui` compressed for you, your own credential forwarded: OAuth or session). The higher-level counterpart to `author-composition-via-api`.
+- **use-compositions-api**: create/read/list/update/delete compositions via the managed Studio API service (validated, `ui` compressed for you, your own credential forwarded: OAuth first, a session authtoken only as the last rung). The higher-level counterpart to `author-composition-via-api`.
 - **author-composition-practice**: skeleton-first authoring, read component source, free-form primitives.
 - **author-composition-entry**: the CMA body and the `url` + `url_metadata` pair. Read first when authoring by API.
 - **author-composition-static-values**: how a `static_value` binding's key resolves to the literal in the entry.
@@ -264,11 +264,11 @@ Grouped by intent. Use when the user's message is Studio-shaped but no trigger p
 
 - **author-composition-repeater-recipes**: repeat a card over a multi-reference or GROUP-MULTIPLE field, with full node trees.
 - **author-composition-nested-repeaters**: a list inside each iterated item, and the `repeaterUID` chain that resolves it.
-- **author-composition-sections**: Section scoping rules (P22-P25), `selectedField` priority, `section-slot` node shape.
+- **author-composition-sections**: Section scoping rules, `selectedField` priority, `section-slot` node shape.
 - **author-composition-section-slot-fill**: Pattern B: a wrapper Section's slots filled by another Section, with full node trees.
 - **author-composition-exposed-props**: per-instance overrides on a placed Section, by API.
 - **author-composition-thumbnails**: why the API never sets a Section thumbnail, and what to do instead.
-- **author-composition-templates**: populate `linked_sections` (P27), plus a complete Freeform composition body.
+- **author-composition-templates**: populate `linked_sections`, plus a complete Freeform composition body.
 - **author-composition-pitfalls**: verify a `200` actually resolved, and the full API-authoring pitfall table.
 - **author-composition-migration**: move compositions between stacks: uid, index and schema remaps.
 

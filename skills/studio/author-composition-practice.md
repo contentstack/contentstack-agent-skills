@@ -77,7 +77,7 @@ The branches can be authored **before the Modular Block exists**. Name the block
 
 Two consequences worth stating:
 
-- **The canvas looking right proves structure, not data.** A skeleton and a correctly-bound section are visually similar. Both show plausible copy. `build-section` § Field-existence gate covers the inverse hazard: a **bound** prop falling back to `defaultValue` reads as real data when the binding is actually broken. Skeleton-first is safe precisely because nothing is claimed to be bound yet.
+- **The canvas looking right proves structure, not data.** A skeleton and a correctly-bound section are visually similar. Both show plausible copy. `build-section` (step d, the field-existence gate) covers the inverse hazard: a **bound** prop falling back to `defaultValue` reads as real data when the binding is actually broken. Skeleton-first is safe precisely because nothing is claimed to be bound yet.
 - **Bind by rewriting the same nodes.** The binding pass replaces `props.<name>.binding` from `static_value` to `template` on the existing tree. Node uids, slots and layout stay untouched. Keep the skeleton's `static_value` entries or drop them: an unreferenced key in `entry.static_value` is inert.
 
 ## Read the component source before authoring, not just the registration
@@ -93,7 +93,7 @@ position && position !== 'auto'
   : cn(ALIGN_CLASS[align], JUSTIFY_CLASS[justify])
 ```
 
-**2. Equality comparisons: the trap that follows from list-wrapped `choice` values (§ point 0a).** A list works for an object-key lookup and fails a strict comparison:
+**2. Equality comparisons: the trap that follows from list-wrapped `choice` values ([`author-composition-bindings`](author-composition-bindings.md) § Node anatomy, point 0a).** A list works for an object-key lookup and fails a strict comparison:
 
 ```js
 ['auto'] !== 'auto'            // true  → takes the override branch

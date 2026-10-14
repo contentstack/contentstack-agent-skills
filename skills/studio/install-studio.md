@@ -10,7 +10,7 @@ Install Contentstack Studio + Live Preview + Delivery SDK in this project, confi
 
 Use when the user wants to add Contentstack Studio to an existing React app (Next.js, Vite, CRA, Remix, Astro): "install Studio in my app", "add Studio SDK". Installs the three SDKs (delivery-sdk, live-preview-utils, studio-react), validates credentials, wires side-effect init. Does NOT add the canvas route. Pair with `setup-section-preview`.
 
-> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Install Studio in this project
 
@@ -45,39 +45,37 @@ The Delivery SDK takes a CDN host. Live Preview takes a different, region-specif
 | `gcp-eu` | `gcp-eu-cdn.contentstack.com` | `gcp-eu-rest-preview.contentstack.com` |
 | `au` | `au-cdn.contentstack.com` | `au-rest-preview.contentstack.com` |
 
-For projects that already use `@timbenniks/contentstack-endpoints` or a similar helper, prefer that. It returns both hosts from a single `region` and stays current as Contentstack adds regions.
+For projects that already use a region-to-host helper, prefer that. It returns both hosts from a single `region` and stays current as Contentstack adds regions.
 
-## Non-prod environments
+## Custom / private data center
 
-QA, staging and internal dev stacks sit on their own domain with no `region` shortcut, so every host needs an explicit override.
+A custom or private data center has no `region` shortcut: its hosts are supplied by Contentstack, so **set every host explicitly**. Never guess them. Ask the user for the exact hosts Contentstack gave them (or read them off the Contentstack URL they open):
 
-**Ask for both halves; never guess.** The pattern is `<env>-<service>.<non-prod-domain>`, both halves organization-specific. Read them off the user's Contentstack URL, or ask:
+> Which hosts did Contentstack give you for this stack? I need the Delivery, Live Preview, CMA, Studio API and app hosts exactly as supplied.
 
-> Which environment is this stack on, and what host do you open Contentstack at? I need the prefix and domain exactly as they appear in your URL.
-
-| Service | Non-prod host pattern | Used by |
+| Service | Host to set | Used by |
 |---|---|---|
-| CDA (Delivery) | `<env>-cdn.<non-prod-domain>` | `Contentstack.stack({ host })` |
-| Live Preview | `<env>-rest-preview.<non-prod-domain>` | `live_preview.host` |
-| CMA | `<env>-api.<non-prod-domain>` | Management scripts, provisioning |
-| Studio API | `<env>-composable-studio-api.<non-prod-domain>` | Studio project creation, project listing |
-| Editor (browser) | `<env>-app.<non-prod-domain>` | The Studio UI the user opens |
-| Images CDN | `<env>-images.<non-prod-domain>` | Asset URLs in entry responses |
+| CDA (Delivery) | `<cda-host>` | `Contentstack.stack({ host })` |
+| Live Preview | `<preview-host>` | `live_preview.host` |
+| CMA | `<cma-host>` | Management scripts, provisioning |
+| Studio API | `<studio-api-host>` | Studio project creation, project listing |
+| Editor (browser) | `<app-host>` | The Studio UI the user opens |
+| Images CDN | `<images-host>` | Asset URLs in entry responses |
 
-**Required `host:` override.** The Studio React SDK derives its Studio API host from whatever Delivery stack you pass it. **If you don't set `host:` on `Contentstack.stack({...})`, it defaults to the US prod CDA and the Studio SDK then points at prod Studio API too. All your `<env>` work goes to prod.** Set the CDA host explicitly:
+**Required `host:` override.** The Studio React SDK derives its Studio API host from whatever Delivery stack you pass it. **If you don't set `host:` on `Contentstack.stack({...})`, it defaults to the US prod CDA and the Studio SDK then points at the NA Studio API too.** Set the CDA host explicitly:
 
 ```ts
 const stack = Contentstack.stack({
   apiKey, deliveryToken, environment,
-  host: `${csEnv}-cdn.${csHostSuffix}`,         // <-- required; e.g. <env>-cdn.<non-prod-domain>
+  host: import.meta.env.VITE_CS_CDA_HOST,          // <-- required on a custom data center
   live_preview: {
     enable: true, preview_token,
-    host: `${csEnv}-rest-preview.${csHostSuffix}`,
+    host: import.meta.env.VITE_CS_PREVIEW_HOST,
   },
 });
 ```
 
-Read `csEnv` and `csHostSuffix` from env vars (`VITE_CS_NON_PROD_ENV` / `VITE_CS_NON_PROD_DOMAIN`). `csHostSuffix` is the domain the user gave you. The env Base URL (Settings, then Environments) must point at the running app, same as prod.
+Read the hosts from env vars (`VITE_CS_CDA_HOST` / `VITE_CS_PREVIEW_HOST`). The env Base URL (Settings, then Environments) must point at the running app, same as on a standard region.
 
 ## Existing Contentstack app? Take the minimal-add branch
 
@@ -156,7 +154,7 @@ curl -s "https://<studio-api-host>/v1/projects" \
   '.projects[] | "\(.uid)  \(.name)  stack=\(.connectedStackApiKey)  ct=\(.contentTypeUid)"'
 ```
 
-`<studio-api-host>` is `composable-studio-api.contentstack.com` on prod NA (`eu-`, `azure-na-`, `azure-eu-`, `gcp-na-`, `gcp-eu-` prefixes for the other regions), and `<env>-composable-studio-api.<non-prod-domain>` on a non-prod DC (§ Non-prod environments). The auth ladder, plus two token-free ways to enumerate projects (`csdx studio:project:set` with a deliberately invalid id, and Studio's own project switcher), are in [`configure-studio`](configure-studio.md#select-the-studio-project). Don't re-derive them here.
+`<studio-api-host>` is `composable-studio-api.contentstack.com` on prod NA (`eu-`, `azure-na-`, `azure-eu-`, `gcp-na-`, `gcp-eu-` prefixes for the other regions), and the host Contentstack supplied on a custom / private data center (§ Custom / private data center). The auth ladder, plus two token-free ways to enumerate projects (`csdx studio:project:set` with a deliberately invalid id, and Studio's own project switcher), are in [`configure-studio`](configure-studio.md#select-the-studio-project). Don't re-derive them here.
 
 **Branch on the count:**
 
@@ -183,7 +181,7 @@ curl -s "https://<studio-api-host>/v1/projects" \
    - `astro` means Astro
    - anything else: ask the user which framework / report unsupported and stop.
 
-   **Next.js advisory check.** If `next@14.2.x` is present, ensure the patch version is `>= 14.2.21`. Earlier `14.2.x` patches (including the `create-next-app` default `14.2.18`) carry a known security advisory. Bump to the latest patched `14.2.x` (stays React-18 + App-Router compatible, no migration needed). Print the recommendation. Let the user run the bump.
+   **Next.js advisory check.** If `next@14.2.x` is present, ensure the patch version is `>= 14.2.25`. Earlier `14.2.x` patches (including the `create-next-app` default `14.2.18`) are affected by CVE-2025-29927 (middleware authorization bypass). Bump to the latest patched `14.2.x` (stays React-18 + App-Router compatible, no migration needed). Print the recommendation. Let the user run the bump.
 
 2. **Detect the package manager.** `pnpm-lock.yaml` means pnpm, `yarn.lock` means yarn, and neither means npm.
 
@@ -311,7 +309,7 @@ curl -s "https://<studio-api-host>/v1/projects" \
              apiKey: process.env.NEXT_PUBLIC_CONTENTSTACK_API_KEY!,
              environment: process.env.NEXT_PUBLIC_CONTENTSTACK_ENVIRONMENT!,
            },
-           clientUrlParams: { host: "app.contentstack.com" },
+           clientUrlParams: { host: "<region-app-host>" }, // e.g. app.contentstack.com (NA), eu-app.contentstack.com (EU)
            editButton: { enable: true, exclude: ["outsideLivePreviewPortal"] },
            editInVisualBuilderButton: { enable: false }, // else a "Start Editing" link on every page
          }),
@@ -398,7 +396,7 @@ curl -s "https://<studio-api-host>/v1/projects" \
              apiKey: import.meta.env.VITE_CONTENTSTACK_API_KEY!,
              environment: import.meta.env.VITE_CONTENTSTACK_ENVIRONMENT!,
            },
-           clientUrlParams: { host: "app.contentstack.com" },
+           clientUrlParams: { host: "<region-app-host>" }, // e.g. app.contentstack.com (NA), eu-app.contentstack.com (EU)
            editButton: { enable: true, exclude: ["outsideLivePreviewPortal"] },
            editInVisualBuilderButton: { enable: false },
          }),
@@ -443,7 +441,7 @@ curl -s "https://<studio-api-host>/v1/projects" \
    Mitigation:
    - When provisioning writes `.env`, **also delete** any stale `.env.local` (or rewrite it from `.env.example`).
    - Never let `.env.local` carry `<key>=undefined` or `<key>=` (empty). The SDK init can't distinguish a literal `"undefined"` string from a real token and the CDA rejects it.
-   - After writing env files, log the resolved value via `console.log(import.meta.env.<PREFIX>_CONTENTSTACK_PREVIEW_TOKEN)` once in the host app and verify it matches the intended token before claiming setup succeeded.
+   - After writing env files, log its presence once via `console.log(Boolean(import.meta.env.<PREFIX>_CONTENTSTACK_PREVIEW_TOKEN))` (never the token itself) to confirm it resolved, then remove the log before claiming setup succeeded.
 
 8. **Wire the import** at the app shell so init runs once. The right file depends on framework:
    - **Next.js App Router**: **DO NOT import `@/lib/contentstack` directly in `app/layout.tsx`.** `layout.tsx` is a Server Component. A side-effect import there runs `studioSdk.init` / `ContentstackLivePreview.init` on the server, where the canvas iframe never sees them. Studio loads with no SDK in the client realm and `<StudioCanvas />` errors. Instead, create a tiny client boundary:

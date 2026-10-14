@@ -8,7 +8,7 @@ Ship a Studio site to Contentstack Launch: Launch project and environments, prod
 
 Use when deploying a Studio site, setting up Launch, configuring production env vars, wiring Live Preview only on the preview environment, or debugging "deployed but visitors see old content / blank page / a login screen / Live Preview chrome in production / 401 from Delivery API". Two layers ship independently: composition (Save+Deploy in canvas) and host (Launch environment variables + deployment).
 
-> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Deploy a Studio site
 
@@ -23,7 +23,7 @@ A Studio site ships in two independent layers, and both must be correct for the 
 
 The Delivery Token, Preview Token, and Environment are configured per Launch environment: production must NOT carry a Preview Token (otherwise visitors see Live Preview overlays), and the preview environment SHOULD carry one (otherwise authors lose the live edit-and-see-it loop).
 
-Goal state: visitor hits the production URL, gets the latest deployed composition rendered cleanly (no Studio chrome, no Live Preview overlays), and authors see real-time updates only in preview contexts. Match the success screenshot in `assets/screenshots/template-blog-post-full-stack.png`.
+Goal state: visitor hits the production URL, gets the latest deployed composition rendered cleanly (no Studio chrome, no Live Preview overlays), and authors see real-time updates only in preview contexts.
 
 ## Task
 
@@ -48,6 +48,8 @@ Goal state: visitor hits the production URL, gets the latest deployed compositio
 5. **Gate Live Preview import and init** on the preview token. First run `grep -rn 'from "@contentstack/live-preview-utils"' src app lib`: every hit is a static import that shows the Edit button in production, however `init` is gated. Replace it with this (see `install-live-preview`):
    ```ts
    const previewToken = process.env.NEXT_PUBLIC_CONTENTSTACK_PREVIEW_TOKEN;
+   const apiKey = process.env.NEXT_PUBLIC_CONTENTSTACK_API_KEY!;
+   const environment = process.env.NEXT_PUBLIC_CONTENTSTACK_ENVIRONMENT!;
 
    if (previewToken) {
      import("@contentstack/live-preview-utils").then(({ default: ContentstackLivePreview }) =>
@@ -61,7 +63,7 @@ Goal state: visitor hits the production URL, gets the latest deployed compositio
    ```
    Why: `live-preview-utils` (4.5.3) draws its Edit button on **import**, even when `init` never runs. Remove its re-export too.
 
-6. **Non-US regions.** Set the Live Preview `host` to the regional preview host (e.g. `eu-rest-preview.contentstack.com`) and the Delivery SDK `region` to match. Regional CDN hosts: `eu-cdn.contentstack.com`, `azure-na-cdn.contentstack.com`, `azure-eu-cdn.contentstack.com`, `gcp-na-cdn.contentstack.com`, `au-cdn.contentstack.com`. **Non-prod (the non-prod domain your team uses) has no `region` shortcut**: every host is `<env>-<service>.<non-prod-domain>` and must be set explicitly. The full table is [`install-studio`](install-studio.md) § Non-prod hosts. Establish which data center you're on first via [`analyze-project-fit`](analyze-project-fit.md) § 2b: Determine the data center.
+6. **Non-US regions.** Set the Live Preview `host` to the regional preview host (e.g. `eu-rest-preview.contentstack.com`) and the Delivery SDK `region` to match. Regional CDN hosts: `eu-cdn.contentstack.com`, `azure-na-cdn.contentstack.com`, `azure-eu-cdn.contentstack.com`, `gcp-na-cdn.contentstack.com`, `au-cdn.contentstack.com`. **Custom / private data center (hosts supplied by Contentstack)**: there is no `region` shortcut, so set every host explicitly. See [`install-studio`](install-studio.md) § Custom / private data center. Establish which data center you're on first via [`analyze-project-fit`](analyze-project-fit.md) § 2b (determine the data center).
 
 7. **Deploy**: push to the production environment's branch, or redeploy it (`create_deployment`; a ZIP project uploads first). Read the build log (`get_deployment_logs`) for the expected `<PREFIX>_*` injection. Launch applies variable changes only to new deployments, and `NEXT_PUBLIC_*` (and equivalents) are inlined at build time: redeploy after every variable change.
 
@@ -127,3 +129,7 @@ This skill succeeds only when ALL of the following are true. If any fails, do no
 
 ## See also
 
+- [`configure-csr-vs-ssr`](configure-csr-vs-ssr.md): SSR composition-by-URL and its server-only variables
+- [`install-live-preview`](install-live-preview.md): gating Live Preview to preview deploys
+- [`configure-studio`](configure-studio.md): pointing the stack environment's Base URL at the preview deploy
+- [`verify-setup`](verify-setup.md): end-to-end checks after a deploy

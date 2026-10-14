@@ -67,7 +67,7 @@ A new entry holds only the fields someone has filled. A missing or `null` field 
    Fetch the schema with a plain Delivery API call (`GET /v3/content_types/<uid>?environment=…`, cached per uid). Don't use `stack.contentType(uid).fetch()`: with Live Preview configured, `delivery-sdk` calls `getData` without a params object and throws "Cannot set properties of undefined (setting 'live_preview')". A change to `studioSdk.init` options needs a dev-server restart; hot reload keeps the old config.
 2. **Render the empty element.** A component that returns nothing for an empty value has no element to tag. Render the element whenever its `$` prop is present (`{(headline || $headline) && <h1 {...$headline}>{headline}</h1>}`), and give empty tagged elements a minimum size inside the editor so there is something to click.
 
-**Measured:** with `hero` missing from Entry MB, the heading had no tag and showed "Your headline here". With the completer alone, the default text was gone but there was still no tagged element. With both changes, the page rendered `<h1 data-cslp="test_mb.<uid>.en-us.hero.heading">`.
+**Measured:** with `hero` missing from Entry MB, the heading had no tag and showed "Your headline here". With the completer alone, the default text was gone but there was still no tagged element. With both changes, the page rendered `<h1 data-cslp="<ct_uid>.<uid>.en-us.hero.heading">`.
 
 ## 5. Decorative overlays block selection
 
@@ -86,6 +86,6 @@ Visual Editor selects the nearest tagged ancestor of the clicked element. A grad
 
 | Pitfall | Why it bites | Fix |
 |---|---|---|
-| Judging Visual Editor by an existing, fully filled entry | Every trap in § 4 shows only on a new entry | Test with a new entry whose fields are all empty |
+| Judging Visual Editor by an existing, fully filled entry | Every trap in § 4 (A new entry must be editable) shows only on a new entry | Test with a new entry whose fields are all empty |
 | Rendering the empty-list class on the server | The class is present before Visual Editor starts watching, and nothing changes after | Add it after mount, then append the comment node |
 | Completing the entry on the visitor side only | The editor fetch is the one that needs the tags | Pass `fetchTemplateEntry` to the `studioSdk.init` the editor's page uses (server and client) |

@@ -8,7 +8,7 @@ Analyze the starting point (existing codebase, part-built Studio project, a desi
 
 Use when the user describes a project and asks "what should I build", "how should I structure this", "Section or Template", "what CTs do I need", "build order". **Also run FIRST for any build request that isn't one already-scoped piece** ("build me a rewards page", "implement this design in Studio", "add this page to Studio", "build the site") because those go straight to a monolithic template otherwise. Also defensively when `build-section`/`build-connected-template` is invoked without decomposing first. Do NOT use to actually build. Do NOT use before concept ladder is crisp (run `start-here-zero-knowledge`).
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Plan the Studio architecture from project requirements
 
@@ -58,12 +58,23 @@ The greps above inventory the **codebase**. They cannot see the Sections and Tem
 List them, and score reuse from the live tree rather than by eye:
 
 ```bash
+# requires:
+#   STUDIO_API  Studio API base URL for your region
+#   PROJECT     Studio project uid
+#   CS_AUTH     one auth header resolved per authenticate-cma, e.g. "authorization: Bearer $CS_OAUTH_ACCESS_TOKEN"
+#   CS_SCOPE    the scope header, e.g. "organization_uid: <org-uid>"
 # Every composition in the project, split into Sections and Templates, with the
-# number of Templates each Section is actually placed on.
-curl -s "$STUDIO_API/projects/$PROJECT/compositions?limit=100" -H "$CS_AUTH" \
-| python3 -c '
-import sys, json, zlib, base64, collections
-cs = json.load(sys.stdin).get("compositions", [])
+# number of Templates each Section is actually placed on. Pages past limit=100.
+cs='[]'; skip=0
+while :; do
+  page=$(curl -s "$STUDIO_API/projects/$PROJECT/compositions?limit=100&skip=$skip" -H "$CS_AUTH" -H "$CS_SCOPE" | jq '.compositions // []')
+  cs=$(jq -n --argjson a "$cs" --argjson b "$page" '$a + $b')
+  [ "$(jq length <<<"$page")" -lt 100 ] && break
+  skip=$((skip + 100))
+done
+echo "$cs" | python3 -c '
+import sys, json, collections
+cs = json.load(sys.stdin)
 use = collections.Counter()
 for c in cs:
     ls = c.get("linked_sections")
@@ -134,7 +145,7 @@ Treat anything rendered from a layout as **shared by construction**. Reuse count
 | Shell | Decompose into | Binds to | The list inside is |
 |---|---|---|---|
 | **Header** | logo (`imageurl`) · brand/site name (`string`) · nav (list) · CTA (`href` + label) · optional search slot | a Global Field reused by every page CT, or a singleton `site_config` entry | **nav links in a Repeater** over a multi-Group / multi-Reference, never hardcoded `<li>`s |
-| **Footer** | logo · legal/copyright (`string`) · link columns (nested list) · social icons (list) | same Global Field / `site_config` | **columns in a Repeater**, and **links inside each column in a nested Repeater**, see `use-repeater` § nested |
+| **Footer** | logo · legal/copyright (`string`) · link columns (nested list) · social icons (list) | same Global Field / `site_config` | **columns in a Repeater**, and **links inside each column in a nested Repeater**, see `author-composition-nested-repeaters` |
 | **Nav / menu** | one link atomic per item: label (`string`) + href (`href`) | the multi-valued field the Repeater iterates | the Repeater's child Section: build once, reuse in header, footer, sidebar, mobile drawer |
 | **Breadcrumb** | label + href per crumb | derived or a multi-Group | Repeater |
 
@@ -189,7 +200,7 @@ Three conditions make a Section **mandatory**, but the default already is a Sect
 1. **Reuse across Templates.** A bound compound component appearing on more than one Template MUST become a Section. Otherwise every Template repeats the drop-and-bind work and any binding tweak is applied N times. **Reuse count 1 does not exempt a piece from being a Section**. It only lowers its build priority.
 2. **Schema iteration with bindings.** Any Modular Block field, multi-Reference field, group with `multiple: true`, or otherwise-iterated collection whose items need bound rendering MUST become a **List Section**, not authored inline on the Template. The iteration wiring belongs at the Section layer where it's reusable and testable. Putting it at Template level fragments it across every Template that needs the same iteration.
 
-   **A List Section has TWO build paths: pick by layout fidelity, don't default to Repeater.** If the collection has a **bespoke or asymmetric layout** (a mosaic, a feature strip, a carousel), or you are **migrating and must preserve an existing design**, build it by binding the whole array to the real production component (`type: "array"`, see [`register-component`](register-component.md) § Array & object props), so the component's own layout renders pixel-identically on the first pass. Use a **Repeater + Condition Block** only when the list is a **uniform** grid/row, OR items are **polymorphic** and need per-item authoring. A Repeater renders items uniformly in sequence. Choosing it for a bespoke layout is the #1 cause of first-render design drift (the "why is it a plain sequence?" re-prompt).
+   **A List Section has TWO build paths: pick by layout fidelity, don't default to Repeater.** If the collection has a **bespoke or asymmetric layout** (a mosaic, a feature strip, a carousel), or you are **migrating and must preserve an existing design**, build it by binding the whole array to the real production component (`type: "array"`, see [`register-component-prop-contracts`](register-component-prop-contracts.md) § Array & object props), so the component's own layout renders pixel-identically on the first pass. Use a **Repeater + Condition Block** only when the list is a **uniform** grid/row, OR items are **polymorphic** and need per-item authoring. A Repeater renders items uniformly in sequence. Choosing it for a bespoke layout is the #1 cause of first-render design drift (the "why is it a plain sequence?" re-prompt).
 3. **Any bound region an author should be able to move, swap, or remove.** If it's a recognizable page part (hero, form band, feature grid, CTA) it's a Section, reuse count irrelevant.
 
 Build the Section first (`build-section` for Simple, `build-repeating-section` for List), THEN drop it on the Template. Direct-drop of registered components on a Template is reserved for genuine one-offs that are not a page part (a stray spacer, a single decorative element) and should be a rare line in the plan, called out as an exception with a reason.
@@ -224,14 +235,14 @@ Work through each piece from Steps 1 to 2 and pick from **evidence**, not conven
 
 | Evidence in the code / design / content model | Primitive | Skill |
 |---|---|---|
-| Plain copy (headline, body, caption, CTA label) mapping 1:1 to a field | **Built-in field component** (`Heading` / `Paragraph` / `Text` / `Image` / `Link` / `RichText`) | `build-section` § Basic vs custom |
+| Plain copy (headline, body, caption, CTA label) mapping 1:1 to a field | **Built-in field component** (`Heading` / `Paragraph` / `Text` / `Image` / `Link` / `RichText`) | `build-section-component-choice` § Basic field components vs custom |
 | Interactive: local state, handlers, cookies, modals, carousel logic | **Registered component** (mandatory, built-ins can't express behavior) | `register-component` |
 | Pixel-sensitive: bespoke CSS, animation, layering | **Registered component** | `register-component` |
-| Static presentational layout (image + heading + body + link) | **Decompose into built-ins**: authors get full editing. This is the case most often wrongly registered | `build-section` § Register whole or decompose |
+| Static presentational layout (image + heading + body + link) | **Decompose into built-ins**: authors get full editing. This is the case most often wrongly registered | `build-section-component-choice` § Register it whole, or decompose it |
 | A styled shell wrapping editable content | **Registered component with a `slot` prop** + built-ins inside | `register-component`, `use-section-slot` |
 | A recognizable page part (hero, form band, feature grid, CTA) | **Section**: regardless of reuse count | `build-section` |
 | Multi-valued field with a **uniform** grid/row, OR polymorphic items needing per-item authoring | **List Section via Repeater** (+ **Condition Block** per block or CT for refs/MBs) | `build-repeating-section`, `use-repeater`, `use-condition-block` |
-| Multi-valued field with a **bespoke layout**, or **migrating an existing design** | **List Section via array-prop reuse**: bind the whole array to the real component. Its own layout renders identically, first pass | `register-component` § Array & object props, `build-repeating-section` § array-prop alternative |
+| Multi-valued field with a **bespoke layout**, or **migrating an existing design** | **List Section via array-prop reuse**: bind the whole array to the real component. Its own layout renders identically, first pass | `register-component-prop-contracts` § Array & object props, `build-repeating-section` § array-prop alternative |
 | A region a template author must fill differently per instance | **Section Slot** (filled by a Section, not a raw component) | `use-section-slot` |
 | One prop an author should override per template instance | **Exposed section prop**: cheaper than forking the Section | `expose-section-props` |
 | Same field set across several CTs | **Global Field** (+ a Slot on the Section that renders it) | `plan-studio-architecture` § Step 4 |
@@ -674,7 +685,7 @@ The skill succeeds when:
 
 ## See also
 
-- [`design-component-library`](design-component-library.md): foundational pattern doc. Before this skill's build order sequences the work, that doc decides what to register: atomic + layout primitives instead of monolithic Sections. Read alongside `from-designs-to-sections` when the plan will produce a fresh component library.
+- [`design-component-library`](design-component-library.md): foundational pattern doc. Before this skill's build order sequences the work, that doc decides what to register: atomic + layout primitives instead of monolithic Sections. Read alongside [`decompose-design`](decompose-design.md) when the plan will produce a fresh component library.
 - `start-here-zero-knowledge`: the conceptual prerequisite (run BEFORE this skill if the user is new)
 - `understand-templates`, `understand-sections`, `understand-section-slots`, `understand-linked-schemas`, `understand-auto-binding`: the concept ladder this skill assumes is internalised
 - `byoc-end-to-end`: the procedural macro that walks the plan in execution mode

@@ -29,7 +29,7 @@ The output is one word plus a reason plus a routing recommendation. Not a full d
 Ask (only if not stated):
 
 - Where's the component's source? (path to `.tsx` / `.jsx`, or the `registerComponent()` call's `component` reference)
-- Is it currently registered? (`csdx studio:component:list`, `registerComponent({ type: … })` grep, or the palette in Studio)
+- Is it currently registered? (grep the codebase for `registerComponent(`, or check the component palette in Studio)
 
 If already registered, note the `type` UID. If not, note the file path.
 

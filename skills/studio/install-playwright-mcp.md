@@ -8,7 +8,7 @@ Optionally install the Playwright MCP server so downstream skills can drive the 
 
 Offer the FIRST time a user runs any setup/verification flow (`enable-visual-experience`, `install-studio`, `verify-setup`, `troubleshoot-canvas`) whose steps include "click X and confirm Y". If already installed (`claude mcp list`), skip silently. If user declines, skip for the session, never re-prompt. NOT a hard gate.
 
-> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them), and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them), and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Install Playwright MCP: optional acceleration layer
 
@@ -84,65 +84,26 @@ Restart the IDE / `claude` CLI session so the new MCP server registers.
 
 ### Step 4: Configure browser mode
 
-Ask the user verbatim, presenting all three options with their honest tradeoffs:
+Ask the user verbatim, presenting the options with their honest tradeoffs. **Recommend the dedicated profile.**
 
-> Playwright MCP can run in three modes. **Pick based on how much you want MCP isolated from the rest of your browsing.**
+> Playwright MCP can run in two supported modes. **Pick based on how much you want MCP isolated from the rest of your browsing.**
 >
-> **Option A: Reuse your existing Chrome (default profile)** (fastest, lowest isolation)
->   - **Upside:** no separate window, no extra Contentstack login. Your current session just works.
->   - **Tradeoff:** while Chrome runs on the debug port, MCP can technically see every tab and logged-in site in that window (Gmail, GitHub, banking, etc.) and any local process on your machine can also attach to `localhost:9222`. In practice the skills only drive `app.contentstack.com`, but the capability is exposed for as long as Chrome runs with the debug port.
->   - Best for: trusted dev machines, throwaway Contentstacks, when you'll close Chrome after the session.
->
-> **Option B: Dedicated Chrome profile** (recommended balance)
->   - A second Chrome window with its own empty profile (`~/.chrome-mcp`). Contentstack is the only site logged in there, so MCP literally can't see anything else.
+> **Option A: Dedicated Chrome profile** (recommended)
+>   - A second Chrome window with its own empty profile (`~/.chrome-mcp`). Contentstack is the only site logged in there, so MCP can't see anything else.
 >   - **Tradeoff:** one extra login the first time. A second Chrome icon in your dock while the session is active.
->   - Best for: production stacks, shared machines, when you want capability isolation without losing the "real browser" feel.
 >
-> **Option C: Isolated headless Chromium** (strongest separation)
+> **Option B: Isolated headless Chromium** (strongest separation)
 >   - Playwright MCP launches its own Chromium with no profile at all.
 >   - **Tradeoff:** slowest first-time setup. You log in fresh inside the headless browser every session (SSO can be fiddly). Visible UI debugging is harder.
 >   - Best for: CI-like flows, when you never want a visible MCP browser, when other developers run the same skill on the same machine.
 >
-> Which mode? (A / B / C)
+> Which mode? (A / B)
 
 Record the answer as `{{chromeProfileMode}}`:
-- A becomes `existing`
-- B becomes `dedicated`
-- C becomes `isolated`
+- A becomes `dedicated`
+- B becomes `isolated`
 
-> **Chrome v136+ on org-managed devices: `existing` mode is often broken**
->
-> Starting in Chrome 136 (April 2025), Chrome on MDM/policy-enrolled devices (Jamf, Intune, Workspace, etc.) refuses to start the `--remote-debugging-port` listener on the **default profile**. Symptoms: launch succeeds, window opens, but `lsof -i :9222` shows nothing listening. On a corporate laptop, assume `existing` will fail and pick **`dedicated`**: a dedicated `--user-data-dir` isn't subject to the policy. <!-- style-lint: allow -->
-
-For **existing** (`{{chromeProfileMode}}` = `existing`): **reuse the user's existing Chrome window and default profile** (no separate window, no extra login, your existing Contentstack session is reused as-is):
-
-- Fully quit Chrome (`Cmd+Q` on macOS, not just close the window, the background process must exit), then relaunch with the debug port on your default profile:
-
-  | OS | One-liner |
-  |---|---|
-  | macOS | `open -a "Google Chrome" --args --remote-debugging-port=9222 --disable-features=LocalNetworkAccessChecks` |
-  | Linux | `google-chrome --remote-debugging-port=9222 --disable-features=LocalNetworkAccessChecks &` |
-  | Windows (PowerShell) | `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --disable-features=LocalNetworkAccessChecks` |
-
-  > **Why `--disable-features=LocalNetworkAccessChecks`:** Chrome v136+ blocks iframes that load `localhost:<port>` from a non-local origin (e.g. Studio's canvas iframe loading `localhost:6846` from `app.contentstack.com`). Without this flag the canvas iframe shows up blank with `net::ERR_BLOCKED_BY_PRIVATE_NETWORK_ACCESS_CHECKS` in DevTools. The flag is required for any Studio canvas-iframe workflow, regardless of MCP.
-
-  With no `--user-data-dir` flag, Chrome uses your normal profile, so every site you're already logged into (including Contentstack) stays logged in.
-
-- Assert the port is listening:
-  ```bash
-  lsof -i :9222   # macOS / Linux
-  netstat -ano | findstr :9222   # Windows
-  ```
-  Must show Chrome bound to `127.0.0.1:9222`. If not, Chrome was still running in the background when you launched. Fully quit and retry.
-
-- Update the MCP config to attach to that endpoint:
-  ```json
-  "args": ["@playwright/mcp@latest", "--cdp-endpoint", "http://127.0.0.1:9222"]
-  ```
-
-  > **Use `127.0.0.1`, NOT `localhost`, in `--cdp-endpoint`.** Chrome's `--remote-debugging-port` binds **IPv4 `127.0.0.1`** only. Node/Playwright resolves `localhost` to **IPv6 `::1` first**, so `--cdp-endpoint http://localhost:9222` fails with `connect ECONNREFUSED ::1:9222` even though `lsof -i :9222` shows Chrome listening. The endpoint literal must be `http://127.0.0.1:9222`. (Changing it needs a session restart: the MCP server binds the endpoint at process start.)
-
-> **Tradeoff (be transparent with the user):** sharing the default profile means MCP can technically see all your open tabs and logged-in sessions in Chrome. In practice every Playwright action in this setup is scoped to a tab MCP opens itself (`app.contentstack.com`), and we never click on or read other tabs, but the capability is there. Don't browse banking / private email in this same Chrome window while a Studio session is active if that bothers you. Quit Chrome and skip MCP attach when you're done.
+> **Not supported: attaching to your everyday (default) Chrome profile.** Since Chrome 136, Chrome ignores `--remote-debugging-port` on the default user data directory for **all** users, managed or not: launch succeeds, but `lsof -i :9222` shows nothing listening. It is also unsafe: a debug port on your everyday profile exposes every tab and logged-in site (email, banking, GitHub) to any local process that can reach `127.0.0.1:9222`. Never put the debug port on the everyday profile; always pair it with a dedicated `--user-data-dir`. If the user asks for this mode (`existing`), explain both reasons and offer `dedicated` instead.
 
 For **dedicated** (`{{chromeProfileMode}}` = `dedicated`): a second Chrome window with its own empty profile, only Contentstack logged in:
 
@@ -154,15 +115,20 @@ For **dedicated** (`{{chromeProfileMode}}` = `dedicated`): a second Chrome windo
   | Linux | `google-chrome --remote-debugging-port=9222 --disable-features=LocalNetworkAccessChecks --user-data-dir="$HOME/.chrome-mcp" &` |
   | Windows (PowerShell) | `& "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --disable-features=LocalNetworkAccessChecks --user-data-dir="$env:USERPROFILE\.chrome-mcp"` |
 
-  > Both flags matter: `--remote-debugging-port` for MCP to attach, `--disable-features=LocalNetworkAccessChecks` for Chrome v136+ to load the Studio canvas iframe served from `localhost`.
+  > Both flags matter: `--remote-debugging-port` for MCP to attach, `--disable-features=LocalNetworkAccessChecks` for Chrome v136+ to load the Studio canvas iframe served from `localhost`. Without the second flag the canvas iframe shows up blank with `net::ERR_BLOCKED_BY_PRIVATE_NETWORK_ACCESS_CHECKS` in DevTools; it is required for any Studio canvas-iframe workflow, regardless of MCP.
 
-- Assert the port is listening (same `lsof -i :9222` / `netstat` check as above).
+- Assert the port is listening:
+  ```bash
+  lsof -i :9222   # macOS / Linux
+  netstat -ano | findstr :9222   # Windows
+  ```
+  Must show Chrome bound to `127.0.0.1:9222`.
 
 - Update the MCP config to attach:
   ```json
   "args": ["@playwright/mcp@latest", "--cdp-endpoint", "http://127.0.0.1:9222"]
   ```
-  > Use `127.0.0.1`, not `localhost`, see the IPv6 note in the `existing`-mode block above.
+  > **Use `127.0.0.1`, NOT `localhost`, in `--cdp-endpoint`.** Chrome's `--remote-debugging-port` binds **IPv4 `127.0.0.1`** only. Node/Playwright resolves `localhost` to **IPv6 `::1` first**, so `--cdp-endpoint http://localhost:9222` fails with `connect ECONNREFUSED ::1:9222` even though `lsof -i :9222` shows Chrome listening. (Changing it needs a session restart: the MCP server binds the endpoint at process start.)
 
 - **First-time only**: the dedicated profile is empty. Step 5b prompts you to log into Contentstack once in that window. After that the profile keeps the session cookies, so subsequent sessions skip the login.
 
@@ -174,7 +140,7 @@ For **isolated** (`{{chromeProfileMode}}` = `isolated`):
 Run a 3-line smoke test from a fresh Claude turn:
 
 ```
-Browser: navigate to https://app.contentstack.com
+Browser: navigate to https://<region-app-host>   (e.g. app.contentstack.com)
 Then: snapshot the page
 Then: report the page title
 ```
@@ -187,7 +153,7 @@ Fail: see "Common pitfalls" below.
 
 This is the step that flips MCP from "installed" to "ready to auto-drive." Without it, the first downstream skill that tries to drive the UI hits the login screen and stalls.
 
-1. **Navigate to the Contentstack editor via Playwright MCP** and take a snapshot. Prod is `https://app.contentstack.com`. **On a non-prod DC it's `https://<env>-app.<non-prod-domain>`** (e.g. `<env>-app.<non-prod-domain>`). Driving the prod URL logs you into the wrong instance and every later step reads the wrong stack. Confirm the DC first via [`analyze-project-fit`](analyze-project-fit.md) § 2b: Determine the data center.
+1. **Navigate to the Contentstack editor via Playwright MCP** and take a snapshot. Use the app host for the user's region (`https://app.contentstack.com` for NA, `https://eu-app.contentstack.com` for EU, and so on). **On a custom / private data center, use the app host Contentstack supplied**; set every host explicitly. Driving the wrong host logs you into the wrong instance and every later step reads the wrong stack. Confirm the DC first via [`analyze-project-fit`](analyze-project-fit.md) § 2b: Determine the data center.
 
 2. **Assert which page we landed on.** Branch on the snapshot:
 
@@ -240,7 +206,6 @@ These skills will now run with reduced click-through tax:
   • install-studio            — confirms Studio's "Add Canvas URL" persists
   • verify-setup              — Layer 2 + Layer 3 + Layer 4 tested end-to-end
   • troubleshoot-canvas       — reads the canvas iframe DOM directly
-  • enable-personalize        — verifies the Personalize app install path
 
 These still require your hands on the keyboard (CLI / file edits):
   • install-studio (npm install + env files)
@@ -254,7 +219,7 @@ Playwright MCP does NOT mean autonomous changes.
 ## Inputs needed from the user
 
 1. `ide`: to pick the right config path.
-2. `chromeProfileMode`: existing (faster, shared session) vs isolated (cleaner, requires re-login).
+2. `chromeProfileMode`: dedicated (recommended, one-time login) vs isolated (cleaner, re-login each session).
 
 ## Acceptance
 
@@ -262,7 +227,7 @@ Playwright MCP does NOT mean autonomous changes.
 - [ ] If declined: no further prompts this session.
 - [ ] If accepted: Playwright MCP appears in the IDE's MCP server list.
 - [ ] Smoke test (navigate + snapshot + title) returns a real result.
-- [ ] Session bridge verified: MCP-driven `app.contentstack.com` snapshot lands on stacks list (not /login). If user logged in mid-flow, re-snapshot confirms success.
+- [ ] Session bridge verified: MCP-driven Contentstack app snapshot lands on stacks list (not /login). If user logged in mid-flow, re-snapshot confirms success.
 - [ ] Session note written with `PLAYWRIGHT_MCP_READY=true`, active org, recent stack name + API key.
 - [ ] User confirmed (or overrode) the captured default stack.
 - [ ] User informed which skills accelerate and which don't.
@@ -273,16 +238,14 @@ Playwright MCP does NOT mean autonomous changes.
 | --- | --- | --- |
 | Treating this skill as a hard prerequisite | It's an accelerator. If we gate setup on it, users without admin rights to install MCP are blocked. | This is a SOFT recommendation. Decline = use manual click-through. Re-read the "This is a recommendation" header. |
 | Re-prompting after the user declined | Annoying, trains the user to say no faster next time | Track decline in the session, never re-ask in the same conversation. |
-| Installing without telling the user about session sharing (existing mode) | User assumes Playwright is sandboxed. Surprised when Claude sees their other tabs | Step 4 explicitly explains the tradeoff. Default to recommending `existing` but with eyes open. |
+| Attaching to the everyday Chrome profile | Unsupported on Chrome 136+ (the debug port never binds on the default profile), and unsafe: every tab and logged-in site is exposed to anything that can reach the port | Recommend `dedicated`. Never put the debug port on the everyday profile. |
 | Claude clicks Save without asking | Violates the "verify before mutating" contract | Every state-mutating click goes through an explicit `confirm before clicking` prompt in the calling skill. Playwright MCP is for READING state and EXECUTING confirmed actions, not autonomous mutation. |
 | Playwright MCP installed but not verified | Skills assume it works, then fail mid-flow with cryptic MCP errors | Always run Step 5's smoke test. If it fails, don't tell downstream skills the MCP is ready. |
 | `--cdp-endpoint` set but Chrome not launched with `--remote-debugging-port=9222` | MCP server can't attach. Falls back to isolated launch silently | Confirm Chrome is running with the debug port before declaring success. `lsof -i :9222` should show Chrome listening. |
 | `--cdp-endpoint http://localhost:9222` fails with `connect ECONNREFUSED ::1:9222` even though `lsof -i :9222` shows Chrome listening | Chrome binds the debug port on **IPv4 `127.0.0.1`**. Node/Playwright resolves `localhost` to **IPv6 `::1`** first and connects to the wrong address | Use `http://127.0.0.1:9222` in `--cdp-endpoint` (never `localhost`). Re-add the MCP server with the corrected endpoint and restart the session: the endpoint binds at MCP-process start. |
-| Reused-existing-Chrome (`existing` mode) silently never binds the port on a corp laptop | Chrome v136+ under MDM refuses `--remote-debugging-port` on the **default profile**: `lsof -i :9222` stays empty after launch | Switch to a **dedicated** `--user-data-dir="$HOME/.chrome-mcp"` profile (launched with `open -na`). The policy applies only to the default profile. One-time Contentstack login in that window. |
 | Mac App Store Chrome | Sandboxed, can't use `--remote-debugging-port` reliably | Use the standalone Chrome download from google.com/chrome, not the App Store build. |
-| Chrome v136+ refuses to debug the default profile on org-managed devices | MDM/policy blocks `--remote-debugging-port` on the default profile (silent failure: `lsof -i :9222` empty even though Chrome launched fine) | Use `dedicated` profile mode (`--user-data-dir="$HOME/.chrome-mcp"`). The policy applies to the default profile only. |
-| Forgetting `--disable-features=LocalNetworkAccessChecks` on Chrome v136+ | Studio's canvas iframe (served from `localhost:<port>`) is blocked when loaded from `app.contentstack.com`. Canvas appears blank. `net::ERR_BLOCKED_BY_PRIVATE_NETWORK_ACCESS_CHECKS` in DevTools. | Add the flag to your Chrome launch one-liner (both `existing` and `dedicated` modes need it). Re-quit Chrome and relaunch with the flag. |
-| Chrome didn't actually quit before relaunch | macOS keeps Chrome's background process alive after closing the window. The new launch silently ignores `--remote-debugging-port` because the existing process owns the profile | `Cmd+Q` to fully quit (or `pkill -x "Google Chrome"`), confirm `lsof -i :9222` is empty BEFORE launching, then run the one-liner. |
+| Forgetting `--disable-features=LocalNetworkAccessChecks` on Chrome v136+ | Studio's canvas iframe (served from `localhost:<port>`) is blocked when loaded from `app.contentstack.com`. Canvas appears blank. `net::ERR_BLOCKED_BY_PRIVATE_NETWORK_ACCESS_CHECKS` in DevTools. | Add the flag to your Chrome launch one-liner. Quit the dedicated-profile Chrome and relaunch with the flag. |
+| Dedicated-profile Chrome didn't actually quit before relaunch | macOS keeps Chrome's background process alive after closing the window. The new launch silently ignores `--remote-debugging-port` because the existing process owns the profile | Ask the user to fully quit that Chrome window (`Cmd+Q` on macOS); don't kill browser processes for them. Confirm `lsof -i :9222` is empty BEFORE launching, then run the one-liner. |
 | Step 5b skipped because smoke test passed | Smoke test only confirms MCP can drive a browser. It doesn't confirm the browser has a Contentstack session | 5b is the gate, not 5. Don't mark `PLAYWRIGHT_MCP_READY=true` without 5b. |
 | Captured stack from recently-accessed list is wrong | User most-recently opened a different stack than the one they're configuring now | Step 5b explicitly asks the user to confirm or override the captured API key. Never assume. |
 | Session note lost across context compaction | Long sessions may compact older messages. The `PLAYWRIGHT_MCP_READY` flag and captured stack key can drop out | Re-run a lightweight version of Step 5b's check when a downstream skill starts (re-snapshot Contentstack, re-confirm session) rather than trusting flag indefinitely. |

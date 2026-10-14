@@ -4,17 +4,17 @@ name: author-composition-sections
 
 ## When to use
 
-Author a Section composition by API: the scoping rules (P22-P25), `selectedField` priority, the `section-slot` node shape, and the wrapper + section-slot pattern.
+Author a Section composition by API: the scoping rules, `selectedField` priority, the `section-slot` node shape, and the wrapper + section-slot pattern.
 
 Part of the API-authoring set. Start at [`author-composition-via-api`](author-composition-via-api.md), which routes to this one.
 
-## Authoring a Section composition: scoping rules (P22-P25)
+## Authoring a Section composition: scoping rules
 
 So far the recipes have been about page-level compositions (Templates). Authoring **Section** compositions via API has its own contract: sections have **no data of their own**, so how they get the right scope at runtime is non-obvious.
 
 > **STOP before writing the section: ask the Repeater question.** If its `selected_field` is a `multiple: true` group, global field, file or link, ask the user *"This field holds multiple items. Should the section show every item (adds a Repeater) or one item?"* and wait. Ask even when the request seems to imply an answer: Studio asks every time. The answer sets `cardinality` and the root Repeater ([`understand-linked-schemas`](understand-linked-schemas.md)). Never ask for a reference, modular-block, single-value or whole-entry section.
 
-### How a Section gets data when placed on a Template: (P22)
+### How a Section gets data when placed on a Template
 
 A Section composition is data-less when authored standalone (its own canvas has nothing to bind against). It only gets data when **placed inside a Template**. The Template hands it a scoped slice of the page entry.
 
@@ -31,9 +31,9 @@ Section's dataSources.template = <scoped slice of pageEntry at selectedField, wi
 
 This means the section's own canvas always shows **one empty placeholder** (no data exists standalone). That's not a bug. The section only fills out at template-rendering time. (See `build-section` for the UI-side framing.)
 
-### Where `selectedField` is read from: three sources, in priority order (P23)
+### Where `selectedField` is read from: three sources, in priority order
 
-`collect-data-needs.ts` (runtime) and `sectionInstanceBindings.ts` (editor) BOTH read in this order:
+The runtime (SSR) and the editor BOTH read in this order:
 
 1. **`node.metadata.sectionBindingOverride.selectedField`**: set on the template's `section-composition` node when API-placing the section
 2. **`node.metadata.selectedField`**: legacy fallback on the same node
@@ -41,7 +41,7 @@ This means the section's own canvas always shows **one empty placeholder** (no d
 
 The Studio web UI sets all three correctly when you drag a section onto a template. API authors set them explicitly.
 
-### The `linked_schemas`-as-reference trap (P23)
+### The `linked_schemas`-as-reference trap
 
 The compositions CT's `linked_schemas` MUST be a **group-multiple** field, NOT a reference field. If it's a reference field, the CMA **silently drops** any `{content_type_uid, selected_field}` object you `PUT` to it, every read comes back `linked_schemas: []`. The editor reads `linked_schemas` to derive the `UPDATE_SECTION_CONTEXTS` push that scopes each placed section instance. An empty `linked_schemas` means an empty scope push, meaning the editor canvas shows blank repeaters even though `fetchCompositionData` (runtime) renders correctly via the override.
 
@@ -59,18 +59,18 @@ Two outcomes from this:
     }
   }
   ```
-  This makes the runtime/SSR path correct (`collect-data-needs.ts` honors it). The editor canvas will still show blank repeaters until `linked_schemas` is also populated. So this escape hatch covers production rendering but doesn't unblock editor authoring: both must agree.
+  This makes the runtime/SSR path correct (the SDK honors it). The editor canvas will still show blank repeaters until `linked_schemas` is also populated. So this escape hatch covers production rendering but doesn't unblock editor authoring: both must agree.
 
-### The editor vs runtime asymmetry (P23, in detail)
+### The editor vs runtime asymmetry (in detail)
 
-| Path | What it reads | Source file |
+| Path | What it reads | Where it happens |
 |---|---|---|
-| **Runtime / SSR** (`sdk.fetchCompositionData`) | `sectionBindingOverride.selectedField` first, then `metadata.selectedField`, then the `linked_schemas` default | `collect-data-needs.ts` |
-| **Editor canvas** (live editing in Studio web app) | `UPDATE_SECTION_CONTEXTS` push from the Studio web app, derived from the section's `linked_schemas` field. `sectionBindingOverride` is also honored as an override on top. | `sectionInstanceBindings.ts` + Studio web app messaging |
+| **Runtime / SSR** (`sdk.fetchCompositionData`) | `sectionBindingOverride.selectedField` first, then `metadata.selectedField`, then the `linked_schemas` default | SDK data collection |
+| **Editor canvas** (live editing in Studio web app) | `UPDATE_SECTION_CONTEXTS` push from the Studio web app, derived from the section's `linked_schemas` field. `sectionBindingOverride` is also honored as an override on top. | Studio web app messaging |
 
 So you can have a section that renders perfectly on the deployed site (runtime path uses the override) yet shows empty repeaters in the editor (editor path's `linked_schemas` is empty). Both metadata paths must point to the same `selectedField` for editor + runtime to agree.
 
-### Recipe: section iterates one field on the page (P24)
+### Recipe: section iterates one field on the page
 
 When a section's `selectedField` is set to the iterated field (e.g. `selectedField: "products"` and the section's job is to render one card per product), the section's `dataSources.template` IS the products array. **A top-level Repeater inside the section must bind to scope-root, NOT to `{ path: { products: {} } }`**:
 
@@ -101,7 +101,7 @@ When a section's `selectedField` is set to the iterated field (e.g. `selectedFie
 
 Reference iterations still need `data_sources.resolvedReferences` on the composition: key `"template"`, value is the array of field paths on the parent entry (e.g. `"template": ["products"]`). The runtime resolves these along the `selectedField` path. You set them on the parent (template) composition, not the section composition.
 
-### Decision rule: single-field repeater section vs whole-entry section (P25)
+### Decision rule: single-field repeater section vs whole-entry section
 
 | Section's job | `selectedField` | Repeater binding (if any) | When to use |
 |---|---|---|---|
@@ -110,7 +110,7 @@ Reference iterations still need `data_sources.resolvedReferences` on the composi
 
 The choice is data-shape-driven: one field iterated calls for `selectedField` plus a scope-root. Many fields read calls for whole-entry scope and the original paths.
 
-### Verifying a section's scope headlessly (P26 preview)
+### Verifying a section's scope headlessly
 
 The section's own canvas can't confirm binding correctness (no data exists standalone). Use the SSR cold-load instead:
 

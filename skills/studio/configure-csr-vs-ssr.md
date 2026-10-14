@@ -8,7 +8,7 @@ name: configure-csr-vs-ssr
 
 Pick and wire a Studio page's render path: CSR (client, `useCompositionData`) or SSR/RSC (server, `sdk.fetchCompositionData`), on Next.js (App/Pages), Remix, Astro or Vite/SPA. Phrases: "CSR or SSR", "Next App Router setup", "hydration mismatch", "SEO meta missing", "Live Preview broken after switching render mode". Also diagnoses broken Studio iframe overrides after a render-mode change.
 
-> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Configure CSR vs SSR for a Studio composition route
 
@@ -21,7 +21,6 @@ Pick your recipe from the framework recipes chapter and copy it verbatim:
 - **Next.js Pages Router**, **Remix / React Router 7**, **Astro**, **Gatsby**: adapted recipes.
 - **Next.js App Router: RSC entry**: CI-tested on Next 14 + Next 16. Smallest possible client bundle.
 - **Next.js App Router: client-component SSR**: main-entry path, simplest wiring, full SEO.
-- **Next.js Pages Router**, **Remix / React Router 7**, **Astro**, **Gatsby**: adapted recipes.
 
 Same three-call contract everywhere (`fetchCompositionData`, then `<StudioComponent />`, then `getSSRStyleTags` or `<StudioServerStyles>`), plus `getCompositionMetadata` for SEO. Sections below cover the render-strategy decision itself. The mechanics live in the recipes above.
 
@@ -57,7 +56,7 @@ What determines **true SSR** (the composition DOM in the server HTML) is whether
 | **Next.js Pages Router** | **SSR**: `sdk.fetchCompositionData` inside `getServerSideProps` | **Yes**: `renderToString` |
 | **Next.js App Router (main entry)** | `sdk.fetchCompositionData` in a Server Component, then a client wrapper renders `<StudioComponent />` | **Yes**: Next server-renders the client component's initial output |
 | **Next.js App Router (RSC entry)** | `sdk.fetchCompositionData` in a Server Component, then `<StudioServerStyles />` plus `<StudioComponent />` from `@contentstack/studio-react/rsc` | **Yes**: ~142B client bundle for structural content. Custom components register as client islands automatically |
-| Vite custom-server SSR | `renderToString` + `hydrateRoot` + `sdk.fetchCompositionData` (mirror SDK's `test-resources/ssr-react`) | **Yes** |
+| Vite custom-server SSR | `renderToString` + `hydrateRoot` + `sdk.fetchCompositionData` | **Yes** |
 | Remix | `sdk.fetchCompositionData` inside the `loader` | **Yes**: `renderToString` |
 | Static / rarely changing | **SSG/ISR**: `getStaticProps` + `revalidate` | **Yes** (at build/revalidate. Via `renderToString`) |
 
@@ -67,7 +66,7 @@ CSR works on **any** framework including App Router. The `isLoading` gate keeps 
 
 ## `fetchCompositionData` does not return "not found": it throws. Wrap it.
 
-**Verified against the SDK source** (`studio-client/src/utils/composable-studio-error.ts`, `composable-studio/sdk.ts`). On a miss, `sdk.fetchCompositionData` **throws**. It does not resolve with `hasSpec: false`. Every `if (!specOptions.hasSpec) notFound()` line is therefore dead code on the path it was written for: the `await` throws first, the framework's error boundary catches it, and the visitor gets a **500 where a 404 belongs**.
+On a miss, `sdk.fetchCompositionData` **throws**. It does not resolve with `hasSpec: false`. Every `if (!specOptions.hasSpec) notFound()` line is therefore dead code on the path it was written for: the `await` throws first, the framework's error boundary catches it, and the visitor gets a **500 where a 404 belongs**.
 
 What it throws is a `ComposableStudioError`. **Do not branch on a list of names.** Call `isCompositionNotFound(err)`, exported for exactly this decision:
 
@@ -109,11 +108,29 @@ The Delivery stack is shared by every request on a server process. `fetchComposi
 A deployment with **no** preview token is safe ([`deploy-studio-site`](deploy-studio-site.md)). On a preview deployment, clear the hash when a request has none:
 
 ```ts
+// `stack` is the Delivery stack your Studio sdk was initialized with
+// (contentstack.stack({...}) in lib/studio.server.ts); `searchQuery` is the raw request query string.
 const q = new URLSearchParams(searchQuery);
 if (!q.get("hash") && !q.get("live_preview")) stack.livePreviewQuery({ live_preview: "" });
 ```
 
-Measured: the plain request then stayed on the CDN. Requests in flight at the same time still share the stack; a busy preview server needs a stack per request.
+Measured: the plain request then stayed on the CDN. Requests in flight at the same time still share the stack, so on a preview server under concurrent load, create the stack and the Studio sdk **per request** instead of sharing one module-level instance:
+
+```ts
+// lib/studio.server.ts — sketch: one stack + sdk per request on a preview deployment
+import contentstack from "@contentstack/delivery-sdk";
+import { studioSdk } from "@contentstack/studio-react";
+
+export function createStudioSdk() {
+  const stack = contentstack.stack({
+    apiKey: process.env.CONTENTSTACK_API_KEY!,
+    deliveryToken: process.env.CONTENTSTACK_DELIVERY_TOKEN!,
+    environment: process.env.CONTENTSTACK_ENVIRONMENT!,
+    live_preview: { enable: true, preview_token: process.env.CONTENTSTACK_PREVIEW_TOKEN, host: process.env.CONTENTSTACK_PREVIEW_HOST },
+  });
+  return studioSdk.init({ stackSdk: stack, contentTypeUid: "<compositions-CT-uid>" });
+}
+```
 
 ## Task
 
@@ -124,6 +141,8 @@ Measured: the plain request then stayed on the CDN. Requests in flight at the sa
    "use client";
    import { useCompositionData, StudioComponent } from "@contentstack/studio-react";
    import { isCompositionNotFound } from "@contentstack/studio-client";
+   // Loading, ErrorState and NotFound are your app's own components.
+   import { Loading, ErrorState, NotFound } from "@/components/states";
 
    export default function Page() {
      // window is browser-only — guard for any framework that prerenders this page (Next does, even with "use client").
@@ -149,6 +168,7 @@ Measured: the plain request then stayed on the CDN. Requests in flight at the sa
    ```tsx
    // app/[[...slug]]/page.tsx — NO "use client"
    import { sdk } from "@/lib/studio.server";
+   import { resolveComposition } from "@/lib/resolve-composition";
    import { ClientRender } from "./ClientRender";
    import { notFound } from "next/navigation";
 
@@ -209,6 +229,9 @@ Measured: the plain request then stayed on the CDN. Requests in flight at the sa
 4. **SSR: Next.js Pages Router.** Also full SSR: the composition DOM lands in the server HTML via `renderToString`. Register all components (built-ins + custom) at module scope in `pages/_app.tsx` with **static imports** so the same React instance runs server + client.
    ```ts
    // pages/blog/[slug].tsx
+   import { sdk } from "@/lib/studio.server";
+   import { resolveComposition } from "@/lib/resolve-composition";
+
    export async function getServerSideProps(context) {
      const searchQuery = context.req.url.split("?")[1] ?? "";
      const url = `/blog/${context.params.slug}`;
@@ -227,6 +250,7 @@ Measured: the plain request then stayed on the CDN. Requests in flight at the sa
    ```ts
    import { json } from "@remix-run/node";
    import { sdk } from "~/lib/studio.server";
+   import { resolveComposition } from "~/lib/resolve-composition";
 
    export async function loader({ request }) {
      const url = new URL(request.url);
@@ -250,7 +274,7 @@ Measured: the plain request then stayed on the CDN. Requests in flight at the sa
 
 10. **Verification.** Open the route in a regular tab and `view-source:`. For SSR/RSC/SSG the composition HTML must be in the initial response (not just a shell). `curl -A "Twitterbot" <url>` returns the og: meta tags. Open the same route inside Studio's preview iframe. The iframe's override params flow through `searchQuery` and the right entry/locale renders. Edit an entry in Live Preview. The page updates without a full reload. No React hydration warning in the console.
 
-    **Verify SSR with `curl`, not a browser screenshot.** Next injects a FOUC guard (`body{display:none}` via `data-next-hide-fouc`) during SSR and removes it on hydration. A pre-hydration screenshot shows blank even when the real content is in the HTML. `curl -sk <url> | grep -q '<known-text>'` executes no JS and returns the truth. A blank browser screenshot does NOT mean SSR failed.
+    **Verify SSR with `curl`, not a browser screenshot.** Next injects a FOUC guard (`body{display:none}` via `data-next-hide-fouc`) during SSR and removes it on hydration. A pre-hydration screenshot shows blank even when the real content is in the HTML. `curl -s <url> | grep -q '<known-text>'` (for a local mkcert dev cert, add `--cacert "$(mkcert -CAROOT)/rootCA.pem"`; never `-k`) executes no JS and returns the truth. A blank browser screenshot does NOT mean SSR failed.
 
 ## Inputs needed from the user
 
@@ -314,11 +338,11 @@ If acceptance fails, report exactly which step broke and stop.
 | Different `locale` server vs client | Mismatch warning, content flash | Pin both sides via the second arg of `fetchCompositionData` |
 | Live Preview never updates the running page | Missing `onEntryChange` bridge | Wire the `LivePreviewBridge` from `install-live-preview` (step 7). Not a CSR-vs-SSR issue, same fix regardless of framework. |
 | **Infinite `_next/data/<id>/<route>.json` (Pages) or RSC payload refetch: Network tab fires hundreds of times per edit** | `onEntryChange` wired in a `[router]`-dep effect | Move the wiring to the loop-safe pattern in `install-live-preview` (step 7): subscribe ONCE with empty deps, hold router in a `useRef`, skip the register-time fire, unsubscribe in cleanup. |
-| **App Router route renders fine in the browser but `view-source` shows no composition DOM**: bound content only in `self.__next_f` flight payload | `<StudioComponent />` is rendered directly in a Server Component: the RSC pass sees every built-in as `react.client.reference`, emits `data-cs-defer-builtin` placeholders, and defers the real render to hydration. **Not true SSR.** | Render it through a `"use client"` wrapper (step 3), or move the route to **Pages Router** (or Vite custom-server / Remix). (P31) |
-| **`transpilePackages: ['@contentstack/studio-*']` on App Router** | 500 with `Cannot read properties of null (reading 'useContext')` at `useData → RepeaterPreview` during the RSC server prerender | Don't transpile the SDK on App Router. It defeats the SDK's safe client-deferral (the basics resolve to real components, run on the server, and read a null React dispatcher). On Pages Router, transpiling is fine. (P31) |
-| **Coexisting `app/` dir while SSR-ing a `pages/` route** | The Pages-Router SDK React resolves to the app-page runtime, which gives a null dispatcher and a crash | Make the project Pages-Router-only for the Studio SSR route (remove `app/` from that workspace). (P31) |
-| **Judging SSR from `next dev`**: Repeater items intermittently render field defaults ("Your text here") | Per-boot dev race (recompile + module-init order + React StrictMode double-invoke) | Verify and ship from a **prod build**: `next build && next start`. Prod is deterministic. Dev is racy. (P31) |
-| **`dynamic(() => import('@contentstack/studio-react'))` for the canvas, prod build fails** | `Package path "." is not exported from package` | `studio-react`'s `exports` map only exposes `.` under the `import` condition. Dynamic-import a **local wrapper** that statically imports `StudioCanvas`. (P31) |
+| **App Router route renders fine in the browser but `view-source` shows no composition DOM**: bound content only in `self.__next_f` flight payload | `<StudioComponent />` is rendered directly in a Server Component: the RSC pass sees every built-in as `react.client.reference`, emits `data-cs-defer-builtin` placeholders, and defers the real render to hydration. **Not true SSR.** | Render it through a `"use client"` wrapper (step 3), or move the route to **Pages Router** (or Vite custom-server / Remix). |
+| **`transpilePackages: ['@contentstack/studio-*']` on App Router** | 500 with `Cannot read properties of null (reading 'useContext')` at `useData → RepeaterPreview` during the RSC server prerender | Don't transpile the SDK on App Router. It defeats the SDK's safe client-deferral (the basics resolve to real components, run on the server, and read a null React dispatcher). On Pages Router, transpiling is fine. |
+| **Coexisting `app/` dir while SSR-ing a `pages/` route** | The Pages-Router SDK React resolves to the app-page runtime, which gives a null dispatcher and a crash | Make the project Pages-Router-only for the Studio SSR route (remove `app/` from that workspace). |
+| **Judging SSR from `next dev`**: Repeater items intermittently render field defaults ("Your text here") | Per-boot dev race (recompile + module-init order + React StrictMode double-invoke) | Verify and ship from a **prod build**: `next build && next start`. Prod is deterministic. Dev is racy. |
+| **`dynamic(() => import('@contentstack/studio-react'))` for the canvas, prod build fails** | `Package path "." is not exported from package` | `studio-react`'s `exports` map only exposes `.` under the `import` condition. Dynamic-import a **local wrapper** that statically imports `StudioCanvas`. |
 | **Bare `await sdk.fetchCompositionData(...)` with an `if (!hasSpec) notFound()` guard below it** | Every unmatched URL returns **500, not 404**. The fetch rejects, so the guard line never executes. Error boundary shows a generic failure. Nothing names the missing composition | Wrap with [`resolveComposition`](#resolve-composition-helper). The guard was written for a resolve-with-falsy contract the SDK doesn't have |
 | Blanket `try { … } catch { notFound() }` around the fetch | Every CDA outage, expired delivery token, and network blip silently becomes a 404. The site reads as "empty" instead of "broken" and monitoring stays green | Ask `isCompositionNotFound(err)`: true is a 404. Rethrow the rest so real failures stay 500s |
 | Testing 404 handling only with a totally unmatched URL | Passes, while every bad slug under a `content_type_url_pattern` template still 500s if you hand-rolled a list of names. That path matches the pattern and fails later, at entry lookup, with a different code | Test both shapes. Use the predicate rather than a list, and both are covered |

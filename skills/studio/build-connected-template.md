@@ -8,7 +8,7 @@ Scaffold a Connected (content-type-bound) Studio template by dropping sections, 
 
 Use for a Connected template, a page bound 1:1 to a content type (blog post, product) where every entry renders at a derived URL. Phrases: "build a blog template", "PDP template", "connected to a content type". Assumes `install-studio` is done.
 
-> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 > **Pattern preflight: mandatory.** Before the first write, run [`match-existing-pattern`](match-existing-pattern.md): read the Templates and Sections already in the project, **reuse what already covers this schema**, and build to the pattern they use. Skip it only when the project has no compositions at all. Authoring something structurally foreign to what is there is rework, and it is invisible until someone opens the Layers panel.
 
@@ -69,7 +69,7 @@ This skill creates the template, drops sections, confirms bindings, saves. It do
    - `PREVIEW ENTRY :` (entry name) with a `⇄` swap icon. Studio auto-picks the most recently updated entry that satisfies the URL pattern
    - URL line directly below evaluates against that entry (no `{{...}}` leftovers)
 
-   **Symptom: "No entry has a URL field populated yet" (canvas shows the message, no preview entry is auto-selected):** this is the editor's `MISSING_CT_PATTERN_URL_FIELD` error, raised **only** under `url_source: "content_type_url_pattern"` (or `legacy_url`). Those sources resolve the preview entry by querying for a populated `url` **field**, with no pattern substitution. So it means: the connected CT isn't a page type, OR no entry of that CT has its `url` field set. **If the CT is a singleton with no `url_pattern` by design** (a fixed-URL page), don't add a pattern you don't want, just set the entry's `url` field by hand (e.g. `/rewards`). The source only needs a non-empty `url`, not a CT pattern. Switch to `user_specified_pattern` only when the URL must derive from a different field (`{{entry.slug}}`, a reference). See [`author-composition-via-api` § Which `url_source` to write](author-composition-entry.md#url-metadata-matched-pair). Fix: ensure the CT is `is_page: true` with a `url` field + `url_pattern` (see [URL pattern rule below](#single-entry-vs-multi-entry-url-pattern-rule)). For every entry, set the `url` field, then click `⇄` and pick a preview entry. After a CT `url_pattern` change, re-save + republish entries so `entry.url` recomputes, otherwise old entries still carry stale URLs.
+   **Symptom: "No entry has a URL field populated yet" (canvas shows the message, no preview entry is auto-selected):** this is the editor's `MISSING_CT_PATTERN_URL_FIELD` error, raised **only** under `url_source: "content_type_url_pattern"` (or `legacy_url`). Those sources resolve the preview entry by querying for a populated `url` **field**, with no pattern substitution. So it means: the connected CT isn't a page type, OR no entry of that CT has its `url` field set. **If the CT is a singleton with no `url_pattern` by design** (a fixed-URL page), don't add a pattern you don't want, just set the entry's `url` field by hand (e.g. `/rewards`). The source only needs a non-empty `url`, not a CT pattern. Switch to `user_specified_pattern` only when the URL must derive from a different field (`{{entry.slug}}`, a reference). See [`author-composition-entry` § Which `url_source` to write](author-composition-entry.md#url-metadata-matched-pair). Fix: ensure the CT is `is_page: true` with a `url` field + `url_pattern` (see [URL pattern rule below](#single-entry-vs-multi-entry-url-pattern-rule)). For every entry, set the `url` field, then click `⇄` and pick a preview entry. After a CT `url_pattern` change, re-save + republish entries so `entry.url` recomputes, otherwise old entries still carry stale URLs.
 
 6. **(Optional) Edit the URL pattern.** Only if `urlPattern` is provided OR the derived URL is wrong. Click the pencil icon, then Edit URL. Use Insert chips for `{{entry.<field>}}`, `{{environment}}`, `{{taxonomy:<uid>}}`. **Save** validates + refetches. **Avoid `{{locale}}`**: carry locale via routing + SDK `locale` query option.
 
@@ -111,7 +111,7 @@ This skill creates the template, drops sections, confirms bindings, saves. It do
 
     If sections render but a connected template shows "localhost didn't send any data" or "SDK Not Initialized", env base URL is wrong (common cause: scheme mismatch, env says `http://localhost:5173` but dev server is HTTPS-only via mkcert).
 
-    **Fix:** `PUT /v3/environments/<env>` so `urls[...]` scheme matches the served canvas-app.
+    **Fix:** `GET /v3/environments/<env>` first, show the user the current `urls[]` and the change, and get approval. Then `PUT /v3/environments/<env>` with the full `urls[]` array (every existing locale entry kept, only the scheme of the affected one changed) so it matches the served canvas-app. A PUT with only one entry drops the other locales' URLs.
 
 16. **Multiple-file fields bind to `.0.url`, not the field name.** When a CT has a `file` field of type multiple (an asset array), and you bind it to a scalar prop like `imageurl`:
 
@@ -148,13 +148,20 @@ Succeed only when ALL of the following are true. If any fails, surface exactly w
 The acceptance list above is all render-time: a monolithic template passes every line of it. This check is the only one that catches the structural failure, so run it after saving and before reporting success.
 
 ```bash
+# requires:
+#   STUDIO_API  Studio API base URL for your region
+#   PROJECT     Studio project uid
+#   UID         the saved template's composition uid
+#   CS_AUTH     one auth header resolved per authenticate-cma, e.g. "authorization: Bearer $CS_OAUTH_ACCESS_TOKEN"
+#   CS_SCOPE    the scope header, e.g. "organization_uid: <org-uid>"
 # Decode the saved template's ui and count what it is actually made of.
-curl -s "$STUDIO_API/projects/$PROJECT/compositions/$UID" -H "$CS_AUTH" \
+curl -s "$STUDIO_API/projects/$PROJECT/compositions/$UID" -H "$CS_AUTH" -H "$CS_SCOPE" \
 | python3 -c '
 import sys, json, zlib, base64
 c = json.load(sys.stdin)["composition"]
 ui = c["ui"]
-ui = json.loads(zlib.decompress(base64.b64decode(ui[5:])) if isinstance(ui, str) and ui.startswith("zlib:") else ui)
+if isinstance(ui, str):
+    ui = json.loads(zlib.decompress(base64.b64decode(ui[5:])) if ui.startswith("zlib:") else ui)
 n = []
 def walk(x):
     if not isinstance(x, dict): return
@@ -169,7 +176,7 @@ print("MONOLITH — decompose before reporting success" if not n and not ls else
 '
 ```
 
-Two numbers, and they must agree: every placed Section is both a `section-composition` node in the tree **and** an entry in `linked_sections`. A node without its `linked_sections` entry is the P27 trap: the page renders, the editor misbehaves later.
+Two numbers, and they must agree: every placed Section is both a `section-composition` node in the tree **and** an entry in `linked_sections`. A node without its `linked_sections` entry is the missing-`linked_sections` trap: the page renders, the editor misbehaves later.
 
 **If you are converting an existing monolith,** lift each top-level node into its own Section composition (`place_composition_as: "section"`), then replace the node with a `section-composition` referencing it. The bindings inside the node move with it unchanged and resolve exactly as before. Verify by diffing rendered text length before and after. It should not move. Node uids must stay unique across the tree, so generate them rather than deriving them from a truncated slug.
 

@@ -8,7 +8,7 @@ Read a React component, infer a prop schema, and write a `registerComponent` cal
 
 Use when the user wants Studio's palette to surface their components: "make my Hero available in Studio", "Studio shows defaults instead of mine", "register components in src/components". The BYOC moment. Do NOT use to register design tokens (use `import-design-tokens`). Do NOT invent prop schemas. Only register props visible in source.
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 > **Reuse preflight: mandatory when the project already has compositions.** Before naming a single new atomic, component or Section, run [`match-existing-pattern`](match-existing-pattern.md) § Step 1b: it groups existing Sections by the schema they bind and ranks the component palette by real usage. Decomposition is where reuse has to bite. Once this step names `Heading` instead of the project's `alpha-atom-heading`, the duplicate survives into the plan and into the build. Mark every row reuse, extend, or new, and never new without having looked.
 
@@ -33,7 +33,7 @@ If any answer is ambiguous, halt and ask the user to disambiguate. Never silentl
 Every component you register is one of two shapes. Decide which before writing the registration:
 
 - **Layer 1: Atomic** (renders one CMS field). All scalar props. `<Heading>`, `<Text>`, `<Image>`, `<Button>`. This skill's default path.
-- **Layer 2: Container / Skeleton / Layout** (holds other components). Has at least one `slot`-typed prop as a drop zone. `<Card>` with a body slot, `<Split>` with left+right slots. Same skill. § "Exposing extensible regions with slot props" covers it.
+- **Layer 2: Container / Skeleton / Layout** (holds other components). Has at least one `slot`-typed prop as a drop zone. `<Card>` with a body slot, `<Split>` with left+right slots. Same skill. § "Exposing extensible regions with `slot` props" (in step 6) covers it.
 
 If the thing you want to register is neither: a pure layout primitive (Grid, Stack, Container, Box), a whole page-shaped composition, or a component with an array-of-objects prop. **Stop.** Read [From designs to Sections: the three-layer mental model](decompose-design.md) first. It's a 10-minute page that saves hours of "why doesn't my Grid work in Studio."
 
@@ -64,8 +64,8 @@ The registration is a `registerComponent` call that names the component, gives i
    | URL string used as `href` | `href` |
    | URL string used as image `src` | `imageurl` |
    | ISO date string | `datestring` |
-   | array | `array`, binds to a **multi-value field** (Reference multi, Group multi, Modular Block, scalar multi). Reference sources need `data_sources.resolvedReferences`. Groups / Modular Blocks / scalar multi-values live on the entry and need no resolution. See § Array & object props: binding rules |
-   | object | `object`, binds when the shape matches an entry Group / Global Field. See § Array & object props: binding rules |
+   | array | `array`, binds to a **multi-value field** (Reference multi, Group multi, Modular Block, scalar multi). Reference sources need `data_sources.resolvedReferences`. Groups / Modular Blocks / scalar multi-values live on the entry and need no resolution. See [`register-component-prop-contracts`](register-component-prop-contracts.md) § Array & object props: binding rules |
+   | object | `object`, binds when the shape matches an entry Group / Global Field. See [`register-component-prop-contracts`](register-component-prop-contracts.md) § Array & object props: binding rules |
    | React `children` / placeholder for extensible region | `slot`, fillable at template time via `use-section-slot` § component-slot-prop placement. The prop turns that region of the component into an author-controlled drop target. No `defaultValue` (slots start empty). |
    | rich text (JSON RTE field, HTML payload) | **`json_rte`**, not `string`. RTE renders markup, and `string` would show it as literal `<p>` text. |
    | unknown / can't infer, and the value is a **primitive** | `any`, **never for object- or array-shaped data.** See the flatten trap below |
@@ -73,7 +73,7 @@ The registration is a `registerComponent` call that names the component, gives i
 
    ### The `any` flatten trap: why structured data renders blank
 
-   `any` is not a harmless catch-all. Verified in `studio-registry/src/data-binder/retrieve-data.ts`, the binder runs a **recursive single-key unwrap** on every prop type except `object` and `array`:
+   `any` is not a harmless catch-all. The binder runs a **recursive single-key unwrap** on every prop type except `object` and `array`:
 
    ```js
    // Unwrap single-key objects (common in Contentstack Modular Blocks)
@@ -103,11 +103,11 @@ The registration is a `registerComponent` call that names the component, gives i
 
    This is a **resolver-level** behavior (`retrievePropValue`), so it bites UI / picker-authored bindings exactly as it bites API-authored ones, not an API-only footgun. It is also **not specific to Modular Blocks**: any single-key object collapses: a Group with one sub-field, a single-item wrapper, a block carrying one field plus `_metadata`. Rule of thumb: whenever the value you want is an object or a list, type the prop `object` / `array`. `any` is safe only for a genuine primitive.
 
-   **These 14 strings govern YOUR registered components only.** Studio's built-in nodes (`header`, `plain-text`, `rich-text`, `image`, …) carry their own prop-type vocabulary. Reading an existing composition and copying a built-in's prop type into your registration can produce a string outside the 14, which is rejected. The two vocabularies overlap in places (both use `plaintext`, for example) and diverge in others. Never transplant between them. Built-in node types are cataloged in [`author-composition-via-api`](author-composition-via-api.md) § Built-in node `type` values.
+   **These 14 strings govern YOUR registered components only.** Studio's built-in nodes (`header`, `plain-text`, `rich-text`, `image`, …) carry their own prop-type vocabulary. Reading an existing composition and copying a built-in's prop type into your registration can produce a string outside the 14, which is rejected. The two vocabularies overlap in places (both use `plaintext`, for example) and diverge in others. Never transplant between them. Built-in node types are cataloged in [`author-composition-bindings`](author-composition-bindings.md) § Built-in node `type` values.
 
 4. **Set `defaultValue` for every prop** where the component has a default value in its source. The default appears as the palette tile preview. Without it, the tile renders blank and authors don't know what the component looks like. Use `defaultValue:` exactly, NOT `default:` (the latter is silently ignored).
 
-5. **Ship a `thumbnailUrl`: every registration, no exceptions.** (This and the `studioAttributes` contract below are two of the six in [`complete-the-build`](complete-the-build.md). Both ship in the same commit as the registration, never as a follow-up.) `thumbnailUrl` defaults to `""` in the registry (`studio-registry`, `registry-options-processor`), and Studio then renders a **text placeholder** instead of a preview. A palette of twenty text placeholders is unusable for the marketers this whole exercise exists to serve, and nothing errors, so it ships unnoticed.
+5. **Ship a `thumbnailUrl`: every registration, no exceptions.** (This and the `studioAttributes` contract below are two of the six in [`complete-the-build`](complete-the-build.md). Both ship in the same commit as the registration, never as a follow-up.) `thumbnailUrl` defaults to `""` in the registry, and Studio then renders a **text placeholder** instead of a preview. A palette of twenty text placeholders is unusable for the marketers this whole exercise exists to serve, and nothing errors, so it ships unnoticed.
 
    Rules that matter:
 
@@ -116,12 +116,16 @@ The registration is a `registerComponent` call that names the component, gives i
    - **Preview the shape, not the pixels**: the thumbnail says what kind of thing this is (atomic / slot-shell / pattern).
 
    ```ts
+   // Inline SVG → data URI (no network request from the canvas iframe). Swap the fills for brand tokens.
+   const thumb = (svg: string) => `data:image/svg+xml,${encodeURIComponent(svg)}`;
+   const HeroGlyph = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80"><rect width="120" height="80" fill="#f4f4f7"/><rect x="12" y="20" width="72" height="10" fill="#6c5ce7"/><rect x="12" y="38" width="52" height="6" fill="#a0a0b0"/><rect x="12" y="54" width="28" height="10" rx="2" fill="#6c5ce7"/></svg>`;
+
    registerComponent({
      type: "site-hero",
      displayName: "Hero",
      component: () => import("./components/Hero"),
      sections: ["Acme · Patterns"],
-     thumbnailUrl: thumb(HeroGlyph, "Hero Block"),   // data:image/svg+xml,...
+     thumbnailUrl: thumb(HeroGlyph),   // data:image/svg+xml,...
      props: { /* … */ },
    });
    ```
@@ -249,9 +253,9 @@ This skill succeeds only when ALL of the following are true.
 - [ ] The tile preview renders (not blank) because the defaults are populated.
 - [ ] `component:` follows one of the two valid shapes: **lazy** (arity-0 function that returns a `Promise` of the component, typically `() => import("./Foo")`) OR **eager** (function with at least one parameter, i.e. an ordinary React component). The default recommendation is lazy. A zero-parameter function that does NOT return a Promise triggers React #321 / "Invalid hook call" at render.
 - [ ] The component is **layout-agnostic**, `width: 100%` of its container, no hard-coded `max-width` to "protect" against wrong contexts, no styles that rely on a specific ancestor selector (`.fs-grid > .fs-card { ... }`). Layout sizing is delegated to the parent Section, not baked into the component.
-- [ ] **Call-site literal sweep**. If this component is already used in production code, grep every JSX use of it. Every literal prop set at a call site (`isInteractive={false}`, `variant="compact"`, `columns={3}`, `isLogoBgWhite={false}`) becomes a `defaultValue` on the corresponding registered prop, or a named preset. Skipping this is the single most common cause of "composed page looks 80% right but wrong on hover/motion/spacing." Sample grep: `rg -tn tsx -o "<ComponentName[^>]*/>" | head`. If the component is new (no production call sites yet), acceptance is trivially satisfied, but state that explicitly.
-- [ ] **Tolerant image signatures**: every `imageurl` prop's TS type accepts `string | { url?: string } | null | undefined`, and the component internally coerces. See § Tolerant image signatures above. This is a first-class contract, not an optional nicety. Studio's picker binds sometimes the object, sometimes `.url`, and either shape must render correctly.
-- [ ] **Tolerant link signatures**: every `href`-typed prop binds against a link field's `href` leaf (never the whole link object). Where the design mandates a single link prop, the component coerces `string | {title, href}` inside via `href()` / `label()` helpers. See § Tolerant link signatures above.
+- [ ] **Call-site literal sweep**. If this component is already used in production code, grep every JSX use of it. Every literal prop set at a call site (`isInteractive={false}`, `variant="compact"`, `columns={3}`, `isLogoBgWhite={false}`) becomes a `defaultValue` on the corresponding registered prop, or a named preset. Skipping this is the single most common cause of "composed page looks 80% right but wrong on hover/motion/spacing." Sample grep: `rg -t ts -o '<ComponentName[^>]*/?>' src | head`. If the component is new (no production call sites yet), acceptance is trivially satisfied, but state that explicitly.
+- [ ] **Tolerant image signatures**: every `imageurl` prop's TS type accepts `string | { url?: string } | null | undefined`, and the component internally coerces. See [`register-component-prop-contracts`](register-component-prop-contracts.md) § Tolerant image signatures. This is a first-class contract, not an optional nicety. Studio's picker binds sometimes the object, sometimes `.url`, and either shape must render correctly.
+- [ ] **Tolerant link signatures**: every `href`-typed prop binds against a link field's `href` leaf (never the whole link object). Where the design mandates a single link prop, the component coerces `string | {title, href}` inside via `href()` / `label()` helpers. See [`register-component-prop-contracts`](register-component-prop-contracts.md) § Tolerant link signatures.
 - [ ] **Palette group + thumbnail**: the registration declares `sections: ["<Brand> · Elements | Patterns | Layouts"]` (never `"Template"` or `"Section"` in the name) and a `thumbnailUrl` data URI that visually previews the tier (step 5).
 
 ## After registering: plan your Section shape

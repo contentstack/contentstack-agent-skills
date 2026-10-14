@@ -8,7 +8,7 @@ Change a live Content Type's schema (add fields, rename, retype, remove, extract
 
 Use when a live CT needs to evolve: field added post-launch, prop renamed to match new component signature, a group extracted into a reusable Global Field, a Reference retargeted from one CT to another. Phrases: "add a field to `blog_post`", "rename `title` to `headline`", "extract `hero` to a Global Field", "change `read_time` from string to number", "migrate CT schema". Do NOT use for initial CT creation (that's [`provision-studio-stack`](provision-studio-stack.md)) or for content-only migrations (that's [`import-content`](import-content.md)).
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Migrate a Content Type schema: dry-run planned, dual-write executed, rollback documented
 
@@ -61,7 +61,7 @@ Parse: source CT + field(s) + intended mutation. Reject vague inputs: "clean up 
 
 ### Step 2: Fetch the current CT schema
 
-Use CMA `/v3/content_types/<uid>` (stack management token from env). Store the current schema locally as `docs/_migration-state/<ct_uid>-before.json`. This is the rollback artifact. Never proceed without a snapshot.
+Use CMA `/v3/content_types/<uid>` with a CMA credential resolved per [`authenticate-cma`](authenticate-cma.md) (OAuth first); a management token only if the user prefers one. Store the current schema locally as `docs/_migration-state/<ct_uid>-before.json`. This is the rollback artifact. Never proceed without a snapshot.
 
 ### Step 3: Classify + emit the migration plan
 
@@ -115,17 +115,17 @@ At any point, the user can invoke:
 
 - "Roll back the `title → headline` migration."
 
-Skill reads the state file + the `before.json` snapshot, walks back the completed steps in reverse:
+Skill reads the state file + the `before.json` snapshot, lists the completed steps it would walk back in reverse, and **asks before changing anything**. Rollback is itself a mutation:
 
 - Step 6 completed: not applicable (already destroyed).
-- Steps 1-5 completed: revert bindings, remove the new field, unbackfill (if user wants, usually leaves headline values populated but bindings point back to title).
+- Steps 1-5 completed: revert bindings (after the user approves the list). **Default: keep** the new field and its backfilled values; remove the field or clear the values only if the user explicitly opts in, since removing a field deletes its data.
 
 **If Step 6 (remove old field) already ran, rollback is destructive. The data is gone.** Report clearly + ask for confirmation before continuing.
 
 ## Inputs needed from the user
 
 1. The change (specific: field name, source CT, target state).
-2. Target stack UID + management token (from env or explicit).
+2. Target stack UID + a CMA credential resolved per [`authenticate-cma`](authenticate-cma.md) (OAuth first); a management token only if the user prefers one.
 3. Explicit approval after the migration plan is emitted (dry-run before commit).
 4. Confirmation between destructive steps (backfill, cutover, then remove).
 5. Optional: cool-off period override (default 14 days).

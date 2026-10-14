@@ -8,7 +8,7 @@ Install and wire `@contentstack/live-preview-utils` standalone (without the full
 
 Use when the user wants ONLY Live Preview added to an existing Contentstack app, typically rolling out Visual Editor before adopting Studio. E.g. "I just want Live Preview, not Studio yet". Do NOT use for full Studio install (use `install-studio`, it includes LP). Do NOT use to fix LP in an already-installed app (use `troubleshoot-canvas`).
 
-> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Install Live Preview standalone
 
@@ -54,7 +54,7 @@ Most "Live Preview broken" issues are one of those two missing. This skill ensur
 
    Confirm `.env.local` is in `.gitignore` before writing.
 
-4. **Update the existing Delivery SDK init** to include the `live_preview` block. Find the file that currently calls `contentstack.stack({ apiKey, deliveryToken, environment })`. **Derive the preview host from the region, do not hardcode `rest-preview.contentstack.com`.** It's the US host only. Every other region 401s against it. The map below covers **prod regions only**. **Non-prod (the non-prod domain your team uses) has no `region` shortcut**: every host is `<env>-<service>.<non-prod-domain>` and must be set explicitly. The full table is [`install-studio`](install-studio.md) § Non-prod hosts. Establish which data center you're on first via [`analyze-project-fit`](analyze-project-fit.md) § 2b: Determine the data center.
+4. **Update the existing Delivery SDK init** to include the `live_preview` block. Find the file that currently calls `contentstack.stack({ apiKey, deliveryToken, environment })`. **Derive the preview host from the region, do not hardcode `rest-preview.contentstack.com`.** It's the US host only. Every other region 401s against it. The map below covers the standard regions only. **A custom / private data center (hosts supplied by Contentstack) has no `region` shortcut**: set every host explicitly. See [`install-studio`](install-studio.md) § Custom / private data center. Establish which data center you're on first via [`analyze-project-fit`](analyze-project-fit.md) § 2b: Determine the data center.
 
    ```ts
    // Region → preview host. The US default is the ONLY region that uses the bare
@@ -70,18 +70,18 @@ Most "Live Preview broken" issues are one of those two missing. This skill ensur
    } as const;
 
    const region = (import.meta.env.VITE_CS_REGION ?? "us") as keyof typeof PREVIEW_HOSTS;
-   // Non-prod wins over the map, which is prod-only: set VITE_CS_PREVIEW_HOST to
-   // <env>-rest-preview.<non-prod-domain>, and VITE_CS_CDA_HOST alongside it.
+   // A custom / private data center wins over the map (hosts supplied by Contentstack):
+   // set VITE_CS_PREVIEW_HOST and VITE_CS_CDA_HOST explicitly.
    const previewHost = import.meta.env.VITE_CS_PREVIEW_HOST || PREVIEW_HOSTS[region];
-   if (!previewHost) throw new Error(`Unknown region ${region}; on non-prod set VITE_CS_PREVIEW_HOST`);
+   if (!previewHost) throw new Error(`Unknown region ${region}; on a custom data center set VITE_CS_PREVIEW_HOST`);
 
    const stack = contentstack.stack({
      apiKey:         import.meta.env.VITE_CS_API_KEY,
      deliveryToken:  import.meta.env.VITE_CS_DELIVERY_TOKEN,
      environment:    "preview",
      ...(import.meta.env.VITE_CS_CDA_HOST
-       ? { host: import.meta.env.VITE_CS_CDA_HOST }   // non-prod
-       : { region }),                                 // prod
+       ? { host: import.meta.env.VITE_CS_CDA_HOST }   // custom / private data center
+       : { region }),                                 // standard region
      live_preview: {
        enable:        true,
        preview_token: import.meta.env.VITE_CS_PREVIEW_TOKEN,
@@ -90,11 +90,14 @@ Most "Live Preview broken" issues are one of those two missing. This skill ensur
    });
    ```
 
-   Add `VITE_CS_REGION=<region>` (or `NEXT_PUBLIC_CS_REGION` / `REACT_APP_CS_REGION`) to `.env.local` so the host is derived at build/runtime, not hardcoded. Default to `us` when unset. On non-prod, set `VITE_CS_CDA_HOST` and `VITE_CS_PREVIEW_HOST` instead: `region` has no value that reaches those data centers, and leaving it to default sends every read to US prod.
+   Add `VITE_CS_REGION=<region>` (or `NEXT_PUBLIC_CS_REGION` / `REACT_APP_CS_REGION`) to `.env.local` so the host is derived at build/runtime, not hardcoded. Default to `us` when unset. On a custom / private data center (hosts supplied by Contentstack), set `VITE_CS_CDA_HOST` and `VITE_CS_PREVIEW_HOST` explicitly instead: `region` has no value that reaches it, and leaving it to default sends every read to NA.
 
 5. **Wire `ContentstackLivePreview.init({…})` at app shell.** This is the post-message listener that picks up Contentstack's edit events. Call it **once**, before any route renders:
 
    ```ts
+   import { stack } from "./lib/contentstack";   // the stack from step 4 (adjust the path)
+   const previewToken = import.meta.env.VITE_CS_PREVIEW_TOKEN;  // NEXT_PUBLIC_* / REACT_APP_* per framework
+
    // Import only with a preview token: the package draws its Edit button on import, even without init().
    if (previewToken) {
      import("@contentstack/live-preview-utils").then(({ default: ContentstackLivePreview }) =>
@@ -148,7 +151,7 @@ Most "Live Preview broken" issues are one of those two missing. This skill ensur
    }
    ```
 
-   Reference implementation: the SDK's own `composable-studio-sdk/test-resources/ssr-react/hooks/use-studio-spec-options.ts` uses the same `skipFirstClientFetchRef` pattern.
+   The Studio SDK's own SSR integration skips the first client fetch the same way.
 
 8. **Live-test the channel.** Open the page in a browser. In another tab, open Contentstack and edit a field on the entry the page renders. The page should update within ~1s without a manual reload. If the Network tab shows the same route data endpoint (`_next/data/<id>/<route>.json` or the RSC payload) firing repeatedly for a single edit, your `onEntryChange` wiring isn't loop-safe. See step 7.
 

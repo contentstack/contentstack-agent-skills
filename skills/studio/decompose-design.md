@@ -8,7 +8,7 @@ Take a **design artifact** (a Figma frame or URL, a screenshot, a PDF mock, a wi
 
 Use as the FIRST skill on any greenfield Studio build starting from a design (no code yet), or before running `plan-studio-architecture` when the input is visual rather than a requirements doc. Phrases: "here's the design", "here's a Figma link", "here's a screenshot of the page", "map this design to Studio", "how would I build this in Studio", "how do I decompose this page", "decompose this design", "what components do I need for this design". Do NOT use when the customer already has a React codebase. Reach for `discover-sections` and `design-section-from-jsx` instead. Do NOT use for backend/data-model-only questions (no visual design).
 
-> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 > **Reuse preflight: mandatory when the project already has compositions.** Before naming a single new atomic, component or Section, run [`match-existing-pattern`](match-existing-pattern.md) § Step 1b: it groups existing Sections by the schema they bind and ranks the component palette by real usage. Decomposition is where reuse has to bite. Once this step names `Heading` instead of the project's `alpha-atom-heading`, the duplicate survives into the plan and into the build. Mark every row reuse, extend, or new, and never new without having looked.
 
@@ -45,13 +45,13 @@ Every "Components" row in the emitted sheet ends with the Q1 to Q4 verdict for t
 
 For every Section + the Template on the sheet, chain to [`author-composition-via-api`](author-composition-via-api.md). It writes the composition JSON directly through the CMA: no Studio UI, no drag-drop, no iframe timing issues. Every drop-tree in the sheet maps 1:1 onto the composition's node tree. Every bind row maps 1:1 onto a `bindings` entry. Deterministic, idempotent, replayable.
 
-**Prerequisites:** stack credentials in the customer's env (management token). This skill's Step 1 already reads `.env` when fetching the CT. The same creds serve API authoring.
+**Prerequisites:** a CMA credential resolved per [`authenticate-cma`](authenticate-cma.md) (OAuth first); a management token only if the user prefers one. The same credential serves API authoring.
 
 This is the **default handoff** for `decompose-design`. Ship the sheet, then loop over Sections calling `author-composition-via-api` per Section, then post the Template.
 
 ### Execution path 2: Playwright MCP driving the Studio canvas
 
-For customers who want the canvas trail (for review, screenshotting, or matching what a human author would do), chain to [`build-section`](build-section.md) per Section, then [`build-connected-template`](build-connected-template.md). These skills drive the Studio canvas via [Playwright MCP](install-playwright-mcp.md) using the proven `mouse.down/move/up` sequence documented in `build-section` § LLM execution caveat. Slower than API path, but produces a real Studio canvas trail you can screenshot.
+For customers who want the canvas trail (for review, screenshotting, or matching what a human author would do), chain to [`build-section`](build-section.md) per Section, then [`build-connected-template`](build-connected-template.md). These skills drive the Studio canvas via [Playwright MCP](install-playwright-mcp.md) using the proven `mouse.down/move/up` sequence documented in `drive-studio-canvas-ui` § LLM execution caveat. Slower than API path, but produces a real Studio canvas trail you can screenshot.
 
 **Prerequisites:** Playwright MCP installed (`install-playwright-mcp`) + a running Studio session in a browser the MCP can drive.
 
@@ -65,8 +65,8 @@ Determined by what the environment provides:
 
 | Environment signal | Handoff |
 |---|---|
-| Management token available (env vars / Contentstack profile) | **Path 1: API authoring.** Chain to `author-composition-via-api` per Section + Template. |
-| No management token but Playwright MCP installed | **Path 2: canvas automation.** Chain to `build-section` + `build-connected-template`. |
+| A CMA credential resolves per `authenticate-cma` (OAuth first) | **Path 1: API authoring.** Chain to `author-composition-via-api` per Section + Template. |
+| No CMA credential, but Playwright MCP installed | **Path 2: canvas automation.** Chain to `build-section` + `build-connected-template`. |
 | Neither | **Path 3: manual.** Print the sheet. Instruct the developer to follow it in Studio's UI. |
 
 Content managers benefit from what the sheet produces (exposed props, slots, modular-block areas) but they don't consume the sheet. If a content manager is doing this without a developer, run [`author-without-code`](author-without-code.md) instead. That's their skill.
@@ -348,7 +348,7 @@ Given the Sections and their scope requirements, propose the underlying Content 
 For each field, propose:
 - Field type (single-line, multi-line, number, boolean, isodate, link, file/asset, json_rte, reference, group, modular_block).
 - `multiple` flag where applicable.
-- Field UID (kebab-case).
+- Field UID (snake_case, e.g. `hero_title`; Contentstack field UIDs are lowercase letters, digits and underscores).
 - Which Section(s) bind to it.
 
 ### Step 7: Apply the governance dial
@@ -491,7 +491,7 @@ The build sheet is the plan. Two things can happen next. Ask both, in one closin
 > **Offer 1: code phase.** Want me to scaffold + register these components in your repo now?
 >
 > **Offer 2: Studio-canvas phase.** Once code is done, want me to author the Sections + Template automatically?
->   - **A**, via API (fastest): chains `author-composition-via-api` per Section + Template. Requires a management token in env.
+>   - **A**, via API (fastest): chains `author-composition-via-api` per Section + Template. Requires a CMA credential resolved per [`authenticate-cma`](authenticate-cma.md) (OAuth first); a management token only if the user prefers one.
 >   - **B**, via Studio canvas (slower, produces canvas trail): chains `build-section` + `build-connected-template` through Playwright MCP. Requires `install-playwright-mcp` done.
 >   - **C**, hand me the sheet. I'll do it in Studio's UI myself.
 
@@ -555,10 +555,10 @@ This skill succeeds only when ALL of the following are true.
 | Stalling for more input than the user gave | The normal case is one artifact. A Figma link alone supports gaps from child coordinates, gutters from arithmetic and font size from glyph bands | Derive what is derivable (Step 0). Ask for a second artifact only when it changes the outcome |
 | Shipping a build with no deviation list | Silence reads as pixel-perfect, so wrong spacing is trusted instead of corrected. The user then hunts for what moved | Emit the Deviations table. Empty only when every value matched exactly |
 | Decomposing a design the host codebase already implements | The shipped component names the real Modular Block uids, every variant, and the theme token behind each literal color. Deriving them from the comp instead invents uids that need a schema change and turns named tokens into guesses | Grep `components/` for the section before decomposing, Step 1c |
-| Building only the first item shape of a mixed list | A carousel reading A-B-C-A-B-C is **three** card shapes, not one. Building A alone leaves two thirds of the design unbuilt, and the canvas looks plausible so nothing flags it | Count the distinct shapes in the list, not the items. One Condition Block per shape, every one built, see [`author-composition-via-api`](author-composition-via-api.md) § Skeleton first, bind later |
-| Placing N copies of a repeating shape instead of one Repeater child | Five cards look right and are fixed at five. Editing one leaves four stale, and the binding pass has nothing to point at a collection | One child inside a `repeater`, `items` left unbound in the skeleton. See [`author-composition-via-api`](author-composition-via-api.md) § Skeleton first, bind later |
+| Building only the first item shape of a mixed list | A carousel reading A-B-C-A-B-C is **three** card shapes, not one. Building A alone leaves two thirds of the design unbuilt, and the canvas looks plausible so nothing flags it | Count the distinct shapes in the list, not the items. One Condition Block per shape, every one built, see [`author-composition-practice`](author-composition-practice.md) § Skeleton first, bind later |
+| Placing N copies of a repeating shape instead of one Repeater child | Five cards look right and are fixed at five. Editing one leaves four stale, and the binding pass has nothing to point at a collection | One child inside a `repeater`, `items` left unbound in the skeleton. See [`author-composition-practice`](author-composition-practice.md) § Skeleton first, bind later |
 | Decomposing from your own earlier summary of the design | A paraphrase written mid-run silently drops elements: an eyebrow, a caption, a second CTA. Every later step reads the summary, so nothing can detect the loss | Re-read the Figma node / screenshot while writing the atomic list. Reconcile element count vs sheet rows (Step 2b) |
-| Leaving design props off the sheet because "the default will do" | The registered default is the library's choice, not the comp's, a stack defaults to `column` and side-by-side CTAs render stacked, with no error | Record every design prop the comp determines. See [`author-composition-via-api`](author-composition-via-api.md) § Skeleton first, bind later |
+| Leaving design props off the sheet because "the default will do" | The registered default is the library's choice, not the comp's, a stack defaults to `column` and side-by-side CTAs render stacked, with no error | Record every design prop the comp determines. See [`author-composition-practice`](author-composition-practice.md) § Skeleton first, bind later |
 | Estimating spacing instead of reading it off the design tool | A gap picked by eye lands on the wrong token: a comp specifying 16px gets built as 24px. The section still looks tidy, so nothing flags it, and it only surfaces when someone measures against the comp | Read Flow / Gap / Padding from the Layout panel, or derive from child coordinates. Record `48px → xl`, not `xl` (Step 4b) |
 | Silently absorbing a value the token scale or prop surface can't express | The build quietly disagrees with the comp, one `gap` prop covering both axes cannot hold a 48px gutter and an 80px row gap | Name the delta on the sheet and pick one of the three options in Step 4b: accept, extend the registration, or mirror the comp's nesting |
 

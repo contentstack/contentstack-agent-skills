@@ -8,7 +8,7 @@ Configure a Studio project's Environment, Language, and Canvas URL in one guided
 
 Use right after `provision-studio-project` (or manual project creation) to go from "empty Studio project" to "ready to author". Phrases: "configure Studio project", "set canvas URL", "change environment". Do NOT use to register components (use `register-component`) or wire preview routes (use `setup-template-preview-routes`).
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Configure a Studio project
 
@@ -40,7 +40,7 @@ Pass this UID to `studioSdk.init({ contentTypeUid: "<uid>" })` in your app's `li
 
 0. **Select the Studio project first: list them, never assume.** An org routinely has several, and picking the wrong one is silent: the compositions list and Sections panel come up **empty** with no error, which reads as a broken install rather than a wrong project. This step is also what supplies `studioProjectId` to every downstream skill (`setup-section-preview`, `migrate-page-to-studio`, `troubleshoot-canvas`, `figma-generate-components`).
 
-   **List the projects** (OAuth first, see [`provision-studio-project`](provision-studio-project.md) step 9 for the auth ladder):
+   **List the projects** (OAuth first, see [`provision-studio-project`](provision-studio-project.md) step 10 for the auth ladder):
 
    ```bash
    curl -s "https://<studio-api-host>/v1/projects" \
@@ -49,11 +49,11 @@ Pass this UID to `studioSdk.init({ contentTypeUid: "<uid>" })` in your app's `li
      '.projects[] | "\(.uid)  \(.name)  stack=\(.connectedStackApiKey)  ct=\(.contentTypeUid)"'
    ```
 
-   `<studio-api-host>` is `composable-studio-api.contentstack.com` (+ regional variants) on prod, `<env>-composable-studio-api.<non-prod-domain>` on a custom DC. See [`install-studio`](install-studio.md) § Non-prod hosts.
+   `<studio-api-host>` is `composable-studio-api.contentstack.com` (+ regional variants). Custom / private data center (hosts supplied by Contentstack): set every host explicitly; see [`install-studio`](install-studio.md) § Custom / private data center.
 
    **Two token-free alternatives (prefer these over asking for a credential):**
 
-   > **OAuth Bearer is confirmed working for the Studio API on prod.** Runtime-verified: `GET /v1/projects` on `composable-studio-api.contentstack.com` with `Authorization: Bearer <oauth-access-token>` + `organization_uid` returned **200** with the project list, using a token minted by the Contentstack MCP's `--auth` flow. The ladder in [`provision-studio-project`](provision-studio-project.md) step 9 therefore resolves at its **first** rung on prod, no session authtoken needed.
+   > **OAuth Bearer is confirmed working for the Studio API on prod.** Runtime-verified: `GET /v1/projects` on `composable-studio-api.contentstack.com` with `Authorization: Bearer <oauth-access-token>` + `organization_uid` returned **200** with the project list, using a token minted by the Contentstack MCP's `--auth` flow. The ladder in [`provision-studio-project`](provision-studio-project.md) step 10 therefore resolves at its **first** rung on prod, no session authtoken needed.
 
    - **`csdx` (Studio plugin): use `project:set`, not `project:get`.** Source-verified in `@contentstack/studio` 0.0.3, and the two commands are not equivalent:
 
@@ -68,11 +68,11 @@ Pass this UID to `studioSdk.init({ contentTypeUid: "<uid>" })` in your app's `li
      csdx studio:project:set --project-id=list-them-please   # invalid on purpose
      ```
 
-     **Both require OAuth**, not a session login: the plugin reads `oauthAccessToken` and `oauthOrgUid` from CLI config and sends `Authorization: Bearer <token>` + `organization_uid`. Absent those, it can't fetch. Run `csdx auth:login --oauth` first. (This is also independent corroboration for the auth ladder in [`provision-studio-project`](provision-studio-project.md) step 9. The shipped plugin authenticates the Studio API with an OAuth Bearer token, and scopes by **org**, not by stack api_key.)
+     **Both require OAuth**, not a session login: the plugin reads `oauthAccessToken` and `oauthOrgUid` from CLI config and sends `Authorization: Bearer <token>` + `organization_uid`. Absent those, it can't fetch. Run `csdx auth:login --oauth` first. (This is also independent corroboration for the auth ladder in [`provision-studio-project`](provision-studio-project.md) step 10. The shipped plugin authenticates the Studio API with an OAuth Bearer token, and scopes by **org**, not by stack api_key.)
 
      **Do not take `project:get` as confirmation of anything.** It succeeds on a machine with no OAuth token at all, because it never authenticates, which is exactly how a stale or wrong cached id survives unnoticed.
 
-     **Runtime-verified, and worse than it sounds: the cached id survives a region switch.** On a machine moved from a non-prod DC to prod NA, `project:get` kept reporting a project id belonging to the **old data center**, while the org's live list (`GET /v1/projects`, 200) held a completely different single project. Nothing warned. The id simply looked plausible. **A cached id can point at a project in another DC entirely**, which is why the cross-check below compares against the live list, not against what the CLI remembers.
+     **Runtime-verified, and worse than it sounds: the cached id survives a region switch.** On a machine moved from one data center to another (here, to NA), `project:get` kept reporting a project id belonging to the **old data center**, while the org's live list (`GET /v1/projects`, 200) held a completely different single project. Nothing warned. The id simply looked plausible. **A cached id can point at a project in another DC entirely**, which is why the cross-check below compares against the live list, not against what the CLI remembers.
 
      **The plugin needs a region name the CLI core does not store.** Both of its lookups (`getComposableApiUrl()` and `getComposableApiBase()`) do `configHandler.get("region").name.toUpperCase()` against maps keyed with an **`AWS-` prefix**. The CLI core stores the short names, which aren't keys, so the plugin throws a **"Region not configured"** error naming `csdx config:set:region` even though `csdx config:get:region` reports the region correctly. <!-- style-lint: allow -->
 
@@ -113,7 +113,7 @@ Pass this UID to `studioSdk.init({ contentTypeUid: "<uid>" })` in your app's `li
 
    **Record the chosen `uid`** and reuse it for the rest of the session rather than re-asking.
 
-**By API instead:** `PUT /v1/projects/<uid>` (PATCH returns 404) with `settings.configuration.environment` set to the environment's **uid** from `GET /v3/environments`, never its name. A name saves, but Studio shows no environment and the canvas falls back to Studio's default host.
+**By API instead:** `GET /v1/projects/<uid>` first, show the user the current settings next to the ones you will write, and get approval; then `PUT /v1/projects/<uid>` (PATCH returns 404) with `settings.configuration.environment` set to the environment's **uid** from `GET /v3/environments`, never its name. A name saves, but Studio shows no environment and the canvas falls back to Studio's default host.
 
 1. **Open Studio at the selected project**, then go to Settings, then Configuration. Verify the settings panel is visible (Environment / Language / Canvas URL).
 
@@ -129,7 +129,7 @@ Pass this UID to `studioSdk.init({ contentTypeUid: "<uid>" })` in your app's `li
 
 6. **Read back the settings** via the Studio UI to confirm the writes. The Configuration panel should show the three values exactly as set.
 
-7. **By API, the body shape:** send it flat, `{ canvasUrl, settings: { configuration: { environment, locale } } }`. A `{ "project": … }` wrapper returns 200 and saves nothing. Read the project back to confirm.
+7. **By API, the body shape:** after showing the before/after values and getting the user's approval, send it flat, `{ canvasUrl, settings: { configuration: { environment, locale } } }`. A `{ "project": … }` wrapper returns 200 and saves nothing. Read the project back to confirm.
 
 ## Inputs needed from the user
 
@@ -162,7 +162,7 @@ This skill succeeds only when ALL of the following are true.
 | Pasting a full origin into Canvas URL (e.g. `http://localhost:5173/studio-canvas` or `https://yoursite.com`) | Canvas URL is the **path only**. Studio prepends the Base URL (origin) itself. A full URL here produces a broken iframe address (origin duplicated or wrong path). | Enter just the path: `/canvas` or `/studio-canvas`. The origin comes from Environment + Language (the Base URL), not this field. |
 | Saying "Language" everywhere when the codebase says "locale" | User searches for "Language" in SDK / API docs and finds nothing | Note explicitly: UI label is "Language". SDK + API call it "locale". Same field. |
 | Setting a Canvas URL that points to a host that isn't running | Canvas loads forever. Spinner never resolves | Pair with `verify-setup` after configuring. If Layer 4 fails on a freshly set Canvas URL, the host isn't running |
-| **Running two Studio projects on the same stack against different local apps**: switching to project A breaks preview for project B (and vice versa) | The env Base URL is a **stack-level** resource (set on the environment via `urls: [{ locale, url }]`, see `provision.ts`), not a per-project setting. Multiple Studio projects on one stack **share that single Base URL**. Project A pointing at `http://localhost:5192` and project B at `http://localhost:3000` cannot coexist on the same environment. Only one can be the active iframe origin at a time. Connected-template canvas preview loads at this shared URL, so whichever project was last configured wins. | Pick ONE of: (a) **separate environment per project** (in the stack, open Settings, then Environments, and create `<project>_preview` for each project, pointing each at its own port. Set each Studio project's Environment to its dedicated env in `configure-studio` step 2), (b) **separate stack per project** (cleanest isolation, but more provisioning overhead), (c) **manual Base URL swap** when switching projects (edit the env's per-locale URL in Stack settings each time, only viable if you switch infrequently). Option (a) is the recommended default. |
+| **Running two Studio projects on the same stack against different local apps**: switching to project A breaks preview for project B (and vice versa) | The env Base URL is a **stack-level** resource (set on the environment via `urls: [{ locale, url }]`, see [`provision-studio-project`](provision-studio-project.md) step 4), not a per-project setting. Multiple Studio projects on one stack **share that single Base URL**. Project A pointing at `http://localhost:5192` and project B at `http://localhost:3000` cannot coexist on the same environment. Only one can be the active iframe origin at a time. Connected-template canvas preview loads at this shared URL, so whichever project was last configured wins. | Pick ONE of: (a) **separate environment per project** (in the stack, open Settings, then Environments, and create `<project>_preview` for each project, pointing each at its own port. Set each Studio project's Environment to its dedicated env in `configure-studio` step 2), (b) **separate stack per project** (cleanest isolation, but more provisioning overhead), (c) **manual Base URL swap** when switching projects (edit the env's per-locale URL in Stack settings each time, only viable if you switch infrequently). Option (a) is the recommended default. |
 
 ## See also
 

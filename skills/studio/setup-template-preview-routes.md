@@ -10,13 +10,13 @@ Use when adding Studio-rendered template routes (Vite/React Router or Next.js Ap
 
 > **STOP before writing any file.** Ask: (1) one catch-all route for every URL, or dedicated routes such as `/blog/*`; (2) which paths to keep out; (3) whether the header and footer stay in code or become Studio Sections. Wait for the answers. Skip what `convert-project-to-studio` already settled.
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Wire template preview routes
 
 **Caller context:** when `convert-project-to-studio` has resolved minimal setup, inherit its wildcard, code-owned chrome, and locale choices. Do not repeat the route-mode question. Ask only for choices not already settled by the user or caller.
 
-**Editor rendering correction:** the simplified no-spec examples below are not sufficient evidence of working preview. A plain `<div />` does not mount `StudioComponent` or start its editor bridge. Preserve valid `specOptions` (including `fetchOptions`) and let the renderer handle its supported editor mode. If resolution throws before producing those options, use only a fallback verified against the installed SDK; do not fabricate options or mark an empty 200 response successful. The unsaved-template browser check in `verify-setup` must pass before claiming preview is complete.
+**Editor rendering note:** the simplified no-spec examples below are not sufficient evidence of working preview. A plain `<div />` does not mount `StudioComponent` or start its editor bridge. Preserve valid `specOptions` (including `fetchOptions`) and let the renderer handle its supported editor mode. If resolution throws before producing those options, use only a fallback verified against the installed SDK; do not fabricate options or mark an empty 200 response successful. The unsaved-template browser check in `verify-setup` must pass before claiming preview is complete.
 
 ## Context
 
@@ -146,7 +146,6 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
    // app/[[...slug]]/page.tsx — Server Component
    import { sdk } from "@/lib/contentstack";
    import { StudioRender } from "./StudioRender";
-
    export default async function Page({ params, searchParams }) {
      // Same fetch for visitor + in-Studio iframe — StudioComponent picks the
      // right render path internally. Forward the full request searchQuery so
@@ -226,7 +225,7 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
 
    - **`searchQuery` = raw URLSearchParams object.** When Studio's iframe loads the template URL, it appends editor-mode params. The SDK reads them off `searchQuery` to switch from "render deployed composition" to "render unsaved working spec." Omit `searchQuery` and the SDK falls through to the deployed path, which returns `null` on a not-yet-saved composition, so you get **"Template Did Not Load."**
    - **Return an empty `<div />` (not `null`) when there's no spec.** Studio's canvas host queries the mount target after route render. If there's nothing in the DOM it can't drive it, and Studio shows "SDK Not Initialized" or a blank error. An empty div gives it something to attach to. **In wildcard mode this applies to the editor iframe only**, for real visitors the no-spec branch must render the 404 page instead, or the site never 404s. Step 4a (iii) has the gated version. Use that one.
-   - **`extendQuery` per connected CT.** Present in the working `cs-website-studio` reference. Absent in older docs snippets. Restrict to `only: ["locale"]` to avoid over-fetching.
+   - **`extendQuery` per connected CT.** Recommended; older docs snippets omit it. Restrict to `only: ["locale"]` to avoid over-fetching.
 
 5. **Register the catch-all route: pick `[...slug]` vs `[[...slug]]` based on existing app pages.**
 
@@ -280,8 +279,7 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
    </Routes>
    ```
 
-   **Next.js App Router**: based on the detection above, create ONE catch-all file. Left = existing root page (use `[...slug]`). Right = greenfield (use `[[...slug]]`):
-
+   **Next.js App Router**: based on the detection above, create ONE catch-all file: `app/[...slug]/page.tsx` when an existing root page owns `/`, `app/[[...slug]]/page.tsx` on a greenfield app. Its body is the gated renderer in step 5a (iii).
 
    The catch-all itself must 404 unclaimed paths, but **only for real visitors**. See step 5a for the editor-mode gate. A bare `if (!specOptions?.spec) notFound();` 404s unsaved templates inside Studio's own iframe.
 
@@ -367,6 +365,7 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
    import { sdk } from "@/lib/contentstack";
    import { resolveComposition } from "@/lib/resolve-composition";
    import { StudioRender } from "./StudioRender";
+   import { isStudioEditorMode } from "@/lib/studio-editor-mode"; // § Editor-mode detection below
 
    export default async function Page({ params, searchParams }) {
      const { slug } = await params;
@@ -414,8 +413,11 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
    **React Router**: the catch-all and the old 404 route are BOTH `path="*"`. The first match wins, so registering the Studio catch-all silently retires the app's `<NotFound />`. Fold it into the no-spec branch instead of leaving it as a dead route:
 
    ```tsx
-   import NotFound from "./pages/NotFound";   // the app's EXISTING 404 page — reuse it
+   import { useLocation } from "react-router-dom";
+   import { StudioComponent, useCompositionData } from "@contentstack/studio-react";
    import { isCompositionNotFound } from "@contentstack/studio-client";
+   import NotFound from "./pages/NotFound";   // the app's EXISTING 404 page — reuse it
+   import { isStudioEditorMode } from "./lib/studio-editor-mode"; // § Editor-mode detection below
 
    export function LinkedRoute() {
      const { pathname, search } = useLocation();
@@ -522,7 +524,8 @@ This skill succeeds only when ALL of the following are true. If any fails, do no
 If you're shipping a custom `StudioRenderer` (rather than importing `<StudioComponent />` directly, e.g. because you're doing per-route swaps in a partial-adoption app and want to gate on editor mode explicitly), detect editor mode by checking Studio's iframe search params:
 
 ```ts
-function isStudioEditorMode(searchParams: URLSearchParams): boolean {
+// lib/studio-editor-mode.ts
+export function isStudioEditorMode(searchParams: URLSearchParams): boolean {
   return (
     searchParams.get("cs-composable-studio") === "true" ||
     searchParams.has("cs-composable-uid") ||
@@ -531,7 +534,7 @@ function isStudioEditorMode(searchParams: URLSearchParams): boolean {
 }
 ```
 
-**If you copied a `StudioRenderer` from an internal reference app** and editor mode never activates (Studio always shows "Template Did Not Load" for unsaved templates), the reference is likely gated on a different param set (`content_type_uid` / `entry_uid` / `live_preview`) than the public SDK's iframe sends. Replace the check with the one above. Always verify against `document.location.search` inside the live Studio iframe (`window.parent === window ? "standalone" : "iframe"`, then log the search params) if you're unsure which scheme applies to the SDK version you installed.
+**If you copied a `StudioRenderer` from another project** and editor mode never activates (Studio always shows "Template Did Not Load" for unsaved templates), the reference is likely gated on a different param set (`content_type_uid` / `entry_uid` / `live_preview`) than the public SDK's iframe sends. Replace the check with the one above. Always verify against `document.location.search` inside the live Studio iframe (`window.parent === window ? "standalone" : "iframe"`, then log the search params) if you're unsure which scheme applies to the SDK version you installed.
 
 ## Environment Base URL: must be reachable + include locale segment
 
@@ -570,7 +573,7 @@ Run this against the **exact composed address** Studio uses (env base URL + comp
 
 A composition `url` of just `{{entry.url}}` (no literal prefix) matches **every** path. With one template that's convenient. Add a second and the bare pattern usually wins or ties on specificity, so URLs you meant for the new template resolve to the old one, and ties break deterministically-but-arbitrarily by `composable_uid`, so it can look random across machines.
 
-Give every template at least one literal segment (`/blog/{{entry.url}}`, `/rewards`). If a genuine site-wide fallback is wanted, keep exactly one bare pattern and make every other template more specific. Diagnosis + ranking mechanics: [`troubleshoot-composition-resolution`](troubleshoot-composition-resolution.md) § Symptom matrix (rows on specificity ties and bare placeholders).
+Give every template at least one literal segment (`/blog/{{entry.url}}`, `/rewards`). If a genuine site-wide fallback is wanted, keep exactly one bare pattern and make every other template more specific. Diagnosis + ranking mechanics: [`troubleshoot-composition-resolution`](troubleshoot-composition-resolution.md) § Symptom-to-stage matrix (rows on specificity ties and bare placeholders).
 
 ## Trailing-slash 308 breaks the Studio iframe on locale-prefixed apps
 

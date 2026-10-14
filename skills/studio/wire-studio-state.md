@@ -8,13 +8,13 @@ Wire shared state and app behavior into Studio: declared state variables authors
 
 Use when a composition needs state shared across components, or an author needs to wire a button to app logic. Phrases: "share state between sections", "cart count in Studio", "use my Redux store", "Bring Your Own State", "BYOS", "author should pick which function the button calls", "action prop", "stateVariable", "getState/setState". Do NOT use for external read-only data passed once into a page (that's `wire-external-data`), for personalization branching (`wire-variant-alias`), or for plain per-prop defaults (`wire-component-default-data`).
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Wire Studio state + functions (BYOS)
 
 ## Preflight: is BYOS in the installed SDK? Check the EXPORT, not the version
 
-**Runtime-verified, and the reason a version check is not enough:** public npm's `@contentstack/studio-react` **`1.7.0` does NOT contain BYOS**: zero occurrences of `useStudioState` in its `dist`. `1.9.0` (the `latest` tag on 2026-10-05) does. The SDK monorepo also calls itself `1.7.0` but carries the feature (with `studio-registry` at 1.8.0 / `studio-react-components` at 1.9.0). **Same version number, different contents.** So never gate on a version string. Gate on whether the symbol is actually there:
+**Runtime-verified, and the reason a version check is not enough:** public npm's `@contentstack/studio-react` **`1.7.0` does NOT contain BYOS**: zero occurrences of `useStudioState` in its `dist`. `1.9.0` (the `latest` tag on 2026-10-05) does. Other builds can also report `1.7.0` and still carry the feature. **Same version number, different contents.** So never gate on a version string. Gate on whether the symbol is actually there:
 
 ```bash
 npm ls @contentstack/studio-react --depth=0        # what is installed
@@ -24,7 +24,7 @@ grep -rq "useStudioState" node_modules/@contentstack/studio-react/dist \
 
 Do **not** use `node -e "require('@contentstack/studio-react/package.json')"`: the package's `exports` map doesn't expose `./package.json`, so it dies with `ERR_PACKAGE_PATH_NOT_EXPORTED`. `npm ls` works.
 
-**Availability has two independent halves**: the SDK in your app and the Studio editor. The editor half (declared variables in the Data Picker, the `action` prop picker) is deployed on **dev / non-prod** environments and **not yet on prod** (per the Studio team), so a prod stack can't author BYOS even with a correct SDK build. Check the DC alongside the export: [`analyze-project-fit`](analyze-project-fit.md) § 2b.
+**Availability has two independent halves**: the SDK in your app and the Studio editor. The editor half (declared variables in the Data Picker, the `action` prop picker) is **not yet rolled out on every data center**, so a stack whose editor lacks it can't author BYOS even with a correct SDK build. Check the DC alongside the export: [`analyze-project-fit`](analyze-project-fit.md) § 2b.
 
 **`BYOS ABSENT` means stop.** Releases up to `1.7.0` are ABSENT; `1.9.0` ships it. This chapter applies only to a build that ships it. Either obtain such a build, or fall back to component-local state (a plain `useState` inside one registered component, no author binding, no cross-component sharing) and say so explicitly. Don't emit `useStudioState` against a package that can't import it.
 
@@ -67,7 +67,7 @@ Registered components give Studio your markup. **BYOS gives it your behavior.** 
    }
    ```
 
-   **Precedence (verified in `studio-registry/src/state-store`):** `component` **beats** `init` for the same key, deterministically and **regardless of module evaluation order**. Same-tier re-declaration keeps the **first**. A runtime `set` always beats a declared default. So a component can own its key without coordinating with the init file.
+   **Precedence (observed runtime behavior):** `component` **beats** `init` for the same key, deterministically and **regardless of module evaluation order**. Same-tier re-declaration keeps the **first**. A runtime `set` always beats a declared default. So a component can own its key without coordinating with the init file.
 
    Types: `string · number · boolean · choice · array · object`. `choice` **requires** `options`.
 

@@ -14,7 +14,7 @@ The SDK defines **6 binding `type` values** that Studio's Data Picker emits. Eac
 
 | `type` | Available in | Configured in Studio via | Shape |
 |---|---|---|---|
-| `static_value` | Connected + Freeform + Sections (always) | Right panel: in Settings, type the literal into the prop input | `{ type: "static_value", value: "<key>" }`, where `<key>` looks up `entry.static_value.<subtype>[]`. See § How `static_value` binding resolves |
+| `static_value` | Connected + Freeform + Sections (always) | Right panel: in Settings, type the literal into the prop input | `{ type: "static_value", value: "<key>" }`, where `<key>` looks up `entry.static_value.<subtype>[]`. See [`author-composition-static-values`](author-composition-static-values.md) |
 | `template` | Connected templates + Sections placed on Connected templates | Right panel: in the Data Picker, pick a field on the connected entry | `{ type: "template", value: { path: {…} } }` |
 | `repeater` | Anywhere inside a Repeater | Right panel: Data Picker under the Repeater's scope, auto-picked | `{ type: "repeater", value: { repeaterUID: "<uid>", path: {…} } }` |
 | `contentstack` | Requires **Freeform enabled** on the project; then available on freeform templates AND Connected Templates. Data tab, under **Pinned Entries** | In the Data tab, pin an entry, then the Data Picker binds to its fields | `{ type: "contentstack", value: { uid, _content_type_uid, path: {…} } }` |
@@ -132,7 +132,7 @@ These are the built-in `type` strings the SDK ships with. Anything else must be 
 
 Palette labels are author-facing. `type` strings are what appear in the `ui` tree. **Non-obvious pairings:** palette Columns becomes `hstack`, palette Rows becomes `vstack`. Inspect a UI-authored composition (decode `ui`, see [`troubleshoot-canvas`](troubleshoot-canvas.md) § Diagnostic tooling) to confirm the exact `type` string before hand-authoring a node of that kind.
 
-None of these support inline click-to-edit on the canvas. All value edits go through the right panel (both built-ins and BYOC, see [`build-section`](build-section.md) § Basic field components vs custom registered components).
+None of these support inline click-to-edit on the canvas. All value edits go through the right panel (both built-ins and BYOC, see [`build-section-component-choice`](build-section-component-choice.md) § Basic field components vs custom registered components).
 
 ## Binding a Repeater: the shapes that actually work
 

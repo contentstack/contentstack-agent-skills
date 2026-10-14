@@ -8,7 +8,7 @@ Keep the host site's third-party scripts (cookie banners, chat widgets, GTM/anal
 
 Use when the user reports a cookie banner / chat bubble inside the canvas, analytics counting author sessions, pixel conversions from editing, or asks to "hide X in Studio" / "gate scripts" / "detect canvas mode". Also run proactively at the end of a Studio install on any site that has GTM/OneTrust/chat scripts. Do NOT use for third-party scripts that crash the canvas with runtime-error overlays. That's `troubleshoot-canvas` § third-party overlays.
 
-> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Gate third-party scripts out of the Studio canvas
 
@@ -29,7 +29,7 @@ Classify each hit with the recipe's rule: analytics / flags / banners / chat / p
 |---|---|
 | JS init in app code (banner, chat, flags) | `if (!isStudioCanvas()) { … }` |
 | Analytics / pixels in app code | `if (!isStudioEditorMode()) { … }` (preview sessions aren't visitors either) |
-| GTM snippet in `<head>` (runs before SDK) | Inline `dataLayer.push({ cs_studio_canvas: new URLSearchParams(location.search).has("cs-composable-studio") })` BEFORE the GTM script, then tell the user to add the per-tag trigger condition `{{cs_studio_canvas}} equals false` in the GTM console. The SDK cannot do the GTM-console half |
+| GTM snippet in `<head>` (runs before SDK) | Inline `window.dataLayer = window.dataLayer || []; window.dataLayer.push({ cs_studio_canvas: new URLSearchParams(location.search).has("cs-composable-studio") })` BEFORE the GTM script, then tell the user to add the per-tag trigger condition `{{cs_studio_canvas}} equals false` in the GTM console. The SDK cannot do the GTM-console half |
 | Declaratively injected widgets you can't reach in code | CSS: `html.cs-studio-canvas <widget-selector> { display: none !important; }` |
 | Server-emitted script tags (SSR) | `isStudioCanvas(<request search params>)` (no-arg form is always `false` on the server) |
 

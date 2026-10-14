@@ -8,7 +8,7 @@ Create, read, list, update, or delete Studio compositions through the **managed 
 
 Use when the project talks to the Composable Studio API service (`/v1/projects/:projectUid/compositions`) and you want guardrails: server-side Studio validation, automatic `ui` compression, `composable_uid` backfill, a referenced-guard on delete, and list/references endpoints. Phrases: "compositions REST API", "Studio API service", "create composition endpoint", "list compositions", "composition references API", "managed composition API". Do NOT use for: raw-CMA / seed-pipeline / migration authoring where you hold a management token and encode the `ui` yourself. That's `author-composition-via-api`. Do NOT use for interactive UI authoring. That's `build-section` / `build-connected-template`. The `ui`-tree shapes themselves are NOT redefined here. They live in `author-composition-via-api`.
 
-> **Auth preflight: settle the credential before the first API call.** This skill used to carry an exception for the compositions service. **That exception is gone**: since 2026-08-25 the service forwards OAuth Bearer to the CMA, and since 2026-08-27 registered components does too. OAuth-first applies here like everywhere else, so **do not ask the user for a session `authtoken`**. Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** The service accepts OAuth Bearer. Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Use the Compositions API (managed Studio service)
 
@@ -21,7 +21,7 @@ The **Composable Studio API service** is a REST wrapper over the CMS. Instead of
 - **`composable_uid` is backfilled** with the entry uid when you omit it, and uniqueness is enforced content-type-wide.
 - **Delete is guarded**: it refuses to orphan a referenced composition unless you force it.
 
-This is the counterpart to `author-composition-via-api`, which drives the **raw CMA** (management token, self-encoded `ui`). Same result (a composition entry) at a higher level. Pick this skill when you want the guardrails and are acting as a signed-in user. Pick `author-composition-via-api` for management-token automation and full low-level control.
+This is the counterpart to `author-composition-via-api`, which drives the **raw CMA** (CMA credential per `authenticate-cma`, self-encoded `ui`). Same result (a composition entry) at a higher level. Pick this skill when you want the guardrails and are acting as a signed-in user. Pick `author-composition-via-api` for management-token automation and full low-level control.
 
 > **Preview: not yet GA.** The service is rolling out. **Paths and response shapes may change**, and it may not be enabled on your region/tenant. If a call 404s at the host itself (not a composition-not-found body), the service isn't deployed for you. Fall back to `author-composition-via-api`. A stack-scoped **management-token** mode is not available yet. Management-token automation must use the raw-CMA path.
 
@@ -71,9 +71,14 @@ Assemble the layout as a plain node object. **Do not compress it**. That's the s
 `POST` the uncompressed payload. Placement comes from the body on the generic route, or from the flavored routes (`/templates` maps to `page`, `/sections` to `section`).
 
 ```bash
-curl -X POST 'https://<host>/v1/projects/<projectUid>/compositions' \
+# requires:
+#   STUDIO_API  Studio API base URL for your region, e.g. https://<studio-api-host>
+#   PROJECT     Studio project uid
+#   ORG_UID     organization uid that owns the project
+#   CS_AUTH     one auth header resolved per authenticate-cma, e.g. "authorization: Bearer $CS_OAUTH_ACCESS_TOKEN"
+curl -X POST "$STUDIO_API/v1/projects/$PROJECT/compositions" \
   -H "$CS_AUTH" \
-  -H 'organization_uid: <org-uid>' \
+  -H "organization_uid: $ORG_UID" \
   -H 'Content-Type: application/json' \
   -d '{
         "title": "Blog Post",
@@ -100,13 +105,13 @@ Blocking problems return **`422` `composition_invalid`** with every failing path
 ### Step 5: Update and delete
 
 - **Update** is a **partial merge**: `PUT …/{uid}` with only the fields you're changing. If you send `ui`, send it uncompressed. The service re-validates and re-compresses. `composable_uid` is **immutable** (`422` if you try to change it).
-- **Delete**: `DELETE …/{uid}`. If other compositions reference it, you get **`409` `composition_referenced`**. Pass `?force=true` to delete anyway. Send the DELETE **without** a JSON `Content-Type` on an empty body (Fastify rejects that combination with a `400`).
+- **Delete**: `DELETE …/{uid}`. If other compositions reference it, you get **`409` `composition_referenced`**. `?force=true` deletes anyway and leaves those references dangling, so before using it: `GET …/{uid}/references`, show the user the referencing compositions, and get explicit approval for the forced delete. Send the DELETE **without** a JSON `Content-Type` on an empty body (Fastify rejects that combination with a `400`).
 
 ### Step 6: Attach a thumbnail when `place_composition_as: "section"`
 
 A section created through this API has no `ui_preview`, so it lands as a blank tile in the Sections accordion and the Section Slot picker. Studio only captures one when an author opens the section and clicks **Save**. Browsing or reloading never repairs it.
 
-Upload an image asset and set its uid as `ui_preview` on the entry. Routes (including generating a schematic from the entry's own `ui`), trade-offs and pitfalls: [`author-composition-via-api` § Section thumbnails](author-composition-thumbnails.md#section-thumbnails-ui-preview).
+Upload an image asset and set its uid as `ui_preview` on the entry. Routes (including generating a schematic from the entry's own `ui`), trade-offs and pitfalls: [`author-composition-thumbnails`](author-composition-thumbnails.md).
 
 **This step is mandatory, not optional.** A create is not complete until `ui_preview` is set. If the thumbnail call fails, report it and retry, do not silently continue, and do not describe the section as created. "Cosmetic" means it cannot corrupt data. It does not mean skippable.
 
@@ -126,7 +131,7 @@ A composition created through this API is not finished when the write returns `2
 - The `ui` you sent as an object comes back as a `zlib:`-prefixed string.
 - A structurally invalid `ui` returns `422` with field-anchored `errors`, not a partial write.
 - `GET …/{uid}?decompression=true` round-trips your tree.
-- Deleting a referenced composition is blocked (`409`) unless `?force=true`.
+- Deleting a referenced composition is blocked (`409`) unless `?force=true`, which is only sent after the user has seen the references and approved.
 - For `place_composition_as: "section"`, `ui_preview` is set, **verified by re-reading the entry**, not assumed from a successful POST. A blank tile means the create is unfinished (Step 6).
 
 ## Common pitfalls
@@ -143,7 +148,7 @@ A composition created through this API is not finished when the write returns `2
 
 ## See also
 
-- `author-composition-via-api`: the raw-CMA path and the **canonical `ui`-tree / binding shapes** (management token, self-encoded).
+- `author-composition-via-api`: the raw-CMA path and the **canonical `ui`-tree / binding shapes** (CMA credential per `authenticate-cma`, self-encoded).
 - `understand-authoring-headlessly`: the `ui` zlib tree + `data_sources` + the six binding types, conceptually.
 - `embed-composition`: render one managed region inside a code-owned page once the composition exists.
 - `provision-studio-project`: create the project + compositions content type this API targets.

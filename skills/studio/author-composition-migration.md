@@ -10,7 +10,7 @@ Part of the API-authoring set. Start at [`author-composition-via-api`](author-co
 
 ## Migrating compositions between stacks: uid, index, and schema remaps
 
-Copying compositions from a source stack (a dev/staging stack, another project) to a destination is NOT a byte copy. The entry JSON carries three classes of stack-bound values that MUST be rewritten, or the composition writes cleanly, resolves in the SSR fetch, and still renders blank or errors in the canvas. All three are verified live (from a non-prod data center to NA prod).
+Copying compositions from a source stack (a dev/staging stack, another project) to a destination is NOT a byte copy. The entry JSON carries three classes of stack-bound values that MUST be rewritten, or the composition writes cleanly, resolves in the SSR fetch, and still renders blank or errors in the canvas. All three apply to any cross-stack copy, including across data centers.
 
 ### 1. Template references to sections must be REMAPPED to each destination entry's NEW uid
 
@@ -22,7 +22,7 @@ The fix (do both, in order):
 1. Create each section on the destination. Capture its new entry uid.
 2. In the template: rewrite every `ui` `section-composition` node's `metadata.compositionUID` from the source uid to the destination uid, and set `linked_sections` to the destination uids (`{uid, _content_type_uid}`, the compositions CT). Publish.
 
-`linked_sections` is a **reference field storing entry uids**: those are always stack-specific and always need remapping (see § Authoring a Template: populate `linked_sections`). `metadata.compositionUID` inside the `ui` is what the client resolves by, so it must match the new uid too.
+`linked_sections` is a **reference field storing entry uids**: those are always stack-specific and always need remapping (see [`author-composition-templates`](author-composition-templates.md) § Authoring a Template: populate `linked_sections`). `metadata.compositionUID` inside the `ui` is what the client resolves by, so it must match the new uid too.
 
 ### 2. Block-index paths must be remapped when the destination CT's field ORDER differs
 
@@ -38,4 +38,4 @@ File/image fields reference asset uids that don't exist on the destination. Eith
 
 ### Pre-flight for a cross-stack migration
 
-Verify BOTH paths, exactly as § Authoring a Template prescribes: SSR resolves (fetch returns the sections) **and** the canvas opens without `not registered` errors. The uid remap (#1) is the one that passes SSR and fails the canvas, so an SSR-only check is not enough.
+Verify BOTH paths, exactly as [`author-composition-templates`](author-composition-templates.md) § Authoring a Template prescribes: SSR resolves (fetch returns the sections) **and** the canvas opens without `not registered` errors. The uid remap (#1) is the one that passes SSR and fails the canvas, so an SSR-only check is not enough.

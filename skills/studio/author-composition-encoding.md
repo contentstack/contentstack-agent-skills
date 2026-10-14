@@ -34,7 +34,7 @@ curl -X POST "<cma-host>/v3/content_types/<uid>/entries" \
 
 The count-assert catches a malformed tree **before** compression: once the tree is zlib+base64'd, the damage is opaque.
 
-**Non-prod hosts + Python.** Against a non-prod data center, Python's `urllib`/`requests` fail SSL verification (`SSLCertVerificationError: unable to get local issuer certificate`), the non-prod chain isn't in the default Python CA store, but `curl` reads the system keychain and succeeds. Rule: use `curl` for the CMA POST/PUT itself. Use Python only to build/assert the payload. If Python HTTP is unavoidable, point it at the trusted CA bundle for that host (`ssl.create_default_context(cafile=...)` or `REQUESTS_CA_BUNDLE`). Never disable certificate or hostname verification: if the chain can't be verified, stop and report it.
+**Custom / private data center + Python.** Against a custom or private data center (hosts supplied by Contentstack; set every host explicitly), Python's `urllib`/`requests` can fail SSL verification (`SSLCertVerificationError: unable to get local issuer certificate`) when that host's chain isn't in the default Python CA store, but `curl` reads the system keychain and succeeds. Rule: use `curl` for the CMA POST/PUT itself. Use Python only to build/assert the payload. If Python HTTP is unavoidable, point it at the trusted CA bundle for that host (`ssl.create_default_context(cafile=...)` or `REQUESTS_CA_BUNDLE`). Never disable certificate or hostname verification: if the chain can't be verified, stop and report it.
 
 ## Preflight: validate the `ui` tree before publishing
 

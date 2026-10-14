@@ -8,7 +8,7 @@ Add the canvas route that mounts `<StudioCanvas />`, then print the Canvas URL t
 
 Use right after `install-studio` to wire the section-authoring route. Also invoked by [`setup-template-preview-routes`](setup-template-preview-routes.md) step 2 when it finds no canvas route: a catch-all matches `/canvas` like any other URL, so with nothing owning that path Studio's section iframe renders a composition lookup (blank frame, or the site's 404) instead of `<StudioCanvas />`. Phrases: "set up canvas route", "MISSING_CANVAS_URL", "where does StudioCanvas mount", "canvas iframe is blank in Studio". Do NOT use to add template/preview routes (use `setup-template-preview-routes`) or to fix a misbehaving canvas after setup (use `troubleshoot-canvas`).
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them), and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them), and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Set up the section preview route
 
@@ -134,19 +134,19 @@ Only once 1 to 3 hold, continue.
    ```ts
    server: {
      // ...existing config...
-     allowedHosts: true,                     // Vite refuses unknown hosts by default; Studio iframe needs this
+     // Only list explicit non-localhost hostnames (e.g. a tunnel); never `true`.
+     // allowedHosts: ['my-tunnel.example.dev'],
      headers: {
-       'Access-Control-Allow-Origin': '*',
-       'Content-Security-Policy': "frame-ancestors *;",
+       // Let only Studio (*.contentstack.com) frame the app. No wildcard origins.
+       'Content-Security-Policy': "frame-ancestors 'self' https://*.contentstack.com;",
      },
    },
    preview: {
      // RECOMMENDED canvas target — `<pm> build && <pm> exec vite preview` serves a deduped prod bundle
      // (no runtime optimizer to split React across passes)
-     allowedHosts: true,
+     // Local canvas target only: let Studio frame it, nothing else.
      headers: {
-       'Access-Control-Allow-Origin': '*',
-       'Content-Security-Policy': "frame-ancestors *;",
+       'Content-Security-Policy': "frame-ancestors 'self' https://*.contentstack.com;",
      },
    },
    ```
@@ -168,9 +168,9 @@ Only once 1 to 3 hold, continue.
    };
    ```
 
-   The Vite blocks above use `frame-ancestors *` because they only serve local dev / preview builds. Don't ship a global `frame-ancestors *` or `Access-Control-Allow-Origin: *` to production.
+   The Vite blocks above are for local use only and allow framing by Studio's origin, nothing wider. Don't add `frame-ancestors *` or `Access-Control-Allow-Origin: *`, and don't ship a global framing policy to production: scope it to the canvas route.
 
-   **Why both:** `allowedHosts: true` (Vite) prevents the "host not allowed" 403 from the dev server. The `frame-ancestors *` CSP header tells the browser the page may be embedded in any frame. Without either, Studio's iframe stays blank with no console error, a particularly hard failure to diagnose.
+   **Why it matters:** the `frame-ancestors` CSP header tells the browser Studio's origin may embed the page; without it, Studio's iframe stays blank with no console error, a particularly hard failure to diagnose. If you reach the server through a non-localhost hostname (e.g. a tunnel) and Vite returns "host not allowed" (403), list that hostname in `allowedHosts`; never set it to `true`.
 
 6. **Sanity check.** Tell the user to:
    1. Open Studio at the project's Compositions list
@@ -181,7 +181,7 @@ Only once 1 to 3 hold, continue.
 
 1. `canvasPath` (defaults to `/canvas`): the path to use. Confirm with user before creating the file in case they have a routing convention.
 2. `studioProjectId` (required): to set Canvas URL via API or to print the right manual link. **Resolve it by listing the org's projects ([`configure-studio` § Select the Studio project](configure-studio.md#select-the-studio-project)), not by guessing from a name.** Setting Canvas URL on the wrong project leaves the real one unconfigured and the canvas blank.
-3. `studioHost` (defaults to `https://app.contentstack.com/#!/studio`): to construct the right URL. Adjust for non-US regions. On a non-prod DC it's `https://<env>-app.<non-prod-domain>/#!/studio` (see [`analyze-project-fit`](analyze-project-fit.md) § 2b).
+3. `studioHost` (defaults to `https://app.contentstack.com/#!/studio`): to construct the right URL. Adjust for non-US regions. On a custom / private data center (hosts supplied by Contentstack), set it explicitly to that data center's app host (see [`analyze-project-fit`](analyze-project-fit.md) § 2b).
 
 ## Acceptance
 
@@ -190,7 +190,7 @@ Only once 1 to 3 hold, continue.
 - [ ] The file mounts `<StudioCanvas />` and the token `<style>` (nothing else, no required props)
 - [ ] If a dev server was running, the route returns 200
 - [ ] Canvas URL is set in Studio Project Settings, under Configuration, to match the path
-- [ ] For local dev: canvas-app serves over trusted HTTPS (via `setup-local-https-canvas`), AND `allowedHosts: true` + `frame-ancestors *` header are set in the framework config
+- [ ] For local dev: canvas-app serves over trusted HTTPS (via `setup-local-https-canvas`), AND the framework config sends `frame-ancestors 'self' https://*.contentstack.com` (no wildcard ACAO; `allowedHosts` only lists explicit non-localhost hostnames, never `true`)
 - [ ] Opening a section in Studio loads the canvas iframe without errors (no blank frame, no "host not allowed", no mixed-content block)
 
 If the Studio API call wasn't possible (no auth), the manual step is printed and the skill explicitly tells the user to complete it before claiming success.

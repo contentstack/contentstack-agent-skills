@@ -94,9 +94,9 @@ The Repeater consumes its iteration source through its `items` prop:
 }
 ```
 
-`props.children` is **required**: it wires the `R1-slot` slot to the Repeater's built-in `children` prop. Without it the Repeater iterates but renders nothing (§ Node anatomy point 4). The `slots` key MUST match `props.children.slot`.
+`props.children` is **required**: it wires the `R1-slot` slot to the Repeater's built-in `children` prop. Without it the Repeater iterates but renders nothing ([`author-composition-bindings`](author-composition-bindings.md) § Node anatomy, point 4). The `slots` key MUST match `props.children.slot`.
 
-For a section whose `selectedField` is the reference itself (`build-section`'s scope-aware sections / P22-P24), the path collapses to scope-root `{ "path": {} }`, the section's `dataSources.template` is already the resolved array.
+For a section whose `selectedField` is the reference itself (`build-section`'s scope-aware sections), the path collapses to scope-root `{ "path": {} }`, the section's `dataSources.template` is already the resolved array.
 
 ### 3. Repeater node's `metadata.mode: "preview"`
 
@@ -147,11 +147,11 @@ Without `conditionBinding` the block silently renders nothing. Design mode hides
 
 For modular-block iteration: `type: "modular_block"`, `value: "<block-uid>"`, `conditionBinding` and `dataBinding` on path `{ "<block-uid>": {} }`.
 
-Both container nodes carry `props.children` pointing at their own slot (§ Node anatomy point 4). The Condition Block also exposes a `children` slot prop. Skip its pointer and the card subtree never renders even though the Repeater iterates correctly.
+Both container nodes carry `props.children` pointing at their own slot ([`author-composition-bindings`](author-composition-bindings.md) § Node anatomy, point 4). The Condition Block also exposes a `children` slot prop. Skip its pointer and the card subtree never renders even though the Repeater iterates correctly.
 
 ### 5. Card prop bindings: type `repeater`, with `repeaterUID`
 
-**The "all cards identical" trap:** Do NOT use `template` bindings indexed at `.0.<field>` (e.g. `products.0.title`). A fixed `.0.` index does NOT get substituted by the iteration: every iteration renders item 0. This is what bit P19.
+**The "all cards identical" trap:** Do NOT use `template` bindings indexed at `.0.<field>` (e.g. `products.0.title`). A fixed `.0.` index does NOT get substituted by the iteration: every iteration renders item 0.
 
 Use repeater-scope bindings: `type: "repeater"`, with `repeaterUID` naming the parent Repeater node, and a path relative to the iteration item (NO index). The card node lives inside the Condition Block's slot:
 
@@ -199,7 +199,7 @@ Composition entry
 │                    resolvedReferences:{ "template":["products"] } }]
 └── ui (zlib-inflated tree)
     └── Section "ProductGrid"
-        └── Box  (grid layout — register-component § Layout contract)
+        └── Box  (grid layout — register-component-render-contracts § Layout contract)
             └── { type:"repeater", uid:"R1",
                   metadata:{ mode:"preview" },
                   props:{ items:{ binding:{ type:"template",
@@ -249,7 +249,7 @@ Composition entry
 ├── data_sources: [/* no resolvedReferences entry needed */]
 └── ui (zlib-inflated tree)
     └── Section "FeatureList"
-        └── Box  (flex / grid layout — register-component § Layout contract)
+        └── Box  (flex / grid layout — register-component-render-contracts § Layout contract)
             └── { type:"repeater", uid:"R2",
                   metadata:{ mode:"preview" },
                   props:{ items:{ binding:{ type:"template",
@@ -279,8 +279,8 @@ Look at the field's `data_type` on the source CT:
 | `data_type: "reference"`, `field_metadata.ref_multiple: true` (multi-reference) | Multi-reference recipe, needs `resolvedReferences` + Condition Block |
 | `data_type: "reference"`, `field_metadata.ref_multiple: false` (single reference) | Multi-reference recipe minus the Repeater (a single Section drop, not iteration). The reference still needs `resolvedReferences`. |
 | `data_type: "group"`, `multiple: true` (group-multiple) | Group-multiple recipe, no `resolvedReferences`, no Condition Block |
-| `data_type: "blocks"` (Modular Block) | Multi-reference recipe shape, but Condition Block discriminator is `metadata.condition.type: "modular_block"`, value is the block UID. The MB field itself is inline: it needs **no** `resolvedReferences`. A reference **inside** a block does, and its path must carry the block uid: `blocks.<block_uid>.<ref_field>`. See § Modular Block to reference: the block-uid segment |
+| `data_type: "blocks"` (Modular Block) | Multi-reference recipe shape, but Condition Block discriminator is `metadata.condition.type: "modular_block"`, value is the block UID. The MB field itself is inline: it needs **no** `resolvedReferences`. A reference **inside** a block does, and its path must carry the block uid: `blocks.<block_uid>.<ref_field>`. See [`author-composition-nested-repeaters`](author-composition-nested-repeaters.md) § Modular Block to reference: the block-uid segment |
 | `data_type: "file"`, `multiple: true` (multi-file) | Multi-reference recipe minus `resolvedReferences` (files don't need resolution). Minus Condition Block (one shape). Like group-multiple. Path uses `.0.url` etc. inside each iteration. |
 | `data_type: "<any scalar list>"` (array of strings, numbers, etc.) | Group-multiple recipe shape. Each iteration is one scalar. The card might be a single component reading the scalar via repeater scope |
 
-The OPEN doc's P19 captures exactly the group-multiple vs reference split: same iteration shape, different prerequisites (`resolvedReferences` + Condition Block) depending on the source.
+This is exactly the group-multiple vs reference split: same iteration shape, different prerequisites (`resolvedReferences` + Condition Block) depending on the source.

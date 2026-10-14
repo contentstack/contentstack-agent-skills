@@ -8,7 +8,7 @@ Adapt an existing production wrapper into a Studio-compatible List Section by de
 
 Use when the production wrapper's leaf takes an object shape that can't easily be reduced to scalars, when template authors need to swap different leaf Sections per template instance (Section-Slot semantics), or when the list iterates a Modular Block (polymorphic: Condition Blocks needed). Phrases: my wrapper needs template-instance swaps, per-CT rendering inside a list, migrate a carousel to Studio, wrap a legacy band in a List Section. Do NOT use if the production component already accepts an `array` prop and no per-instance swap or polymorphism is needed, use `build-repeating-section` § When to skip the Repeater entirely: the array-prop alternative instead (simpler, native, no adapter).
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Adapt a production collection-shaped component into a Studio List Section
 
@@ -107,17 +107,17 @@ The leaf is the interesting reuse point: because leaf props are scalars, the Stu
    | Call-site logic | Where it goes in Studio |
    |---|---|
    | `props.copy = entry.short_description ?? entry.description` | Inside the leaf adapter: accept `copy` as prop, adapter re-routes to the right field. Or: expose both as separate props and let a preset choose. |
-   | `subtitle = "Related to " + entry.title` | Static text on the band, OR bind a `string` prop to the page entry (S5 dep) once page-scope binding lands. Until then: static text with a note in the migration doc. |
+   | `subtitle = "Related to " + entry.title` | Static text on the band, OR bind a `string` prop to the page entry once page-scope binding is available. Until then: static text with a note in the migration doc. |
    | `image = entry.tile_data?.thumb ?? entry.image` | Per-branch Condition Block bindings: each branch points at the right path for that CT. |
    | Boolean flags set by the call site (`isInteractive={false}`, `isLogoBgWhite={false}`) | Registered as scalar props with the call-site literal as `defaultValue`. Missing this is the #1 cause of "looks similar but off." |
 
-7. **Carry every literal prop from every call site into `defaultValue` or a preset.** Grep the codebase for every JSX use of the production wrapper. Each literal (`variant="compact"`, `columns={3}`, `showRating={false}`) becomes either a `defaultValue` on the adapter's corresponding prop, or a named preset. Skipping this is what makes the composed page "look 80% right". See the `isInteractive` bug in the meta-observation.
+7. **Carry every literal prop from every call site into `defaultValue` or a preset.** Grep the codebase for every JSX use of the production wrapper. Each literal (`variant="compact"`, `columns={3}`, `showRating={false}`) becomes either a `defaultValue` on the adapter's corresponding prop, or a named preset. Skipping this is what makes the composed page "look 80% right". A missed `isInteractive={false}` literal is a typical example.
 
 8. **Match the CSS mechanism the production band uses.** Carousels are the classic trap:
 
    | Production mechanism | Studio adaptation |
    |---|---|
-   | Embla / Swiper (JS library that measures children) | Repeater wraps each iteration in `display:contents`, so JS libraries see zero-width items and break. Use a **CSS-only** carousel (scroll-snap + `overflow-x: auto` + item `flex-basis` with peek), OR wrap each iteration in a real DOM element (product gap, file as Part 1 #10). |
+   | Embla / Swiper (JS library that measures children) | Repeater wraps each iteration in `display:contents`, so JS libraries see zero-width items and break. Use a **CSS-only** carousel (scroll-snap + `overflow-x: auto` + item `flex-basis` with peek), OR wrap each iteration in a real DOM element (a product gap; report it to Contentstack). |
    | CSS Grid | Grid tracks on the band's slot container, leaf just fills its cell. |
    | Flexbox with `flex-wrap` | Same layout on the slot container. Leaf renders `width: 100%`. |
 
@@ -135,7 +135,7 @@ The leaf is the interesting reuse point: because leaf props are scalars, the Stu
 ## Acceptance
 
 - [ ] List Section wrapper registered with a `slot` prop for the iteration region + scalar props for header/CTA.
-- [ ] **Every generated component carries its CSLP tags**: `studioAttributes` spread on the root element **and** `wrap: false` in its register entry, and each bindable prop's `$`-twin spread on the element rendering it. Confirmed in the DOM: the root and each bound text/image element show `data-cslp`. Without it the component renders but Visual Editor and Live Preview cannot edit it. See [`register-component` § The `studioAttributes` contract](register-component.md).
+- [ ] **Every generated component carries its CSLP tags**: `studioAttributes` spread on the root element **and** `wrap: false` in its register entry, and each bindable prop's `$`-twin spread on the element rendering it. Confirmed in the DOM: the root and each bound text/image element show `data-cslp`. Without it the component renders but Visual Editor and Live Preview cannot edit it. See [`register-component-cslp` § The `studioAttributes` contract](register-component-cslp.md).
 - [ ] Leaf adapter registered with scalar props only. Imports the production leaf verbatim (no reimplementation).
 - [ ] Every literal prop from every production call site is preserved as a `defaultValue` or preset.
 - [ ] Wrapper CSS transcribed line-by-line from production. Both files carry a `KEEP-IN-SYNC` comment naming the counterpart.
@@ -157,7 +157,7 @@ The leaf is the interesting reuse point: because leaf props are scalars, the Stu
 
 - `build-repeating-section`: the greenfield flavor of List Section authoring (no production wrapper to preserve).
 - `understand-sections`: Simple Section vs List Section distinction. How they compose.
-- `register-component` § Array & object props do not bind: why arrays/objects don't bind. When to reach for this skill instead.
+- [`register-component-prop-contracts`](register-component-prop-contracts.md) § Array & object props: binding rules: why arrays/objects don't bind. When to reach for this skill instead.
 - `use-repeater`: how to bind the Repeater to the multi-value field.
 - `use-condition-block`: required inside the Repeater when the field is heterogeneous.
 - `use-section-slot`: how to carve the slot the Repeater drops into.

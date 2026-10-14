@@ -48,7 +48,7 @@ Sibling to the multi-reference recipe in [`author-composition-repeater-recipes`]
   ] } }
 ```
 
-Wrapper section entry also declares `linked_schemas: [{ content_type_uid: "<parent-CT>", selected_field: "<ref-or-mb-field>" }]` (group-multiple field, see P23).
+Wrapper section entry also declares `linked_schemas: [{ content_type_uid: "<parent-CT>", selected_field: "<ref-or-mb-field>" }]` (group-multiple field, see [`author-composition-sections`](author-composition-sections.md) § The `linked_schemas`-as-reference trap).
 
 ## Fill section: Simple Section per branch
 
@@ -87,7 +87,7 @@ The template's `section-composition` node embedding the wrapper holds each fill 
 }
 ```
 
-Also populate the template's `linked_sections` (P27) with references to BOTH the wrapper section entry AND every distinct fill section entry.
+Also populate the template's `linked_sections` with references to BOTH the wrapper section entry AND every distinct fill section entry.
 
 ## Assembled: reference-iterating wrapper filled by an author fill
 
@@ -110,4 +110,4 @@ Template (blog_post)
                     slots.SS1: [section-composition compositionUID:"<author-fill entry uid>"]
 ```
 
-MB variant (Case 9): swap the CB condition to the modular-block form ([`author-composition-repeater-recipes`](author-composition-repeater-recipes.md) step 4). Wrapper's `selected_field` names the MB field. Fill section's `selected_field` names the same MB path plus the block key. Leaf bindings inside the fill section still use `type: "template"`.
+MB variant: swap the CB condition to the modular-block form ([`author-composition-repeater-recipes`](author-composition-repeater-recipes.md) step 4). Wrapper's `selected_field` names the MB field. Fill section's `selected_field` names the same MB path plus the block key. Leaf bindings inside the fill section still use `type: "template"`.

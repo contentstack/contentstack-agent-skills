@@ -8,7 +8,7 @@ Given an EXISTING Contentstack Content Type (already provisioned, entries popula
 
 Use when adopting Studio on top of a stack that already has real content (Profile D, the "existing CT" starting state). Phrases: "we have blog_post entries already, how do I map that to Sections", "I have a stack + populated content, what Sections should I build", "propose Sections from my existing CT schema". Complements [`discover-sections`](discover-sections.md), which scans route files. This skill scans a CT schema instead. Run once per CT you're adding Studio on top of. Do NOT use for greenfield installs (no existing CT), or when the CT is being redesigned (design-first flow via [`decompose-design`](decompose-design.md) instead).
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Discover Sections from an existing Content Type
 
@@ -24,7 +24,7 @@ This skill is **discovery, not authoring**. It doesn't write any composition. It
 
 ## Task
 
-1. **Fetch the target CT schema.** Given `ctUid` + a stack management token, GET `/v3/content_types/<ctUid>`. Extract `schema` (the field tree) and `options` (`is_page`, `url_pattern` if set).
+1. **Fetch the target CT schema.** Given `ctUid` + a CMA credential resolved per [`authenticate-cma`](authenticate-cma.md) (OAuth first; a management token only if the user prefers one), GET `/v3/content_types/<ctUid>`. Extract `schema` (the field tree) and `options` (`is_page`, `url_pattern` if set).
 
 2. **Walk the schema tree and enumerate scopes.** Every scope is a Section candidate. Categories:
    - **Root scope**: the top-level CT. Fields at the root that aren't nested in Group / Reference / Modular Block. Every CT has this.
@@ -145,7 +145,7 @@ This skill is **discovery, not authoring**. It doesn't write any composition. It
 ## Inputs needed from the user
 
 1. **Content Type UID**: the CT to discover Sections against.
-2. **Stack API key + management token**: for the CMA read.
+2. **Stack API key + a CMA credential resolved per [`authenticate-cma`](authenticate-cma.md) (OAuth first); a management token only if the user prefers one**: for the CMA read.
 3. **Optional: sample size for populated-check**: default 10 entries. Increase for larger stacks.
 4. **Optional: output path**: default `docs/_discovery/<ct_uid>-sections.md`.
 

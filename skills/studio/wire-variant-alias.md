@@ -8,7 +8,7 @@ Replace a route-level user-state branch with a Contentstack Personalize-driven r
 
 Use during a hand-coded migration when `migrate-page-to-studio` surfaces a user-driven JSX branch (logged-in tier, persona, A/B, geolocation). Personalize handles audiences + variants. Studio renders whichever alias resolves. Do NOT use for content-driven branching (use Condition Block). Do NOT use for layout-shift needing different sections. That's a separate-template decision.
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Wire a route-level branch to variant aliases
 
@@ -92,17 +92,20 @@ This skill is for **user-driven branching only**. The variant is chosen based on
    -   );
    - }
    + import { cookies } from "next/headers";
+   + import { notFound } from "next/navigation";
    + import { sdk } from "@/lib/contentstack";
+   + import { resolveComposition } from "@/lib/resolve-composition";
    + import { StudioComponent } from "@contentstack/studio-react";
    +
    + export default async function ProductPage({ params }) {
+   +   const { sku } = await params;   // a Promise on Next 15+
    +   const variant = (await cookies()).get("variant-alias")?.value;
    +   // fetchCompositionData THROWS on a miss — wrap it, or an unknown sku 500s
    +   // instead of 404ing. resolveComposition: configure-csr-vs-ssr.
    +   const { specOptions, notFound: miss } = await resolveComposition(
    +     sdk,
    +     { templateContentTypeUid: "product" },
-   +     { templateEntryUid: params.sku, variantAlias: variant || undefined },
+   +     { templateEntryUid: sku, variantAlias: variant || undefined },
    +   );
    +   if (miss) notFound();
    +   return <StudioComponent specOptions={specOptions} />;

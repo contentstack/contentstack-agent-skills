@@ -8,7 +8,7 @@ Explain the Canvas URL: why it must be a relative path (not a full URL), why `/c
 
 Concept on-ramp when someone asks "what is the Canvas URL", "why is my canvas blank", sets it wrong, or creating/configuring a project or setting a Canvas URL or Base URL (UI or API), so path/origin aren't merged. Phrases: "Canvas URL", "/canvas vs full origin". Do NOT use to wire the route. Run `setup-section-preview`. Concept only.
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # What is the Canvas URL?
 
@@ -101,7 +101,7 @@ For local dev origins specifically: `http://localhost:<port>` works fine. Modern
 |---|---|
 | Canvas iframe is blank, no console error | Canvas URL is a full URL (with `https://`) instead of a relative path, **or** the path doesn't exist on the canvas-app yet, **or** (rare) a corporate browser policy overrides the localhost secure-context exemption and a mkcert HTTPS cert is needed |
 | Canvas iframe shows the host app's home page | Canvas URL is `/` or empty, no dedicated canvas route |
-| "host not allowed" 403 | Canvas URL is correct but the canvas-app's dev server rejects the iframe origin. See `setup-section-preview` for `allowedHosts: true` + `frame-ancestors *` config |
+| "host not allowed" 403 | Canvas URL is correct but the canvas-app's dev server rejects the iframe origin. See `setup-section-preview` for the `frame-ancestors` header and (for tunnel hostnames only) `allowedHosts` config |
 | Sections render, templates don't | Canvas URL is fine. The failure is the **environment base URL** scheme (HTTP vs HTTPS mismatch). Templates use the env base URL + their own URL, not Canvas URL. |
 
 ## See also

@@ -8,7 +8,7 @@ From a component used across routes, propose the Section's linked-schema shape a
 
 Use BEFORE `build-section` when migrating a hand-coded route into Studio AND the section's linked schema does not exist yet. Phrases: "design schema for my Hero", "what fields does this section need", "migrate this component to a section". Pairs with `discover-sections`. Skip if the schema already exists. Do NOT use to redesign live schemas.
 
-> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Design a section's linked schema from existing JSX
 
@@ -95,7 +95,7 @@ This skill **does not write to Contentstack**: it has no auth token, no Manageme
    Click Save. Note the UID — it's already <proposedSchemaUid> if you followed step 2.
    ```
 
-   For users who prefer a programmatic path, also emit the equivalent JSON spec the [contentstack CLI](https://www.contentstack.com/docs/developers/cli) accepts (`csdx cm:stacks:import` or `csdx cm:global-fields:create`):
+   For users who prefer a programmatic path, also emit the equivalent Global Field JSON (the body the Content Management API accepts at `POST /v3/global_fields`, and the shape the web app's Global Field **Import** takes):
 
    ```json
    {
@@ -113,9 +113,9 @@ This skill **does not write to Contentstack**: it has no auth token, no Manageme
    }
    ```
 
-   The user can save this JSON and run `csdx cm:global-fields:create --stack-api-key <key> --filename <path-to-json>` with their own CLI session (the CLI has its own auth flow Studio doesn't touch).
+   The user can import this JSON in the web app (Global Fields > Import), or, after confirming, send it as `POST /v3/global_fields` with a credential resolved per [`authenticate-cma`](authenticate-cma.md) (OAuth first) and the stack `api_key` header.
 
-8. **Print the hand-off:** `Once you've created the Global Field manually in the Contentstack web UI (or via csdx CLI), run: build-section with sectionName="<name>" linkedSchemaKind="global-field" linkedSchemaUid="<uid>". build-section will then create the Studio section and bind <component> against the schema you just created.`
+8. **Print the hand-off:** `Once you've created the Global Field manually in the Contentstack web UI (or via the API), run: build-section with sectionName="<name>" linkedSchemaKind="global-field" linkedSchemaUid="<uid>". build-section will then create the Studio section and bind <component> against the schema you just created.`
 
 ## Inputs needed from the user
 

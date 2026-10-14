@@ -8,7 +8,7 @@ Register the unified RTE renderer via `registerRTERenderer` so Studio can render
 
 Use for **any** rich-text field bound to a component prop, whatever its storage format. Phrases: "JSON RTE", "HTML RTE", "rich text field", "markdown field", "RichText component", "rich text renders as raw HTML", "RTE shows `<p>` tags as literal text", "rich text renders blank", "embed a card inside rich text", "embedded entries/assets in RTE", "custom element type in RTE", "registerRTERenderer", "registerJSONRTE is deprecated". Also when the JSON tree contains element types the default serializer doesn't know, or you want to override the default HTML for a standard tag. Register once at app bootstrap.
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them), and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them), and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Register an RTE renderer
 
@@ -54,6 +54,17 @@ Registration is a side-effect on the SDK singleton. It must happen **once, at ap
 3. **Pass an `RTEConfig`**: extends `IJsonToHtmlOptions` with `embeddedEntry` + `embeddedAsset`. Each call **REPLACES** the full config. Merge yourself if you call it more than once.
 
    ```ts
+   // Handlers return HTML strings, so escape every author-controlled value
+   // and only emit http(s)/relative URLs.
+   const esc = (v: unknown) =>
+     String(v ?? "").replace(/[&<>"']/g, (c) =>
+       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+   const safeUrl = (u: unknown) => {
+     const s = String(u ?? "").trim();
+     return /^(https?:\/\/|\/(?!\/)|#)/i.test(s) ? esc(s) : "#";
+   };
+   const CALLOUT_VARIANTS = new Set(["info", "warning", "success", "danger"]);
+
    registerRTERenderer({
      // Render embedded entries as components/cards. The SDK auto-resolves
      // the embedded entry and passes the full entry object — no extra fetch.
@@ -61,29 +72,30 @@ Registration is a side-effect on the SDK singleton. It must happen **once, at ap
        // displayType is one of "block", "link", or other editor-defined kinds
        if (displayType === "block") {
          return `<article class="card">
-           <h3>${entry.title}</h3>
-           <p>${entry.summary ?? ""}</p>
+           <h3>${esc(entry.title)}</h3>
+           <p>${esc(entry.summary)}</p>
          </article>`;
        }
        if (displayType === "link") {
-         return `<a href="${entry.url ?? "#"}">${entry.title}</a>`;
+         return `<a href="${safeUrl(entry.url)}">${esc(entry.title)}</a>`;
        }
-       return `<span>${entry.title}</span>`;
+       return `<span>${esc(entry.title)}</span>`;
      },
 
      // Render embedded assets. Omit to use the built-in default
      // (img for image/*, video/audio for those MIMEs, <a download> otherwise).
      embeddedAsset: ({ asset }) => {
        if (asset.content_type?.startsWith("image/")) {
-         return `<img src="${asset.url}" alt="${asset.title ?? ""}" loading="lazy" />`;
+         return `<img src="${safeUrl(asset.url)}" alt="${esc(asset.title)}" loading="lazy" />`;
        }
-       return `<a href="${asset.url}" download>${asset.filename}</a>`;
+       return `<a href="${safeUrl(asset.url)}" download>${esc(asset.filename)}</a>`;
      },
 
      // Custom JSON RTE element types (handlers return HTML strings)
      customElementTypes: {
        callout: (attrs, child, jsonBlock) => {
-         const variant = jsonBlock?.attrs?.variant ?? "info";
+         const v = jsonBlock?.attrs?.variant;
+         const variant = CALLOUT_VARIANTS.has(v) ? v : "info"; // allowlist, never interpolate raw
          return `<aside class="callout callout--${variant}"${attrs}>${child}</aside>`;
        },
        // Override default heading rendering:

@@ -4,13 +4,13 @@ name: author-composition-templates
 
 ## When to use
 
-Author a Template by API: populate `linked_sections` for every API-placed section (P27), plus a complete worked Freeform composition body.
+Author a Template by API: populate `linked_sections` for every API-placed section, plus a complete worked Freeform composition body.
 
 Part of the API-authoring set. Start at [`author-composition-via-api`](author-composition-via-api.md), which routes to this one.
 
-## Authoring a Template: populate `linked_sections` for every API-placed section (P27)
+## Authoring a Template: populate `linked_sections` for every API-placed section
 
-Sibling concern to P22-P25 (which were section-side). When a Template's `ui` tree contains `section-composition` nodes that were placed via API, the template's **`linked_sections` reference field** ALSO has to be populated, even though SSR walks the nodes directly. Same editor-vs-runtime asymmetry as P23 but at the template layer.
+Sibling concern to the section-side traps in [`author-composition-sections`](author-composition-sections.md). When a Template's `ui` tree contains `section-composition` nodes that were placed via API, the template's **`linked_sections` reference field** ALSO has to be populated, even though SSR walks the nodes directly. Same editor-vs-runtime asymmetry as the section-side `selectedField` trap, but at the template layer.
 
 ### The asymmetry
 
@@ -53,7 +53,7 @@ When your composition-authoring script writes `section-composition` nodes into a
 }
 ```
 
-The references can be bare `{uid, _content_type_uid}` stubs. The CMA stores them. The editor's `?include[]=` resolves them inline when loading. There's no UI-only metadata to mirror (unlike P23's `selectedField`).
+The references can be bare `{uid, _content_type_uid}` stubs. The CMA stores them. The editor's `?include[]=` resolves them inline when loading. There's no UI-only metadata to mirror (unlike the section-side `selectedField`).
 
 Then **publish the template entry**. The editor reads from the published entry. An unpublished update won't show up.
 
@@ -201,13 +201,13 @@ Studio-generated `_metadata.uid` on each `static_value.*` entry is added by the 
 
 ### Python builder: produces the exact body above
 
-Paste into a `.py` file, fill the two `<…>` placeholders, run against a fresh entry uid:
+Save the tree from § "The ui tree" above as `ui.json`, paste this into `build_entry.py`, and run it with the output path as its argument:
 
 ```python
-import base64, json, urllib.parse, zlib
+import base64, json, sys, zlib
 
-UI_TREE = { ...the tree from § "The ui tree" above... }
-COMPOSITION_ENTRY_UID = "<15-char CMA entry uid you'll POST to>"   # optional if using composable_uid slug
+with open("ui.json") as f:
+    UI_TREE = json.load(f)
 
 raw = json.dumps(UI_TREE, separators=(",", ":"))
 assert raw.count('"children"') >= 2, "children key corrupted before compression"
@@ -231,10 +231,21 @@ body = {
     "linked_schemas": [],
     "linked_sections": [],
     "static_value": {
-      "text":     [{"key": "mHjnXsgKbBlj_PZ-headline", "value": "Welcome to Studio"}, ...],
-      "textarea": [{"key": "mHjnXsgKbBlj_PZ-subhead",  "value": "…"}],
-      "imageurl": [{"key": "mHjnXsgKbBlj_PZ-cover",    "value": ""}, ...],
-      "href":     [{"key": "mHjnXsgKbBlj_PZ-ctaHref",  "value": ""}, ...],
+      # One row per static_value binding in the tree (same rows as the JSON body above).
+      "text": [
+        {"key": "mHjnXsgKbBlj_PZ-headline", "value": "Welcome to Studio"},
+        {"key": "mHjnXsgKbBlj_PZ-ctaLabel", "value": ""},
+        {"key": "Wo-7Ly0xHXWsOXQ-title",    "value": "Studio Pro"},
+      ],
+      "textarea": [{"key": "mHjnXsgKbBlj_PZ-subhead", "value": "Visual composition for content teams — using the React components your engineering already built."}],
+      "imageurl": [
+        {"key": "mHjnXsgKbBlj_PZ-cover",  "value": ""},
+        {"key": "Wo-7Ly0xHXWsOXQ-image", "value": ""},
+      ],
+      "href": [
+        {"key": "mHjnXsgKbBlj_PZ-ctaHref", "value": ""},
+        {"key": "Wo-7Ly0xHXWsOXQ-ctaHref", "value": "https://example.com"},
+      ],
       "number":   [{"key": "Wo-7Ly0xHXWsOXQ-price",    "value": 49}],
       "choice":   [{"key": "Wo-7Ly0xHXWsOXQ-badge",    "value": []}],
       "array": [], "boolean": [], "any": [], "datestring": [],
@@ -244,16 +255,21 @@ body = {
   }
 }
 
-open("/tmp/entry.json", "w").write(json.dumps(body))
+with open(sys.argv[1], "w") as f:
+    json.dump(body, f)
 ```
 
-Then POST with `curl -d @file` (never `-d "..."`, see § Never pass the compressed `ui` inline):
+Then POST with `curl -d @file` (never `-d "..."`, see [`author-composition-encoding`](author-composition-encoding.md) § Never pass the compressed `ui` inline via a shell variable):
 
 ```bash
-curl -X POST "https://<cma-host>/v3/content_types/documentation_compositions/entries" \
+# CS_AUTH: one auth header resolved per authenticate-cma
+ENTRY_JSON=$(mktemp)
+python3 build_entry.py "$ENTRY_JSON"
+curl -X POST "https://<cma-host>/v3/content_types/<compositions-CT-uid>/entries" \
   -H "api_key: <stack-api-key>" -H "$CS_AUTH" \
   -H "Content-Type: application/json" \
-  -d @/tmp/entry.json
+  -d @"$ENTRY_JSON"
+rm -f "$ENTRY_JSON"
 ```
 
-Publish the entry after create. See § Sanity-check the output below.
+Publish the entry after create. See [`author-composition-via-api`](author-composition-via-api.md) § Sanity-check the output.

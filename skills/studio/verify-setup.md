@@ -8,7 +8,7 @@ Run a layered smoke test confirming Studio is wired correctly: Live Preview reac
 
 Use right after `install-studio` and `setup-template-preview-routes` to catch breakage before authoring. Also when a previously working setup regressed ("the canvas was working yesterday"). Phrases: "verify Studio setup", "smoke test", "is Studio working". Do NOT use as a creative authoring skill: purely diagnostic. Does NOT replace `troubleshoot-canvas`: verify tells you WHAT is broken, troubleshoot tells you WHY.
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them), and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them), and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Verify Studio setup end-to-end
 
@@ -50,8 +50,8 @@ Use existing compositions for verification where possible. Any temporary authori
    - Catches the most common failure: app wired, stack-level flag off, runtime silently broken. Skipping makes Layer 2 failures look like SDK bugs when they're actually web-app toggles.
 
 1. **Layer 1: Delivery SDK reachability.**
-   - Run: `npx tsx -e "import('@contentstack/delivery-sdk').then(async cs => { const stack = cs.default.stack({ apiKey: process.env.CS_API_KEY, deliveryToken: process.env.CS_DELIVERY_TOKEN, environment: process.env.CS_ENVIRONMENT || 'preview' }); const r = await stack.ctQuery('home_page', { limit: 1 }).find(); console.log('OK entries:', r.entries?.length ?? 0); })"`
-   - Or, programmatically, call any existing `stack.ctQuery(<a known CT>).find()` in the app.
+   - Run: `npx tsx -e "import('@contentstack/delivery-sdk').then(async cs => { const stack = cs.default.stack({ apiKey: process.env.CS_API_KEY, deliveryToken: process.env.CS_DELIVERY_TOKEN, environment: process.env.CS_ENVIRONMENT || 'preview' }); const r = await stack.contentType('home_page').entry().limit(1).find(); console.log('OK entries:', r.entries?.length ?? 0); })"`
+   - Or, programmatically, call `stack.contentType('<uid>').entry().limit(1).find()` for a known CT in the app.
    - Pass: a query returns without throwing.
    - Fail modes: 401 means a wrong Delivery Token, 422 a wrong environment name, 404 a wrong CT UID, and ECONNREFUSED a wrong region host.
 
@@ -73,7 +73,7 @@ Use existing compositions for verification where possible. Any temporary authori
    - Pass: canvas iframe renders a non-empty `[data-composable-studio-id]` node tree within 10s.
    - Fail modes:
      - A blank canvas means the canvas iframe address is wrong. Check both halves: the **Canvas URL** (path) on the Studio project must match the mounted route, AND the **targeted environment's per-locale Base URL** (origin) must be non-empty and reachable. An empty env Base URL is the most common cause and surfaces as a "no base URL"-style error pointing at the Studio project, not the environment.
-     - "Component Loading Error" means the section ref's `compositionUID` doesn't resolve (sections not preloaded or fetched from CDA, see F-018-style issues)
+     - "Component Loading Error" means the section ref's `compositionUID` doesn't resolve (sections not preloaded or fetched from CDA)
      - "Authentication failed" means the Delivery or Preview token in `.env` is wrong or revoked. In the stack, open Settings, then Tokens, then the token itself to read its current values, paste those into `.env`, and restart the dev server
 
    ### Expected (not-a-failure) console messages when verifying
@@ -107,7 +107,7 @@ Use existing compositions for verification where possible. Any temporary authori
      ```bash
      curl -I -sS --max-time 5 ${canvasAppUrl} | grep -iE 'content-security-policy|access-control-allow-origin'
      ```
-     Pass: `Content-Security-Policy: frame-ancestors *` AND `Access-Control-Allow-Origin: *` present. Fail: missing, so see `setup-section-preview` for the Vite/Next config block. The Studio iframe will silently fail to embed without these.
+     Pass: the canvas route's `Content-Security-Policy: frame-ancestors` permits the Studio origin (e.g. `frame-ancestors 'self' https://*.contentstack.com`). Wildcards (`frame-ancestors *`, `Access-Control-Allow-Origin: *`) are acceptable only on a local dev server, never on a deployed site. Fail: missing, or Studio's origin not permitted, so see `setup-local-https-canvas` / `setup-section-preview` for the Vite/Next config block. The Studio iframe will silently fail to embed without it.
 
    - **5d. Arity ≥ 1 on every registered component**:
      ```bash
@@ -124,19 +124,19 @@ Use existing compositions for verification where possible. Any temporary authori
 
    The most common silent failure on a fresh setup: the **Preview Token** passed to the Delivery SDK / Live Preview SDK is invalid or empty, the CDA preview API returns 401 without CORS headers, and the browser surfaces a misleading "CORS error" instead of "401 Unauthorized." Hours of CORS chasing for a token paste. Verify the token authenticates **before** opening Studio.
 
-   **The check is project-agnostic.** Don't grep `.env.local`, don't assume `VITE_*` / `NEXT_PUBLIC_*` / `REACT_APP_*` env var names: every framework / project layout differs. Just ask the user for the three runtime values and curl-verify them directly. If you (the agent) can read the project's config to discover them, fine. Otherwise ask.
+   **The check is project-agnostic.** Don't grep `.env.local`, don't assume `VITE_*` / `NEXT_PUBLIC_*` / `REACT_APP_*` env var names: every framework / project layout differs. Ask the user for the API key and host and curl-verify directly. **Never ask the user to paste the Preview Token into chat, and never print it.** Have them export it in their own shell (`export PREVIEW_TOKEN=…`, from wherever the project loads it) so the curl below reads `${PREVIEW_TOKEN}`.
 
    Inputs:
    - `stackApiKey`: the stack's API key the canvas-app uses
-   - `previewToken`: the Preview Token value the canvas-app currently passes to `@contentstack/live-preview-utils` / Delivery SDK at runtime, wherever it's loaded from (env file, runtime config, secrets manager, fetched-from-API, hardcoded, doesn't matter)
-   - `previewHost`: region-dependent: `rest-preview.contentstack.com` (NA prod), `eu-rest-preview.contentstack.com` (EU prod), `azure-na-rest-preview.contentstack.com`, etc. (see `install-studio` § Regional host map). For non-prod / custom-cloud, take the host from [`analyze-project-fit`](analyze-project-fit.md) § 2b: Determine the data center (e.g. `<env>-rest-preview.<non-prod-domain>`) rather than asking again.
+   - `PREVIEW_TOKEN` (exported by the user in their shell, not pasted into chat): the Preview Token the canvas-app currently passes to `@contentstack/live-preview-utils` / Delivery SDK at runtime, wherever it's loaded from (env file, runtime config, secrets manager, fetched-from-API, hardcoded, doesn't matter)
+   - `previewHost`: region-dependent: `rest-preview.contentstack.com` (NA prod), `eu-rest-preview.contentstack.com` (EU prod), `azure-na-rest-preview.contentstack.com`, etc. (see `install-studio` § Regional host map). For a custom / private data center (hosts supplied by Contentstack), take the explicit host from [`analyze-project-fit`](analyze-project-fit.md) § 2b rather than asking again.
    - One `<CT>`, `<env>`, `<locale>` from the project to query against: pick any content type the user knows has at least one entry in that environment.
 
    Run:
    ```bash
    curl -is "https://${previewHost}/v3/content_types/${CT}/entries?environment=${env}&locale=${locale}&limit=1" \
      -H "api_key: ${stackApiKey}" \
-     -H "preview_token: ${previewToken}"
+     -H "preview_token: ${PREVIEW_TOKEN}"
    ```
 
    Outcomes:
@@ -149,7 +149,7 @@ Use existing compositions for verification where possible. Any temporary authori
 
 7. **Layer 7: Section scoping resolves correctly via the SSR cold-load** (only if the project has section compositions placed on any template). The most reliable headless check for section binding, bypasses the editor entirely.
 
-   Section compositions are data-less standalone (their own canvas has no data, see `author-composition-via-api` § Authoring a Section composition). The editor canvas can't confirm a section's scope is correct. The SSR cold-load does: `await sdk.fetchCompositionData({ url, searchQuery })` runs the full data-collection + scoping pipeline and attaches `spec.data.section_scoped_data` (one entry per section instance) with the resolved `selectedField` and the actual scoped `template` slice.
+   Section compositions are data-less standalone (their own canvas has no data, see [`author-composition-sections`](author-composition-sections.md) § Authoring a Section composition). The editor canvas can't confirm a section's scope is correct. The SSR cold-load does: `await sdk.fetchCompositionData({ url, searchQuery })` runs the full data-collection + scoping pipeline and attaches `spec.data.section_scoped_data` (one entry per section instance) with the resolved `selectedField` and the actual scoped `template` slice.
 
    Inputs:
    - `previewUrl`: any visitor URL that resolves to a Connected Template that has sections placed on it (e.g. `https://localhost:3006/products/some-product`, `https://your-staging-site/blog/some-post`). The canvas-app must be running and reachable at this URL.
@@ -206,26 +206,26 @@ Use existing compositions for verification where possible. Any temporary authori
    | Outcome | What it means | Pass? |
    |---|---|---|
    | `selectedField` is set + `template` is an array of resolved entries with `templateLen > 0` | Section is correctly scoped to an iterated field, has data to render | Yes |
-   | `selectedField` is unset/empty + `template` is the whole page entry (object, `templateKind: "object"`) | Whole-entry section (per P25's multi-field decision), correct for sections that read multiple page fields | Yes |
-   | `selectedField` is set but `template` is `undefined` / null / empty array | Scope resolution failed. Reasons: `selectedField` points at a field that doesn't exist on the page CT, the field is empty on this preview entry, `data_sources.resolvedReferences` is missing for a reference path (see `author-composition-via-api` § Recipe: Repeat over a multi-reference). | No |
-   | `selectedField` is set to one value but you EXPECTED another | The `linked_schemas` vs `sectionBindingOverride` paths disagree, OR the section's `linked_schemas` was dropped by the compositions CT (the linked_schemas-as-reference trap, P23). Compare both paths. Both must agree. | No |
-   | `Object.keys(scoped).length === 0` but the template HAS section nodes in its `ui` | The composition's `linked_sections` reference field isn't populated (P27 territory: API-placed sections need this reference set even though SSR walks the `section-composition` nodes itself). | No |
+   | `selectedField` is unset/empty + `template` is the whole page entry (object, `templateKind: "object"`) | Whole-entry section (per the single-field vs whole-entry decision rule), correct for sections that read multiple page fields | Yes |
+   | `selectedField` is set but `template` is `undefined` / null / empty array | Scope resolution failed. Reasons: `selectedField` points at a field that doesn't exist on the page CT, the field is empty on this preview entry, `data_sources.resolvedReferences` is missing for a reference path (see [`author-composition-repeater-recipes`](author-composition-repeater-recipes.md) § Recipe: Repeat a card over a multi-reference field). | No |
+   | `selectedField` is set to one value but you EXPECTED another | The `linked_schemas` vs `sectionBindingOverride` paths disagree, OR the section's `linked_schemas` was dropped by the compositions CT (the `linked_schemas`-as-reference trap). Compare both paths. Both must agree. | No |
+   | `Object.keys(scoped).length === 0` but the template HAS section nodes in its `ui` | The composition's `linked_sections` reference field isn't populated (API-placed sections need this reference set even though SSR walks the `section-composition` nodes itself). | No |
 
-   Direct user to `author-composition-via-api` § Authoring a Section composition: scoping rules for fix paths on any **No** row.
+   Direct user to [`author-composition-sections`](author-composition-sections.md) § Authoring a Section composition: scoping rules for fix paths on any **No** row.
 
-8. **Report.** Print each layer as a pass or a fail, with the exact failing call. If everything passes, print "All seven layers green. Canvas URL: <canvasAppUrl>". If anything fails, name the LOWEST failing layer and suggest invoking `troubleshoot-canvas` (or for Layer 7, `author-composition-via-api`) with that symptom.
+8. **Report.** Print each layer as a pass or a fail, with the exact failing call. If everything passes, print "All seven layers green. Canvas URL: <canvasAppUrl>". If anything fails, name the LOWEST failing layer and suggest invoking `troubleshoot-canvas` (or for Layer 7, `author-composition-sections`) with that symptom.
 
 ## Inputs needed from the user
 
 1. `canvasAppUrl`: used in Layer 2 (open in browser) + Layer 4 (compare against Studio project config).
 2. `studioUrl`: used in Layer 4.
 3. `stackApiKey`: used in Layer 6 (curl against preview API).
-4. `previewToken`: used in Layer 6. Whatever value the canvas-app currently passes to the Delivery / Live Preview SDK at runtime, wherever the project loads it from (env file, runtime config, secrets manager, hardcoded). If unsure, ask the user to read it from their project's config layer. Do NOT assume an env file path or variable name.
-5. `previewHost`: used in Layer 6. Region-dependent (see `install-studio` § Regional host map). For non-prod / custom-cloud, the explicit host the user gives you (e.g. `<env>-rest-preview.<non-prod-domain>`).
+4. `PREVIEW_TOKEN`: used in Layer 6. The user exports it in their own shell (never pasted into chat, never printed) from wherever the project loads it (env file, runtime config, secrets manager, hardcoded). Do NOT assume an env file path or variable name.
+5. `previewHost`: used in Layer 6. Region-dependent (see `install-studio` § Regional host map). Custom / private data center (hosts supplied by Contentstack): the explicit host the user gives you.
 6. One `<CT>`, `<env>`, `<locale>` triple: used in Layer 6 as a known-good probe target. Any content type the user knows has at least one entry in that environment.
 7. `previewUrl`: used in Layer 7. Any visitor URL on the canvas-app that resolves to a Connected Template with sections placed on it (e.g. `http://localhost:3006/products/some-product` for local dev). Skip Layer 7 if the project has no section compositions placed on any template yet.
 
-If `.env` exists in the project, read `CANVAS_APP_BASE_URL` and `STUDIO_BASE_URL` as defaults for the first two before asking. Do NOT auto-read `previewToken` from any env file: its location is project-specific.
+If `.env` exists in the project, read `CANVAS_APP_BASE_URL` and `STUDIO_BASE_URL` as defaults for the first two before asking. Do NOT auto-read or print the Preview Token from any env file: its location is project-specific.
 
 ## Acceptance
 

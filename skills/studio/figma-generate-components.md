@@ -8,13 +8,13 @@ Generate React components from a Figma design and register them with Studio via 
 
 Use when the user wants real, committable React components in their project generated from a Figma design (component library, design system, frames). NOT for one-off pastes (for that, point them at the Figma plugin's "Copy to Studio" flow). Phrases: "generate components from Figma", "Figma to React", "import my design system". This skill produces source files + registry entries + (optionally) design tokens.
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Generate Studio components from a Figma design
 
 ## Standard: REQUIRED reading
 
-This skill orchestrates the **canonical Studio Figma Plugin + Studio CLI workflow**. The authoritative in-repo documents are:
+This skill orchestrates the **canonical Studio Figma Plugin + Studio CLI workflow**.
 
 The workflow has **two sides**:
 
@@ -67,7 +67,7 @@ If `csdx` is not installed:
 npm i -g @contentstack/cli
 csdx plugins:install @contentstack/studio
 csdx config:set:region   # pick the user's Contentstack region
-csdx login --oauth        # opens browser for OAuth
+csdx auth:login --oauth   # opens browser for OAuth
 ```
 
 If `csdx studio:project:get` does NOT return the project the user wants:

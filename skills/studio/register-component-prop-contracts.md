@@ -65,7 +65,7 @@ function coerce(img: ImageProp): string | undefined {
 
 Every registered component's `imageurl` prop declares its TS type as `string | { url?: string } | null | undefined`, and the component internally calls a coerce helper (or inlines `typeof img === "string" ? img : img?.url`. Never `img?.url ?? img`: an asset object with no `url` falls through to the object itself and renders `[object Object]`). This is a first-class contract, peer of the null-safety and `$`-twin contracts, not a pitfall row.
 
-Rationale: Studio's picker doesn't ship type-aware binding coercion today (Part 1 #2 in the product improvements backlog). Until it does, the component compensates.
+Rationale: Studio's picker doesn't ship type-aware binding coercion today. Until it does, the component compensates.
 
 ## Tolerant link signatures: bind the leaves, not the whole link object
 

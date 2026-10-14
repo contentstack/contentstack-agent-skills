@@ -8,7 +8,7 @@ Populate Contentstack Content Type entries from a customer-owned source: a JSON 
 
 Use when Sections + Templates exist but need real content to render. Phrases: "populate entries from CSV", "seed content from JSON", "import content from our API", "ingest content into this CT", "backfill CMS content", "import Markdown blog posts". Do NOT use for schema provisioning (`provision-studio-stack`), fixture / dummy-data seeding (also `provision-studio-stack`), or one-off manual entry authoring (Contentstack UI is faster). **Migration from other CMS platforms (WordPress, Contentful, Sitecore, AEM, etc.) is out of scope**: Contentstack ships a dedicated CLI (`@contentstack/cli-cm-import`) with per-source connectors. Use that. This skill covers customer-owned data sources only.
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Import content into Contentstack CTs: idempotent, resumable, asset-aware
 
@@ -129,7 +129,7 @@ Idempotency preview:
 
 Ready to run for real? Provide:
   1. Path to your real source file, OR paste the export inline.
-  2. Target stack UID + management token (env var CS_MANAGEMENT_TOKEN).
+  2. Target stack UID + a CMA credential resolved per authenticate-cma (OAuth first; a management token only if you prefer one).
   3. Confirm the field mapping above matches your CT `blog_post` (or say what to change).
 ```
 
@@ -188,7 +188,7 @@ Every source record has a stable ID (JSON `id` field, CSV row number, Markdown f
 - `status: pending` means attempt.
 - `status: <error>` means retry (up to N times, configurable).
 
-**Idempotency check before every entry POST:** query CMA for an existing entry with the same source-ID stashed in a `source_uid` field (or a per-run configured key). If found, update instead of create. Never create duplicates.
+**Idempotency check before every entry POST:** query CMA for an existing entry with the same source-ID stashed in a `source_uid` field (or a per-run configured key). If found, **skip it** by default (`skipped-existing`). Update it only if the user opted into updating existing entries when approving the plan. Never create duplicates.
 
 ### Step 4: Asset upload with retry
 
@@ -249,7 +249,7 @@ Target: blog_post on blt3f2a9d7...
    - **Inline content pasted into chat**: for small imports (≤50 rows CSV, one Markdown file). Cannot handle binary assets: you can't paste an image.
    - **API endpoint + auth**: for JSON APIs or an existing Contentstack stack (URL + bearer token / API key).
    - **`preview` mode**: no file yet. Run against the bundled sample JSON to verify the transform + POST + idempotency chain works before you commit to a real import.
-2. Target CT UID + target stack management token (from env or explicit).
+2. Target CT UID + a CMA credential resolved per [`authenticate-cma`](authenticate-cma.md) (OAuth first); a management token only if the user prefers one.
 3. Field mapping (skill proposes from the source. User confirms before any CMA write).
 4. Any transformation rules the source needs (e.g. `strip HTML → keep only text`, `only import posts published after 2020-01-01`).
 5. Whether to publish immediately or leave as drafts. Publishing to production requires an explicit confirm.

@@ -8,7 +8,7 @@ Set up a locally-trusted HTTPS cert (via mkcert) for the canvas-app. NOT require
 
 Use ONLY when HTTPS-on-localhost is actually required: service workers, secure cookies, web-share/WebAuthn, strict corporate policies that block mixed content even for localhost, or production-parity smoke tests. Phrases: "I need https locally", "mixed-content block on localhost". Do NOT use for production (real HTTPS) or tunnels (Cloudflare/ngrok already ship certs).
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Set up locally-trusted HTTPS for the canvas-app
 
@@ -96,29 +96,26 @@ export default defineConfig({
       cert: readFileSync('certs/localhost.pem'),
     },
     port: {{devPort}},
-    // Studio iframes from app.contentstack.com — allow it
-    allowedHosts: true,
+    // Local dev only: let Studio's canvas (served from your region's
+    // Contentstack app host) frame this dev server. No wildcard origins.
     headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Content-Security-Policy': "frame-ancestors *;",
+      'Content-Security-Policy': "frame-ancestors 'self' https://*.contentstack.com;",
     },
+    // Only list explicit non-localhost hostnames (e.g. a tunnel); never `true`.
+    // allowedHosts: ['my-tunnel.example.dev'],
   },
   preview: {
+    // `vite preview` serves the production build: no permissive headers here.
     https: {
       key:  readFileSync('certs/localhost-key.pem'),
       cert: readFileSync('certs/localhost.pem'),
     },
     port: {{devPort}},
-    allowedHosts: true,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Content-Security-Policy': "frame-ancestors *;",
-    },
   },
 });
 ```
 
-> The `allowedHosts: true` + CSP `frame-ancestors *` headers are required for Studio to iframe the app. Without them Vite returns "host not allowed" and the browser blocks the frame. They're part of this same setup. Don't split them into a separate step.
+> The dev-server CSP `frame-ancestors 'self' https://*.contentstack.com` header lets Studio iframe the app; it's part of this same setup, so don't split it into a separate step. Keep it on the dev server (and, in production, on the canvas route only). Don't add `Access-Control-Allow-Origin: *` or `frame-ancestors *`. If you reach the dev server through a non-localhost hostname (e.g. a tunnel) and Vite returns "host not allowed", list that hostname in `server.allowedHosts`; never set it to `true`.
 
 **Next.js**: pass your mkcert files to `next dev` via the `--experimental-https-key` + `--experimental-https-cert` flags:
 
@@ -175,7 +172,7 @@ Then test the Studio iframe:
 - [ ] `mkcert -version` returns a version string.
 - [ ] `mkcert -install` completed (root CA in system trust store).
 - [ ] `certs/localhost.pem` + `certs/localhost-key.pem` exist in the project root.
-- [ ] Framework config has `server.https` + `preview.https` pointing at the cert pair, AND `allowedHosts: true` + `frame-ancestors *` header set.
+- [ ] Framework config has `server.https` + `preview.https` pointing at the cert pair, AND the dev server sends `frame-ancestors 'self' https://*.contentstack.com` (no wildcard ACAO; `allowedHosts` only lists explicit non-localhost hostnames, never `true`).
 - [ ] `.gitignore` contains `certs/`.
 - [ ] `curl -I https://localhost:<port>/` returns a 200 with no untrusted-cert warning.
 - [ ] Browser loads `https://localhost:<port>` with a green lock.
@@ -189,7 +186,7 @@ Then test the Studio iframe:
 | Bare `next dev --experimental-https` (no key/cert flags) | Next generates its own self-signed cert not signed by mkcert's root CA, so the Studio iframe blocks silently | Pass the mkcert pair: `next dev --experimental-https --experimental-https-key ./certs/localhost-key.pem --experimental-https-cert ./certs/localhost.pem` |
 | Cert files committed to git | Private key leaked | Always add `certs/` to `.gitignore` before generating |
 | Generating cert for a different hostname than the dev URL | Cert mismatch, which produces a browser warning, which blocks the iframe | `mkcert ... localhost 127.0.0.1 ::1` covers all common localhost forms. Add other names if needed |
-| `allowedHosts` set but headers missing | Vite serves the page but Studio can't frame it | Both `allowedHosts: true` AND the `frame-ancestors *` CSP header must be set. They solve different layers |
+| `allowedHosts` set but headers missing | Vite serves the page but Studio can't frame it | Set the dev-server CSP `frame-ancestors 'self' https://*.contentstack.com`. `allowedHosts` (explicit hostnames only, never `true`) solves a different layer |
 | Cert expired after ~825 days | mkcert certs are short-lived for security | Regenerate the cert pair. The root CA stays trusted |
 | Re-installing mkcert after a system upgrade and re-running `mkcert -install` | Old cert pair was signed by the previous mkcert root CA which is no longer trusted | Regenerate the cert pair after re-installing mkcert |
 | Using Mac App Store Chrome | Sandboxed. Sometimes ignores Keychain trust for system-installed CAs | Use the standalone Chrome download from google.com/chrome |

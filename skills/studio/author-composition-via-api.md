@@ -8,7 +8,7 @@ Author Studio compositions by writing composition JSON via the CMA, the manual c
 
 Use when authoring compositions programmatically via CMA: seed pipelines, scripted provisioning, migration scripts, debugging via diff. Phrases: "compositions from JSON", "API author composition", "seed compositions", "headless author", "bulk import". Do NOT use for UI authoring. The Data Picker handles every shape this skill describes. For UI use `build-section` / `build-connected-template`.
 
-> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Author a composition by API (the manual contract)
 
@@ -56,11 +56,11 @@ single task loads what it needs instead of the whole contract.
 | [`author-composition-encoding`](author-composition-encoding.md) | Compressing the `ui` tree, and preflight-validating it before publish |
 | [`author-composition-repeater-recipes`](author-composition-repeater-recipes.md) | Repeat a card over a multi-reference or GROUP-MULTIPLE field |
 | [`author-composition-nested-repeaters`](author-composition-nested-repeaters.md) | A list inside each iterated item |
-| [`author-composition-sections`](author-composition-sections.md) | Section scoping (P22-P25), `selectedField`, `section-slot` |
+| [`author-composition-sections`](author-composition-sections.md) | Section scoping rules, `selectedField`, `section-slot` |
 | [`author-composition-section-slot-fill`](author-composition-section-slot-fill.md) | Pattern B: fill a wrapper's slots with another Section |
 | [`author-composition-exposed-props`](author-composition-exposed-props.md) | Per-instance overrides on a placed Section |
 | [`author-composition-thumbnails`](author-composition-thumbnails.md) | Why the API never sets a Section thumbnail |
-| [`author-composition-templates`](author-composition-templates.md) | `linked_sections` (P27), plus a complete Freeform body |
+| [`author-composition-templates`](author-composition-templates.md) | `linked_sections` for API-placed sections, plus a complete Freeform body |
 | [`author-composition-pitfalls`](author-composition-pitfalls.md) | Verifying the write, and the full pitfall table. **Read before reporting done.** |
 | [`author-composition-practice`](author-composition-practice.md) | Skeleton-first authoring, reading component source, free-form primitives |
 | [`author-composition-migration`](author-composition-migration.md) | Moving compositions between stacks |
@@ -88,20 +88,20 @@ This skill succeeds only when ALL are true.
 - [ ] **Every `section-composition` node's `metadata.compositionUID` is the placed section's entry uid** (`blt…`), never its `composable_uid`. A `composable_uid` there fails in the canvas with `Component with type '<it>' is not registered`.
 - [ ] **A section whose `selected_field` is a multiple group / global field / file / link** has `cardinality` from the user's answer (asked, never assumed): `"collection"` with a root Repeater, or `"single"` without one. Reference and modular-block sections carry no `cardinality` ([`understand-linked-schemas`](understand-linked-schemas.md)).
 - [ ] **Exposed section props (if used)**: `sectionExposedProps` array on section's `ui` ROOT `metadata`. Template's `section-composition.props` map keyed by each exposure's `uid`. Per-instance override values use distinct static_value keys.
-- [ ] The composition resolves at runtime, verified by either curl against the CDA preview API (returns 200 + entries body, see `troubleshoot-canvas` § CORS error on the CDA preview host) OR a SSR cold-load `await sdk.fetchCompositionData({ url })` returning `spec.data.section_scoped_data[<instance>]` with the expected `template` array (P26-style verification).
+- [ ] The composition resolves at runtime, verified by either curl against the CDA preview API (returns 200 + entries body, see `troubleshoot-canvas` § Symptom and cause matrix, row "CORS error on the CDA preview host") OR a SSR cold-load `await sdk.fetchCompositionData({ url })` returning `spec.data.section_scoped_data[<instance>]` with the expected `template` array (see [`author-composition-sections`](author-composition-sections.md) § Verifying a section's scope headlessly).
 
 ## Sanity-check the output
 
 After authoring, verify by ONE of:
 
-1. **CDA preview API curl**: confirm the composition is returned. See `troubleshoot-canvas` § CORS error on the CDA preview host for the curl shape. Status 200 + JSON entries body = the contract resolves.
+1. **CDA preview API curl**: confirm the composition is returned. See `troubleshoot-canvas` § Symptom and cause matrix, row "CORS error on the CDA preview host", for the curl shape. Status 200 + JSON entries body = the contract resolves.
 2. **SSR cold-load**: `await sdk.fetchCompositionData({ url })` from a throwaway server route. It **rejects** if the URL resolves to nothing, so a thrown `NO_COMPOSITION_FOR_URL` / `URL_MATCHED_NO_ENTRY` here is itself the verification result: the composition isn't resolving. In a throwaway script that's fine. In app code wrap it ([`configure-csr-vs-ssr`](configure-csr-vs-ssr.md#resolve-composition-helper)). Dump `spec.data.section_scoped_data[<instance>]` to verify each section's `selectedField` + scoped `template` arrives correctly. The most reliable check.
 3. **Decode the stored `ui`**: the read-only `zlib`-inflate snippet in `troubleshoot-canvas` § Diagnostic tooling. Diff your composition's node tree against a known-working UI-authored one to spot any shape mismatch. Useful for debugging.
 
 ## See also
 
 - `troubleshoot-canvas` § Diagnostic tooling (inspecting a stored composition's ui) the zlib decoder
-- `troubleshoot-canvas` § CORS error on the CDA preview host: preview-token verification curl shape
+- `troubleshoot-canvas` § Symptom and cause matrix, row "CORS error on the CDA preview host": preview-token verification curl shape
 - `use-repeater`: UI authoring side. The Preview Mode toggle the API directly sets via `metadata.mode`
 - `use-condition-block`: the Condition Block schema requirement for reference / modular-block iteration
 - `build-section`: section's `selectedField` scoping (the parent of most API-authored sections)

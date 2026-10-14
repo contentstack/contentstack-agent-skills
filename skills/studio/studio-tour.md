@@ -8,7 +8,7 @@ Intent-driven end-to-end walkthrough that meets the user wherever they are and r
 
 Use when the user wants Studio working end-to-end but has not picked a starting point ("just walk me through", "I want to ship a page", "I have components, what next"). This skill orchestrates. It delegates to specialists at each step. Do NOT use when the user has a specific named task. Invoke that skill directly.
 
-> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+> **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Studio Tour: start here
 
@@ -147,7 +147,7 @@ In this order:
 | Skipping the Playground vs Website Canvas distinction | User installs SDKs they didn't need (try intent) OR is stuck without deploy (build intent) | Surface Playground Canvas early for try intent. Surface Canvas URL setup for build intent |
 | Inviting the user to "build a section" without first checking they have registered components | Section composes only Studio defaults. Brand wrong | Confirm step 4 (registered-components) before step 5 (build-section) for Website Canvas users |
 | Treating troubleshoot / verify intents as "tour" cases | The user wanted a focused diagnostic, got a journey overview | Recognize troubleshoot-canvas / verify-setup keywords and redirect immediately |
-| Forgetting the 3-in-1 framing for understand intent | User leaves still thinking Studio is "just a page builder" | Open with the three-things-in-one explanation from `what-is-studio.md` |
+| Forgetting the 3-in-1 framing for understand intent | User leaves still thinking Studio is "just a page builder" | Open with the three-things-in-one explanation at the top of this skill (§ Context) |
 
 ## Driving the canvas
 
