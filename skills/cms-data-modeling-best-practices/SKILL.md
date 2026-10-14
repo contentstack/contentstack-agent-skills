@@ -1,6 +1,6 @@
 ---
 name: cms-data-modeling-best-practices
-description: "Guide developers to model content in Contentstack using the simplest reusable structure. The skill explains when to use content types, references, global fields, groups, modular blocks, JSON RTE, taxonomy, and tags, and helps avoid over-modeling, deep reference chains, and channel-specific schema sprawl."
+description: "Guide developers to model content in Contentstack using the simplest reusable structure. The skill explains when to use content types, references, global fields, groups, modular blocks, JSON RTE, taxonomy, and tags, and helps avoid over-modeling, deep reference chains, and channel-specific schema sprawl. Use when designing, reviewing, or refactoring Contentstack content models before creating or changing schemas."
 allowed-tools: Read Grep Glob
 ---
 

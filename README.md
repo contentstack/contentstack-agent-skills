@@ -1,53 +1,63 @@
 # Contentstack Skills
 
-A bundle of 22 ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools, covering CMS implementation, Brand Kit guidance, delivery SDK development, kickstart maintenance, migration workflows, Developer Hub app architecture, and Launch automation.
+A bundle of ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools, covering CMS implementation, Brand Kit guidance, delivery SDK development, kickstart maintenance, migration workflows, Developer Hub app architecture, and Launch automation.
 
 ## What's in here?
 
 Each skill is a self-contained instruction set that teaches an AI coding agent how to accomplish a specific Contentstack task: modeling content, querying entries, handling assets, configuring governance, integrating preview tooling, applying Brand Kit guidance, writing Delivery SDK code, building Developer Hub apps, automating Launch deployments, and more. Drop this repo into your AI tool of choice and the agent will know when and how to apply each skill based on what you ask.
 
-The same skills are packaged in five formats so you can use whichever tool fits your workflow:
-
-- **Claude Code** — installable plugin (`.claude-plugin/`)
-- **Cursor** — rule files (`cursor/rules/`)
-- **Codex / OpenAI agents** — markdown tree (`codex/`)
-- **Gemini CLI** — extension manifest (`gemini-extension.json`)
-- **[skills](https://github.com/anthropics/skills) CLI** — pulls any single skill on demand
-
-You only need to install one. Pick the section below that matches your tool.
+Every skill lives once, in `skills/<slug>/SKILL.md`, following the open [Agent Skills](https://agentskills.io) format. Claude Code, claude.ai, Cursor, Codex, GitHub Copilot, Gemini CLI and the [`skills` CLI](https://github.com/vercel-labs/skills) all read that format natively, so there are no per-tool copies. Each tool installs the bundle through its own plugin manifest.
 
 ## Install
+
+Install with whichever tool you use. Each method gives you all the skills, and the agent loads the right one based on what you ask.
 
 ### Claude Code
 
 ```
 /plugin marketplace add contentstack/contentstack-agent-skills
-/plugin install contentstack-skills
+/plugin install contentstack-skills@contentstack-skills
 ```
 
-After install, the router at `skills/CLAUDE.md` is loaded into context and Claude will pick the matching skill automatically when you ask a relevant question.
+### claude.ai and Claude Cowork
+
+Go to **Customize → Plugins → Add marketplace** and enter `contentstack/contentstack-agent-skills`. The skills sync to claude.ai, Cowork and Claude Code, and update when this repo changes.
 
 ### Cursor
 
-Install via Cursor's plugin marketplace, **or** copy `cursor/rules/*.mdc` into your project's `.cursor/rules/` directory. The `00-router.mdc` rule is marked `alwaysApply: true`, so Cursor always knows which skill to reach for.
+Open **Settings → Plugins**, choose **Add from GitHub repository**, and enter `https://github.com/contentstack/contentstack-agent-skills`.
 
-### Codex / OpenAI agents
+### Codex
 
-Point your agent at this repo or copy the `codex/` directory into your project. The entry point is [`codex/AGENTS.md`](codex/AGENTS.md).
+```
+codex plugin marketplace add contentstack/contentstack-agent-skills
+codex plugin add contentstack-skills@contentstack-skills
+```
 
-Repository: [github.com/contentstack/contentstack-agent-skills](https://github.com/contentstack/contentstack-agent-skills)
+### GitHub Copilot
+
+Copilot CLI:
+
+```
+copilot plugin marketplace add contentstack/contentstack-agent-skills
+copilot plugin install contentstack-skills@contentstack-skills
+```
+
+VS Code: add `"contentstack/contentstack-agent-skills"` to the `chat.plugins.marketplaces` setting, then install **contentstack-skills** from the Extensions view.
 
 ### Gemini CLI
 
 ```
-gemini extensions install contentstack/contentstack-agent-skills
+gemini extensions install https://github.com/contentstack/contentstack-agent-skills
 ```
 
-### skills CLI (single skill on demand)
+### skills CLI (one skill, any agent)
 
 ```
-npx skills add contentstack/contentstack-agent-skills@<skill-slug>
+npx skills add contentstack/contentstack-agent-skills --skill cms-entries
 ```
+
+Use `--list` to see every skill. The CLI installs into the right folder for Claude Code, Cursor, Codex, Copilot, Gemini, Windsurf, Cline and others.
 
 ## Skills included
 
@@ -78,41 +88,27 @@ npx skills add contentstack/contentstack-agent-skills@<skill-slug>
 
 ## How it works
 
-`skills/` is the source of truth. Every other tool-specific tree (`cursor/rules/`, `codex/`) is generated from it by the scripts in `scripts/`. A GitHub Action regenerates the derived trees on every push to `main` and fails PRs that forget to regenerate, so the copies never drift.
-
-```
-skills/<slug>/SKILL.md     ──► cursor/rules/NN-<slug>.mdc
-                           ──► codex/<slug>/SKILL.md
-skills/CLAUDE.md (router)  ──► cursor/rules/00-router.mdc
-                           ──► codex/AGENTS.md
-```
+Each skill is a folder with a `SKILL.md` (YAML frontmatter plus instructions) and optional `references/` and `scripts/`. Agents see only each skill's `name` and `description` up front, and load the rest when a request matches the "Use when…" part of the description.
 
 ## Repository layout
 
 ```
-.claude-plugin/        Claude Code plugin + marketplace manifests
-.cursor-plugin/        Cursor plugin manifest
-.github/workflows/     CI that regenerates cursor/rules and codex on push
-codex/                 Generated Codex tree — do not edit
-cursor/rules/          Generated Cursor rules — do not edit
-docs/                  Official documentation source for the skills bundle
-scripts/               Contributor build scripts
-skills/                Source of truth — edit here
-gemini-extension.json  Gemini CLI extension manifest
+skills/<slug>/SKILL.md            Source of truth: one folder per skill
+.claude-plugin/                   Claude Code / claude.ai / Copilot CLI plugin and marketplace
+.cursor-plugin/                   Cursor plugin and marketplace
+.agents/plugins/marketplace.json  Codex marketplace
+plugin.json                       Agent Plugins manifest (Codex, Cursor, VS Code)
+gemini-extension.json             Gemini CLI extension
+docs/                             Documentation: install, architecture, contributing, skill reference
+scripts/validate.mjs              Validates skills and manifests (runs in CI)
 ```
 
-The `docs/` directory contains the official documentation pages for installation, setup verification, architecture, contributing, and the skill reference.
+## Contributing
 
-## Editing skills
-
-Edit only under `skills/`. Then regenerate the derived trees:
-
-```
-bash scripts/build-cursor-rules.sh
-bash scripts/build-codex-skills.sh
-```
-
-The GitHub Action in `.github/workflows/build.yml` runs these on every push to `main` and commits any drift.
+1. Add or edit `skills/<slug>/SKILL.md`. The `name` must match the folder, and the `description` must say what the skill does and include "Use when…" (1024 characters max).
+2. Add a row to the table above.
+3. Run `node scripts/validate.mjs`.
+4. For a release, bump `version` in every manifest. The validator fails if they disagree. Claude Code only updates installed plugins when the version changes.
 
 ## Learn more about Contentstack
 
@@ -124,4 +120,4 @@ The GitHub Action in `.github/workflows/build.yml` runs these on every push to `
 
 ## License
 
-See individual skill files for attribution. Contentstack branding and documentation belong to Contentstack.
+[MIT](LICENSE). Contentstack branding and documentation belong to Contentstack.

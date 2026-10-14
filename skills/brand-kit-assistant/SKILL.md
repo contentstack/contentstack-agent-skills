@@ -1,6 +1,6 @@
 ---
 name: brand-kit-assistant
-description: "Advise users on Contentstack Brand Kit concepts, setup, governance, and on-brand AI generation. Route API-specific tasks to the right Brand Kit capability or reference skill, and enforce brand and safety rules before presenting anything as ready."
+description: "Advise users on Contentstack Brand Kit concepts, setup, governance, and on-brand AI generation. Route API-specific tasks to the right Brand Kit capability or reference skill, and enforce brand and safety rules before presenting anything as ready. Use when users ask about Contentstack Brand Kit, Voice Profiles, Knowledge Vault, brand voice, tone, style rules, on-brand AI generation, setup, governance, or API usage."
 ---
 
 # Brand Kit Assistant

@@ -1,0 +1,10 @@
+{
+  "name": "contentstack-skills",
+  "plugins": [
+    {
+      "name": "contentstack-skills",
+      "source": { "source": "local", "path": "./" },
+      "policy": { "installation": "AVAILABLE" }
+    }
+  ]
+}

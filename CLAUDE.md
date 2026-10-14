@@ -1,16 +1,22 @@
 # Contentstack Skills
 
-This repository bundles a collection of [Contentstack](https://www.contentstack.com) agent skills for use with Claude Code, Cursor, Codex, Gemini, and the `skills` CLI.
+This repository bundles [Contentstack](https://www.contentstack.com) agent skills. Every skill lives once in `skills/<slug>/SKILL.md` (the [Agent Skills](https://agentskills.io) format) and is distributed to Claude Code, claude.ai, Cursor, Codex, GitHub Copilot, Gemini CLI and the `skills` CLI through the manifests at the repo root. There are no generated copies.
 
-## Routing
+## Editing skills
 
-The router lives at [skills/CLAUDE.md](skills/CLAUDE.md). Follow it to pick the right skill for a given user request.
+- `name` must equal the folder name (lowercase, hyphens, max 64 chars).
+- `description` says what the skill does and includes "Use when …" triggers, max 1024 chars. This is the only text agents see before loading a skill, so put routing cues here.
+- Keep `SKILL.md` focused; move long material into `references/` and link it with a relative path.
+- When adding a skill, add its row to the table in `README.md`.
+- Run `node scripts/validate.mjs` before committing. CI runs it on every PR.
 
-Each skill's canonical definition is at `skills/<slug>/SKILL.md`. The `cursor/rules/` and `codex/` trees are generated artifacts — do not edit them by hand.
+## Releasing
+
+Bump `version` to the same value in `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `.cursor-plugin/plugin.json`, `plugin.json` and `gemini-extension.json`. Installed Claude Code plugins only update when the version changes.
 
 ## Contentstack references
 
-When a skill needs up-to-date product or API details beyond what's in `skills/<slug>/SKILL.md`, consult:
+When a skill needs up-to-date product or API details, consult:
 
 - [developers.contentstack.com](https://developers.contentstack.com) — SDKs, CLIs, API references
 - [contentstack.com/docs](https://www.contentstack.com/docs) — product documentation

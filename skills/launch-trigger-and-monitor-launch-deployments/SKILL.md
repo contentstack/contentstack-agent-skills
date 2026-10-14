@@ -1,6 +1,6 @@
 ---
 name: launch-trigger-and-monitor-launch-deployments
-description: "Trigger a Launch deployment for a specific environment, then poll its status until completion. If the deployment fails or is cancelled, fetch the deployment log and diagnose likely causes with next-step recommendations."
+description: "Trigger a Launch deployment for a specific environment, then poll its status until completion. If the deployment fails or is cancelled, fetch the deployment log and diagnose likely causes with next-step recommendations. Use when you need to automate Launch deployments for a known project and environment, monitor progress, and surface failure diagnostics. This is appropriate for CI/CD or operator workflows that need a deterministic deploy status check and log-based troubleshooting."
 argument-hint: "[project_uid] [environment_uid]"
 disable-model-invocation: true
 allowed-tools: Read Write Bash

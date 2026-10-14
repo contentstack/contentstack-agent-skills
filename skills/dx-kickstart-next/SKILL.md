@@ -1,6 +1,6 @@
 ---
-name: contentstack-kickstart-next
-description: Guidance for building, reviewing, debugging, or extending Contentstack's kickstart-next repository. Use when working on the Next.js kickstart app, Contentstack Delivery SDK setup, Live Preview or Visual Builder behavior, seeded stack alignment, environment variables, endpoint or image host configuration, App Router structure, package scripts, local setup, CI expectations, tests, lint/build validation, or PR review checklists.
+name: dx-kickstart-next
+description: "Guidance for building, reviewing, debugging, or extending Contentstack's kickstart-next repository. Use when working on the Next.js kickstart app, Contentstack Delivery SDK setup, Live Preview or Visual Builder behavior, seeded stack alignment, environment variables, endpoint or image host configuration, App Router structure, package scripts, local setup, CI expectations, tests, lint/build validation, or PR review checklists."
 ---
 
 # Contentstack kickstart-next
