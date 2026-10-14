@@ -55,7 +55,7 @@ for dir in "$SKILLS_DIR"/*/; do
     # Body = SKILL.md with frontmatter stripped
     case " $IN_PLACE_SKILLS " in
       *" $slug "*)
-        printf '> This skill'"'"'s files are in `skills/%s/` at the root of the contentstack-agent-skills repo. Resolve every relative path below against that folder, not against this rule.\n\n' "$slug"
+        printf '> This skill'"'"'s files, including `skills-index.md` and every `<name>.md` it routes to, are in `../../skills/%s/` relative to this rule. Resolve every relative path and skill name below against that folder, not against this rule. If that folder is missing, the pack is installed without its files: say so and stop.\n\n' "$slug"
         awk 'BEGIN{fm=0} /^---$/{fm++; next} fm>=2{print}' "$skill_md" |
           SLUG="$slug" perl -pe 's{\]\((?!(?:[a-z][a-z0-9+.-]*:|#|/))(?:\./)?}{](../../skills/$ENV{SLUG}/}gi'
         ;;

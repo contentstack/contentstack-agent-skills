@@ -1,6 +1,6 @@
 # studio
 
-> This skill's files are in `skills/studio/` at the root of the contentstack-agent-skills repo. Resolve every relative path below against that folder, not against this file.
+> This skill's files, including `skills-index.md` and every `<name>.md` it routes to, are in `../../skills/studio/` relative to this file. Resolve every relative path and skill name below against that folder, not against this file. If that folder is missing, the pack is installed without its files: say so and stop.
 
 
 # Studio router
