@@ -34,6 +34,7 @@ Each description's "Use when…" clause lists the requests that should load it. 
 | --- | --- |
 | Brand Kit, Voice Profiles, Knowledge Vault, on-brand AI generation | [Brand Kit Assistant](../skills/brand-kit-assistant.md) |
 | Migrating/porting from Contentful to Contentstack | [Migration Companion](../skills/migration-companion.md) |
+| Building with Contentstack Studio: SDK, canvas, compositions, templates, sections | [Contentstack Studio](../skills/studio.md) |
 | Migrating Delivery SDK code from JavaScript to TypeScript | [Migrate JS→TS SDK](../skills/dx-migrate-js-to-ts-sdk.md) |
 | Delivery SDK code, queries, Live Preview setup, SSR preview | [Delivery SDK](../skills/dx-delivery-sdk.md) |
 | Maintaining or extending the Next.js kickstart | [Contentstack Kickstart Next](../skills/dx-kickstart-next.md) |

@@ -38,6 +38,7 @@ The slug is the skill's directory name (and its `name` field). Find it with `--l
 | `cms-data-modeling-best-practices` | Data Modeling Best Practices |
 | `cms-live-preview-visual-editor-support-assistant` | Live Preview & Visual Editor Support |
 | `migration-companion` | Migration Companion |
+| `studio` | Contentstack Studio |
 
 ## When to use this vs the full bundle
 

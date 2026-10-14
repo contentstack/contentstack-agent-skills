@@ -37,6 +37,12 @@ The bundle includes 22 skills across five Contentstack products. Each links to a
 | [Live Preview & Visual Editor Support](cms-live-preview-visual-editor-support-assistant.md) | `cms-live-preview-visual-editor-support-assistant` | Diagnosing and implementing Live Preview / Visual Builder across CSR, SSR, SSG, BFF. |
 | [Migration Companion](migration-companion.md) | `migration-companion` | Guided Contentful → Contentstack migration: content and application code. |
 
+## Studio
+
+| Skill | Slug | What it helps with |
+| --- | --- | --- |
+| [Contentstack Studio](studio.md) | `studio` | Studio end to end: SDK install, provisioning, component registration, sections and templates, data binding, preview routes, troubleshooting. |
+
 ## Launch
 
 | Skill | Slug | What it helps with |
