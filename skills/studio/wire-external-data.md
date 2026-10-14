@@ -16,8 +16,6 @@ Use when a composition needs values outside Contentstack: live pricing, A/B vari
 
 Studio compositions natively bind to Contentstack entries, but most apps also need non-CMS data: live pricing, URL parameters, A/B flags, user region, weather. Studio handles this through one mechanism: the `data` prop on `<StudioComponent />`. Whatever object you pass becomes available in the canvas Data Picker under **Component Default Data**, alongside the usual Contentstack roots (Linked Template Entry, Pinned Entries, Contentstack Query, Repeater Data). The host app owns the fetch. Studio just renders. The same pattern works in CSR (Vite/SPA) and every SSR flavour (Next App Router, Next Pages Router, Remix, Astro). Only the fetch location moves.
 
-Reference: `docs/20-bring-your-own-components/set-component-default-data.md`.
-
 ## Task
 
 1. **Prereq: `<StudioComponent specOptions={...} />` already renders on this route.** If not, run `setup-template-preview-routes` first: there is nothing to attach `data` to until the renderer is mounted.
@@ -52,7 +50,12 @@ Reference: `docs/20-bring-your-own-components/set-component-default-data.md`.
    ```tsx
    const { specOptions } = useCompositionData(/* ... */);
    const [extData, setExtData] = useState(null);
-   useEffect(() => { getLivePricing(sku).then(setExtData); }, [sku]);
+   useEffect(() => {
+     let stale = false;                 // ignore a slower response for a previous sku
+     setExtData(null);                  // back to loading state when sku changes
+     getLivePricing(sku).then((d) => { if (!stale) setExtData(d); });
+     return () => { stale = true; };
+   }, [sku]);
    if (!specOptions?.spec || !extData) return null;
    return <StudioComponent specOptions={specOptions} data={{ livePricing: extData }} />;
    ```
@@ -121,8 +124,6 @@ This skill succeeds only when ALL of the following are true. If any fails, surfa
 
 ## See also
 
-- `docs/20-bring-your-own-components/set-component-default-data.md`: full reference.
-- `docs/90-reference/composition-rendering-reference.md`: the `data` prop's exact shape + how authors see it in the Data Picker, alongside the other prop (`specOptions`).
 - Pair with `setup-template-preview-routes` if `<StudioComponent />` is not yet mounted on the route.
 - Pair with `configure-csr-vs-ssr` when choosing the render path for a new project.
 - `understand-bring-your-own-data`: this `data` prop vs `<StudioComposition context>` vs `<Slot data>`.

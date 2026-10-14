@@ -23,8 +23,6 @@ A Section Slot is an empty opening the next composer fills. Two optional setting
 
 Both are per slot, both optional, and a slot with neither behaves exactly as before: empty until filled, accepts anything.
 
-Reference: `docs/34-smart-containers/slot-defaults.md`.
-
 Two properties that drive every judgment call below:
 
 - **The default is a render-time fallback, never a copy.** It lives only as a setting on the slot: nothing is written into the placement. Editing the default section later updates every empty slot pointing at it, and clearing a filled slot brings the default back.
@@ -122,8 +120,6 @@ This skill succeeds only when ALL of the following are true. If any fails, surfa
 
 ## See also
 
-- `docs/34-smart-containers/slot-defaults.md`: full reference, edge-case table
-- `docs/34-smart-containers/section-slots.md`: the placeholder these settings shape
 - `use-section-slot`: carve the slot before configuring it
 - `understand-section-slots`: what fills a slot, and the Section-in-Slot rule
 - `expose-section-props`: the value-level sibling (override a prop, not the contents)

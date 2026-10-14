@@ -158,4 +158,4 @@ All operations are CMA-only (`api.contentstack.io` and regional variants). Auth 
 - [`provision-studio-project`](provision-studio-project.md): stack-wide setup, compositions CT, Studio project registration.
 - [`author-composition-via-api`](author-composition-via-api.md): composition entries that bind to the CTs created here.
 - [`build-connected-template`](build-connected-template.md): Template authoring against these page CTs.
-- [`reference_studio_provisioning_api`](../../docs/90-reference/studio-provisioning-api.md): host map and auth headers.
+- [`provision-studio-project`](provision-studio-project.md): regional hosts and auth headers.

@@ -25,8 +25,6 @@ Most "Live Preview broken" issues are one of those two missing. This skill ensur
 
 **Preview Token vs Delivery Token**: the Preview Token is **paired** with a Delivery Token (same screen, same record). It's NOT a separate token type. When you create a Delivery Token, Contentstack generates the Preview Token at the same time. They share an environment scope.
 
-Reference: `docs/10-setup/app-prerequisites/install-live-preview.md`.
-
 ## Task
 
 1. **HARD GATE: stack-level Live Preview must be ON.** Without the stack-level flag no `preview_token` resolves content, because the channel does not exist.
@@ -191,7 +189,6 @@ Don't ask for Delivery Token here: it's already configured (Live Preview is bein
 
 ## See also
 
-- `docs/10-setup/app-prerequisites/install-live-preview.md`: full reference
 - `install-studio`: full Studio install which includes Live Preview (use this if the user wants Studio too)
 - `verify-setup`: Layer 2 of the smoke test checks the Live Preview channel
 - `troubleshoot-canvas`: "Live Preview not configured" symptom

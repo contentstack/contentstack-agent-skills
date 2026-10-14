@@ -25,8 +25,6 @@ The four layers, lowest-to-highest:
 
 If layer 1 fails, layers 2 to 4 will all fail and chasing them is wasted work. Always read failures bottom-up.
 
-Reference: `docs/10-setup/verify-end-to-end.md`, `docs/10-setup/troubleshoot-common-studio-issues.md`.
-
 ## Task
 
 ### Evidence required before reporting setup complete
@@ -257,8 +255,6 @@ This skill succeeds only when Layer 0 + ALL seven downstream layers were attempt
 
 ## See also
 
-- `docs/10-setup/verify-end-to-end.md`: the layered smoke-test reference
-- `docs/10-setup/troubleshoot-common-studio-issues.md`: common failures + fixes
 - `troubleshoot-canvas`: invoke after this skill if any layer fails
 - `install-studio`: Layer 1 and Layer 2 install steps
 - `setup-template-preview-routes`: Layer 3 / Layer 4 route mounting

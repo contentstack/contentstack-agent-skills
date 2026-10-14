@@ -31,7 +31,7 @@ Every drift falls into exactly one bucket. If a drift resists classification, it
 
 ## Task
 
-1. **List the Sections.** From the composition (via the canvas or `docs/prompts/build-connected-template`'s output), enumerate the composed Sections in DOM order. Number them 1..N.
+1. **List the Sections.** From the composition (via the canvas or `build-connected-template`'s output), enumerate the composed Sections in DOM order. Number them 1..N.
 
 2. **Match viewports.** Pick three: mobile (390 wide), tablet (768), desktop (1280). If the production site has a hard breakpoint the migration must match, add that one too. Every capture happens at every viewport.
 
@@ -113,4 +113,3 @@ Every drift falls into exactly one bucket. If a drift resists classification, it
 - `register-component` § Acceptance: the call-site sweep step. Class B drift means it wasn't run.
 - `use-repeater`: Repeater's `display:contents` wrapper is a common source of layout drift at the leaf level.
 - `troubleshoot-canvas`: separate skill. That's for "canvas won't load," this one is for "canvas loads but pixels are wrong."
-- `docs/for-developers/migration/` playbook: the codified migration flow this skill's per-Section verification loop plugs into.

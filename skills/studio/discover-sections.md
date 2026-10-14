@@ -22,8 +22,6 @@ The output is a **section build plan**: a prioritized list of sections to build,
 
 This skill is **discovery, not authoring**. It doesn't write any code or touch Studio's UI. It produces a markdown report.
 
-Reference: `docs/40-recipes/migrating-hand-coded-pages-to-studio.md` Step 1 (Inventory components, sections, and templates). This skill automates the inventory tables in that step.
-
 ## Task
 
 1. **Find all route files** under `appRoot` matching `routeGlob`. List each file path.
@@ -129,8 +127,7 @@ If the route files use a different convention (e.g. React Router with `Route.tsx
 
 ## See also
 
-- [`composable-primitives`](../../docs/00-getting-started/composable-primitives.md): the pattern the discovery targets. This skill runs **Q1 of the [four-question framework](../../docs/00-getting-started/composable-primitives.md#four-questions-to-answer-when-building-any-component)** implicitly: components recurring across ≥ 2 routes ARE section candidates (Q1 answer = "compose from existing primitives across routes"). Components appearing on 1 route only fail Q1 and route to `design-component-library` for potential atom/layout registration instead.
-- `docs/40-recipes/migrating-hand-coded-pages-to-studio.md`: full section-first migration recipe (this skill produces its Step 1 inventory)
+- [`design-component-library`](design-component-library.md): the pattern the discovery targets. This skill runs **Q1 of the [four-question framework](design-component-library.md)** implicitly: components recurring across ≥ 2 routes ARE section candidates (Q1 answer = "compose from existing primitives across routes"). Components appearing on 1 route only fail Q1 and route to `design-component-library` for potential atom/layout registration instead.
 - `register-component`: invoke for each component the report lists
 - `build-section`: invoke for each section the report proposes
 - `design-section-from-jsx`: sibling skill. Given a proposed section, designs the linked-schema shape from the existing JSX

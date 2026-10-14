@@ -12,7 +12,7 @@ Part of the component-registration set. Start at [`register-component`](register
 
 Also searchable as: `data-cslp`, `Cslptag`, `$title` / `$image`, `$`-twin, click-to-edit, inline editing, "Visual Builder renders but won't edit".
 
-Full reference: [CSLP tags: the `$` props that make bound values editable](../../docs/20-bring-your-own-components/component-schema-prop-types.md#cslp-tags-the--props-that-make-bound-values-editable).
+Full reference: [CSLP tags: the `$` props that make bound values editable](register-component.md).
 
 **Silent-failure #1 in hand-written registered components:** a bindable prop is registered, the component renders the value fine, and **click-to-edit never attaches**. No error, no warning. The page looks finished and authors cannot touch it.
 

@@ -18,7 +18,7 @@ Use as the FIRST skill on any greenfield Studio build starting from a design (no
 
 ## Context
 
-Studio composes pages from three layers: **Layer-1 atomic components** (one CMS field each), **Layer-2 containers with slots** (holding atomics or nested containers, encoding design-system layout in code), and **Layer-3 Sections** (canvas compositions rooted at a schema scope). See [`from-designs-to-sections`](../../docs/00-overview/from-designs-to-sections.md) for the taxonomy. This skill assumes you've read it (or you're an agent applying its rules).
+Studio composes pages from three layers: **Layer-1 atomic components** (one CMS field each), **Layer-2 containers with slots** (holding atomics or nested containers, encoding design-system layout in code), and **Layer-3 Sections** (canvas compositions rooted at a schema scope).
 
 This skill runs the taxonomy over a specific design artifact. Every downstream skill in the Studio flow (`register-component`, `build-section`, `build-connected-template`, `plan-studio-architecture`) assumes this decomposition is already done. When it's not, developers guess piece-by-piece and produce inconsistent registrations (over-exposed slots, under-exposed slots, missed layout components, wrong Section boundaries).
 
@@ -26,7 +26,7 @@ Ship this decomposition BEFORE registering anything. Registrations are expensive
 
 ## The four-question decision framework
 
-This skill runs **all four questions** of the [decision framework](../../docs/00-getting-started/composable-primitives.md#four-questions-to-answer-when-building-any-component) once per identified section on the design. The framework is an open validator. It doesn't assume any specific pre-registered library:
+This skill runs **all four questions** of the [decision framework](design-component-library.md) once per identified section on the design. The framework is an open validator. It doesn't assume any specific pre-registered library:
 
 - **Q1. Classify: Atom, Layout, or Compound?** For each irreducible fragment of the design, ask what shape it is. A single content unit is an Atom. A slot-carrying arrangement is a Layout. Both content AND arrangement is a Compound. Refuse and decompose further, running Q1 recursively on each sub-fragment until every leaf is an atom or a layout. Sections themselves are compositions of primitives, not primitives. A marketing section design almost always starts as a compound that decomposes to Section + Stack + atoms.
 - **Q2. Does the library already have it?** Check the target project's existing registry **and** the Studio project itself. [`match-existing-pattern`](match-existing-pattern.md) § Step 1b returns the palette ranked by usage plus every Section grouped by the schema it binds. If a matching primitive exists, mark the row as reuse. If a Section already covers the target schema, the row is reuse or extend, not a build. Otherwise mark as new registration. Aggressively dedup across sections on the same design.
@@ -208,7 +208,7 @@ Layer 2 = any registered component that's not a pure Layer-1 atomic. Three concr
 For each, record:
 - Proposed component name (`<Card>`, `<AuthorCard>`, `<Callout>`).
 - Slot props (`body`, `left`, `right`, `header`, `content`).
-- **Whether the container also binds to CMS scalars.** If some regions of the container are same-content-every-usage (e.g. `authorName` always binds to `author.name`), those become scalar bindable props on the container itself, not slots. See [`from-designs-to-sections` § When to expose a slot vs bind a scalar](../../docs/00-overview/from-designs-to-sections.md#when-to-expose-a-slot-vs-bind-a-scalar).
+- **Whether the container also binds to CMS scalars.** If some regions of the container are same-content-every-usage (e.g. `authorName` always binds to `author.name`), those become scalar bindable props on the container itself, not slots.
 - Proposed scope (does this container bind to the CT root, a Group, a Reference, or is it purely structural).
 
 **3b. Self-iterating component (`type: "array"` prop)**: a component that receives a bound multi-value field and renders `.map()` internally, without a Studio Repeater. Use when the list rendering is straightforward (single-shape items, no per-iteration variant authoring, no template-author child-swap):
@@ -223,7 +223,7 @@ For each, record:
 - Proposed CMS field binding: multi-value Group, multi-value scalar, Modular Block, or multi-Reference.
 - **Reference-only requirement**: if the source is a Reference (single or multi), populate `data_sources.resolvedReferences` on the composition so CDA includes the referenced entries. Without it, References arrive as `{ uid }` stubs. Groups, Modular Blocks, and scalar multi-values live on the entry itself and need no resolution. The array arrives populated as-is.
 
-Do NOT use this shape when the design needs per-iteration variant authoring, Modular-Block polymorphism, template-author child-swap, or Studio's canvas Preview Mode showing N rendered children. Those cases want a **List Section with a Repeater** (Step 5). The full decision framework (array-prop vs Repeater-in-Simple-Section vs List Section) is documented at [`from-designs-to-sections` § Deciding how to iterate](../../docs/00-overview/from-designs-to-sections.md#deciding-how-to-iterate-array-prop-repeater-in-a-simple-section-or-list-section). Walk it every time a list appears in the design. Don't guess.
+Do NOT use this shape when the design needs per-iteration variant authoring, Modular-Block polymorphism, template-author child-swap, or Studio's canvas Preview Mode showing N rendered children. Those cases want a **List Section with a Repeater** (Step 5). Decide between array-prop, Repeater-in-Simple-Section and List Section every time a list appears in the design. Don't guess.
 
 **3c. Self-composing component (`type: "object"` prop)**: a component that receives a bound object shape and renders its subfields internally. Use when a nested Group has a fixed structure that always renders the same way:
 
@@ -325,7 +325,7 @@ Whichever is chosen, the delta is on the sheet. A spacing mismatch that nobody w
 
 ### Step 5: Draw Section boundaries (Layer 3)
 
-Apply the **schema-shape rule** from [`from-designs-to-sections` § Where Section boundaries fall](../../docs/00-overview/from-designs-to-sections.md#where-section-boundaries-fall-the-schema-shape-rule): each Section is rooted at exactly one schema scope. A new scope means a new Section.
+Apply the **schema-shape rule**: each Section is rooted at exactly one schema scope. A new scope means a new Section.
 
 For each Section candidate:
 
@@ -495,7 +495,7 @@ The build sheet is the plan. Two things can happen next. Ask both, in one closin
 >   - **B**, via Studio canvas (slower, produces canvas trail): chains `build-section` + `build-connected-template` through Playwright MCP. Requires `install-playwright-mcp` done.
 >   - **C**, hand me the sheet. I'll do it in Studio's UI myself.
 
-If the developer accepts **Offer 1**: hand off to `register-component` per new atomic + Layer-2, following the [palette conventions](../../docs/20-bring-your-own-components/component-palette-conventions.md).
+If the developer accepts **Offer 1**: hand off to `register-component` per new atomic + Layer-2, following the [palette conventions](register-component.md).
 
 If the developer accepts **Offer 2A**: for each Section in the sheet, hand off to [`author-composition-via-api`](author-composition-via-api.md) passing the Section's drop-tree + binding table as the composition-node structure. Post the Template last.
 
@@ -541,7 +541,7 @@ This skill succeeds only when ALL of the following are true.
 |---|---|---|
 | Skipping the layout classification (Step 4) | Every layout decision drifts to Studio's Design Panel per Section, which produces design-system drift | Enumerate every recurring layout in the design and register a specific Layer-2 layout component for it (`<TwoColumn>`, `<Stack>`, etc.) |
 | Proposing atomics per Section instead of per shape | Ends up with `<HeroTitle>`, `<CardTitle>`, `<FooterHeading>`, every one a `string` prop that could reuse a single `<Heading>` | Same atomic for same shape across the design. Use registered variants (`choice` prop) if the visual really differs |
-| Over-exposing slots | Every Section author has to fill every slot for every drop. Component becomes tedious | Slot only what varies per usage. Scalar-bind everything that's same-per-usage. See [`from-designs-to-sections` § When to expose a slot vs bind a scalar](../../docs/00-overview/from-designs-to-sections.md#when-to-expose-a-slot-vs-bind-a-scalar) |
+| Over-exposing slots | Every Section author has to fill every slot for every drop. Component becomes tedious | Slot only what varies per usage. Scalar-bind everything that's same-per-usage |
 | Merging two schema scopes into one Section | Auto-binding won't match. A Section rooted at both CT root AND a Reference scope simultaneously isn't a valid shape | Split into two Sections per the schema-shape rule |
 | Missing Condition Blocks on polymorphic References or Modular Blocks | List Section renders nothing per iteration when the source is multi-CT or polymorphic | Note the required Condition Blocks per allowed type on every polymorphic Section |
 | Emitting the plan as prose | Downstream skills can't consume prose. Ambiguity re-enters the flow | Emit YAML (or equivalent structured document) that `register-component` / `build-section` can be pointed at |
@@ -564,8 +564,6 @@ This skill succeeds only when ALL of the following are true.
 
 ## See also
 
-- [`from-designs-to-sections`](../../docs/00-overview/from-designs-to-sections.md): the taxonomy this skill applies. Read first.
-- [`from-designs-to-sections`](../../docs/00-overview/from-designs-to-sections.md): the taxonomy this skill applies. Read first.
 - [`plan-studio-architecture`](plan-studio-architecture.md): takes the plan this skill emits (or a requirements doc) and orders the build sequence.
 - [`register-component`](register-component.md): mechanics of registering each Layer-1 and Layer-2 output.
 - [`build-section`](build-section.md): mechanics of authoring each Section output.

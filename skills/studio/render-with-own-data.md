@@ -21,8 +21,6 @@ You give it two things: which composition, and the data.
 - **Which composition**: a pre-fetched `spec` from `sdk.fetchComposition`, or a `compositionUid` it fetches on the client.
 - **The data**: `context`, placed internally at `dataSources.template`, so the composition's existing template bindings resolve against it. Embedded sections are auto-scoped from `context` (pure, no network). You never build `section_scoped_data`.
 
-Reference: `docs/25-bring-your-own-data/studio-composition.md`, `docs/25-bring-your-own-data/studio-composition-props-reference.md`.
-
 This is not `<StudioComponent />`. That one owns a route and resolves composition **and** CMS data through `sdk.fetchCompositionData`. `<StudioComposition />` owns a subtree and takes the data from you. If the choice of surface is still open, run `understand-bring-your-own-data` first.
 
 ## Task
@@ -129,8 +127,6 @@ This skill succeeds only when ALL of the following are true. If any fails, surfa
 
 ## See also
 
-- `docs/25-bring-your-own-data/studio-composition.md`: CSR/SSR/loop walkthrough + per-framework fetch locations
-- `docs/25-bring-your-own-data/studio-composition-props-reference.md`: every prop, the `fetchComposition` query shape, and `options`
 - `understand-bring-your-own-data`: which of the three data surfaces fits
 - `wire-slot-data`: the other bring-your-own-data surface (per-slot)
 - `embed-composition`: mount a composition inside a code-owned page when the SDK should fetch its data too

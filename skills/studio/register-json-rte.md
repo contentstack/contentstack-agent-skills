@@ -41,8 +41,6 @@ Registration is a side-effect on the SDK singleton. It must happen **once, at ap
 
 **`registerJSONRTE` is deprecated.** It still works (preserves previously-registered `embeddedEntry`/`embeddedAsset`) but the SDK marks it `@deprecated`. New code uses `registerRTERenderer`. Migrate existing calls when you next touch them. `registerEmbeddedEntryRenderer` is also deprecated for the same reason.
 
-See: `docs/20-bring-your-own-components/json-rte-custom-element-rendering.md`.
-
 ## Task
 
 1. **Import `registerRTERenderer`** from `@contentstack/studio-react` (re-exported from `@contentstack/studio-client`):
@@ -270,4 +268,3 @@ So if the caller already fetched with **`.includeEmbeddedItems()`**, pass `entry
 ## See also
 
 - Pair with `install-studio` (must run first so `studioSdk.init` exists).
-- `docs/20-bring-your-own-components/json-rte-custom-element-rendering.md` for the full prop / serializer reference.

@@ -4,7 +4,7 @@ name: upgrade-studio-sdk
 
 ## When to use
 
-Bump the Studio SDK packages (studio-react, studio-react-components, studio-client, studio-registry, studio-core, studio-internal, studio-react-editor) in the host app: pin versions, read CHANGELOGs, smoke-check, roll back if needed.
+Bump the Studio SDK packages the host app declares (usually just `@contentstack/studio-react`): pin versions, read CHANGELOGs, smoke-check, roll back if needed.
 
 Use when the user wants to upgrade the Studio SDK packages in their host app: "upgrade Studio SDK to latest", "what's new in `@contentstack/studio-react`", "is `studio-client@1.5` safe", "I want the new repeater fix". Do NOT use to install for the first time (`install-studio`). Do NOT use to develop the SDK itself.
 
@@ -14,17 +14,7 @@ Use when the user wants to upgrade the Studio SDK packages in their host app: "u
 
 ## Context
 
-The Studio SDK is a multi-package monorepo published as independent versions per package (lerna `versioning: independent`). The packages a host app typically installs are:
-
-| Package | Role | Recent versions |
-|---|---|---|
-| `@contentstack/studio-react` | Renderer + hooks (`StudioComponent`, `useCompositionData`, registration entry points) | `1.3.x` |
-| `@contentstack/studio-react-components` | Built-in basics (Page, Section, Text, Repeater, ConditionBlock, …), `"use client"` modules | `1.5.x` |
-| `@contentstack/studio-client` | CDA/CMA orchestration: `fetchCompositionData`, `fetchSpec`, URL resolution | `1.5.x` |
-| `@contentstack/studio-registry` | `ComponentRegistry`, `DesignRegistry`, data-binder, globalThis singleton | `1.4.x` |
-| `@contentstack/studio-core` | Internal core: light SDK init, font loading, design-token cascade | `1.1.x` |
-| `@contentstack/studio-internal` | Internal types + apply/transform helpers | `1.2.x` |
-| `@contentstack/studio-react-editor` | The edit-mode renderer (`StudioCanvas`'s renderer) | `1.3.x` |
+The Studio SDK is published as several `@contentstack/studio-*` packages, each versioned independently. A host app normally declares only `@contentstack/studio-react` (renderer, hooks, `StudioComponent`, `StudioCanvas`, registration entry points), which is what `install-studio` installs. `studio-react` pulls in the other Studio packages it needs (built-in components, client, registry) as its own dependencies. Only declare another `@contentstack/studio-*` package directly if the app imports from it, and then keep it in the same upgrade.
 
 Versions follow [SemVer](https://semver.org). Changelogs are committed per package in the SDK repo and follow Conventional Commits: entries are grouped by `feat` / `fix` / `perf` / `refactor`. There is no separate "Breaking Changes" section. Treat any minor-version bump that involves cross-package work (registry, renderer, basics together) as carrying coordination risk.
 
@@ -33,9 +23,9 @@ The `peerDependencies` are `react ^18.0.0 || ^19.0.0` and `react-dom ^18.0.0 || 
 ## Task
 
 1. **Capture current state.**
-   - `cat package.json | grep '"@contentstack/studio'` in the host app to see currently pinned ranges.
-   - `npm ls @contentstack/studio-react @contentstack/studio-react-components @contentstack/studio-client @contentstack/studio-registry @contentstack/studio-core @contentstack/studio-internal @contentstack/studio-react-editor` to see the actually-resolved versions.
-   - If the lockfile is missing or stale, also run `npm view @contentstack/studio-react versions --json | tail` to see what's published.
+   - `grep '"@contentstack/studio' package.json` in the host app to see which Studio packages it declares and their ranges.
+   - List the resolved versions of every `@contentstack/studio-*` package with the project's package manager: `npm ls --all | grep @contentstack/studio`, `pnpm why @contentstack/studio-react`, or `yarn why @contentstack/studio-react`.
+   - To see what's published, run `npm view @contentstack/studio-react versions --json` (or `pnpm view` / `yarn info`).
 
 2. **Read the CHANGELOG delta: actually read it.**
    - For each package the host app installs, open its CHANGELOG and read every entry from the installed version up to the target. Do not summarize from imagination. Copy or paraphrase actual entries.
@@ -44,10 +34,10 @@ The `peerDependencies` are `react ^18.0.0 || ^19.0.0` and `react-dom ^18.0.0 || 
 
 3. **Upgrade the packages the host declares, together.** Bump every `@contentstack/studio-*` package listed in the host's `package.json` in the same change. Usually that is only `@contentstack/studio-react`, as `install-studio` installs it. `studio-react` declares the other Studio packages as its own dependencies, so upgrading it brings in matching versions. Do **not** add those internal packages to `package.json`: a direct pin that falls outside `studio-react`'s range installs a second copy, which splits the registry singleton (the globalThis-backed singleton landed across packages in coordinated bumps).
    - Pick the exact versions (avoid `^` for the upgrade commit so the resolved versions are reproducible. You can relax to `^` after smoke passes).
-   - Run `npm install @contentstack/studio-react@<v>` (plus any other `@contentstack/studio-*` package already in `package.json`), or the matching `pnpm` / `yarn` form. Use `--save-exact` if you want the upgrade-commit to pin exact versions.
-   - Re-run the `npm ls` from step 1: each Studio package should resolve to one version, with the nested copies `deduped`.
+   - Install with the project's package manager: `npm install --save-exact @contentstack/studio-react@<v>`, `pnpm add --save-exact @contentstack/studio-react@<v>`, or `yarn add --exact @contentstack/studio-react@<v>` (plus any other `@contentstack/studio-*` package already in `package.json`).
+   - Re-run the listing from step 1: each Studio package should resolve to a single version (no duplicate nested copies).
 
-4. **Smoke-test the host app.** Concrete steps depend on the framework. The matrix below is the minimum surface that catches the common breakages.
+4. **Smoke-test the host app.** Concrete steps depend on the framework. The matrix below is the minimum surface that catches the common breakages. Commands are shown with `npm`; use the `pnpm` / `yarn` equivalents if that's the project's package manager.
 
    | Framework | Smoke steps |
    |---|---|

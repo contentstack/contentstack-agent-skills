@@ -1,29 +1,21 @@
 ---
 name: studio
-description: "Router skill for Contentstack Studio and the Contentstack stack behind it (content types, entries, assets, publishing). Consult skills-index.md, load the matched specialist guide, then answer; load it before using Contentstack MCP tools for Studio work. Use when the user's message touches Contentstack Studio, canvas, compositions, templates, sections, the Studio SDK, Studio provisioning, authoring, preview or troubleshooting, or stack setup for Studio. Trigger words: Studio, canvas, composition, template, section, Contentstack, stack, content type, seed entries, Studio SDK, register component, install Studio, preview route, section slot, repeater, freeform, connected template, BYOC, Live Preview, Visual Editor, deploy, Contentstack Launch. Do NOT use for unrelated tasks (a random React question, a bug in the user's own code that never mentions Studio)."
+description: "Contentstack Studio router: loads one of the bundled specialist guides per task (SDK install, project provisioning, component registration, sections and templates, data binding, canvas and preview routes, publishing, troubleshooting). Use when the user mentions Contentstack Studio or its concepts: the Studio SDK, canvas, compositions, Connected or Freeform templates, sections, section slots, repeaters, registering components, BYOC, Studio preview routes, or making a project Studio-ready. Do not use for general Contentstack CMS, Live Preview, Visual Editor or Launch questions that do not involve Studio."
 ---
 
 # Studio router
 
 You are working on Contentstack Studio. The pack has one specialist skill per task, covering install, provisioning, component registration, section/template authoring, data binding, preview wiring, verification, troubleshooting, and migration.
 
-Loading every skill's frontmatter into every turn was the previous design and it burned ~8K always-on tokens. The current design keeps only this skill hot and routes everything else through a lookup file.
+This SKILL.md is the only file loaded up front. Everything else is routed through `skills-index.md`.
 
-## Resolving a skill file: three layouts, try each
+## Resolving a skill file
 
-**The pack ships in one shape and installs in another, and the shape differs per host. A Read against the wrong one returns "File does not exist", and the failure is silent**: routing stops and the answer gets improvised from memory, which is the exact thing this router exists to prevent.
+The specialist guides sit next to this file, in the same folder: a skill named `<name>` is `<name>.md` beside this SKILL.md, and the lookup table is `skills-index.md` in the same folder. Every cross-reference in this file and in `skills-index.md` is written as `<name>` or `<name>.md`. Resolve all of them this way.
 
-For a skill named `<name>`, resolve in this order and use the first that exists:
+Fallback: if `<name>.md` isn't there, try `../<name>/SKILL.md` (a host that installed each guide as its own skill folder).
 
-| # | Path | Where this is the layout |
-|---|---|---|
-| 1 | `../<name>/SKILL.md` | **Nested**: Claude Code gives every skill its own directory (`~/.claude/skills/<name>/SKILL.md`). |
-| 2 | `./<name>.md` | **Flat**: the repo (`skills/src/`, `docs/prompts/`), and Windsurf / Cline / Continue installs. |
-| 3 | `./<name>.mdc` | **Flat, Cursor**: `.cursor/rules/` loads only `.mdc`, so the installer changes the extension. Contents are identical. |
-
-Same rule for `skills-index.md`: try `./skills-index.md`, then `../studio/skills-index.md`, then `./skills-index.mdc`.
-
-**If both fail, say so out loud**: "the skill pack looks mis-installed, `<name>` resolved to neither path", and do NOT quietly fall back to general knowledge. A silent fallback looks identical to the pack working, so the user never learns their install is broken. Every cross-reference in this file and in `skills-index.md` is written as `<name>.md` for readability. Apply this resolution rule to all of them.
+**If neither resolves, say so out loud**: "the Studio skill pack looks mis-installed, `<name>` didn't resolve", and do NOT quietly fall back to general knowledge. A silent fallback looks identical to the pack working, so the user never learns their install is broken.
 
 ## What to do
 
@@ -31,7 +23,7 @@ Same rule for `skills-index.md`: try `./skills-index.md`, then `../studio/skills
 
 **Discover MCP execution before resolving raw HTTP credentials.** Follow `install-contentstack-mcp` to inspect callable tools in the current host and verify the target with a read call. A stored OAuth session is not evidence of a connected MCP server. Prefer available MCP operations; use OAuth HTTP for missing operations or an explicitly recorded connection limitation. Never infer tool availability solely from a conversation flag.
 
-1. Read `skills-index.md` (resolution above). It has two parts.
+1. Read `skills-index.md` (in this folder). It has two parts.
 
 2. **Trigger table.** Scan the user's most recent message against the phrases in the left column. If one row matches, Read that skill's file and follow it. If several match, run them in the order the table implies (installs before authoring, `analyze-project-fit` before anything state-changing).
 
@@ -72,7 +64,7 @@ Read [`complete-the-build`](complete-the-build.md) for the how and the verificat
 
 **Settle the credential before the first API call of the turn, not when one fails.** Every specialist repeats this. It lives here because it must hold even before a specialist is pulled.
 
-1. Resolve OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (`~/Library/Application Support/ContentstackMCP/oauth-config.json` and its platform equivalents).
+1. Resolve OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (`~/Library/Application Support/ContentstackMCP/oauth-config.json` and its platform equivalents). **Ask the user before reading or refreshing that stored session**: it is their credential, and refreshing it rotates the refresh token, which can sign the MCP server out (its next refresh fails with `400 invalid refresh_token`) unless the new pair is written back.
 2. **Never ask the user for a session `authtoken`.** It is a full user-session credential and is the last rung, requested only after a freshly refreshed OAuth token has been observed to fail.
 3. Access tokens last **59 minutes** and refresh tokens **rotate**. Tooling that refreshes must persist the new pair. A bare `curl` loop does neither, so long work belongs in a script.
 4. If nothing resolves, or a refresh returns `400 invalid_refresh_token`, hand the user `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` and wait. It needs a TTY and a browser, you cannot run it for them. The region must be **in** the command. `DEFAULT_REGION` is `NA`, so omitting it silently authenticates against NA prod.
@@ -81,15 +73,7 @@ Read [`complete-the-build`](complete-the-build.md) for the how and the verificat
 ## Rules
 
 - Always re-Read the skill file. Never answer from a remembered summary. The source of truth is the file on disk.
-- **A failed Read is a hard stop, not a shrug.** If a skill file won't resolve under either layout above, report it. Improvising over a broken install is worse than erroring: the user believes the pack ran when it didn't.
+- **A failed Read is a hard stop, not a shrug.** If a skill file won't resolve (see § Resolving a skill file), report it. Improvising over a broken install is worse than erroring: the user believes the pack ran when it didn't.
 - Never skip step 1. The lookup is cheap. Missing a skill is expensive.
 - If the user's request implies multiple skills (e.g. "install and set up preview routes"), pull each in the order they must run: skills-index.md's Trigger table encodes that ordering.
 - Prerequisite skills: many authoring skills assume `install-studio` + `configure-studio` are done. If the user's project state is unclear, run `analyze-project-fit` first.
-
-## Why this exists
-
-The old design put a rich `description` + `when-to-use` in every skill's frontmatter so Claude Code's classifier could auto-fire the right one. That worked but cost every downstream customer ~8K tokens per turn, every skill description loaded on every single message, whether the turn was about Studio or not.
-
-The new design collapses those descriptions into `skills-index.md`, keeps only this file hot, and shifts routing into an explicit two-step read. Per-turn always-on cost drops by ~7.4K tokens. On non-Studio turns, this skill doesn't fire and the whole pack sits cold.
-
-Nothing was deleted. Every trigger phrase from the old per-skill `when-to-use` fields lives in skills-index.md's Trigger table, verbatim.

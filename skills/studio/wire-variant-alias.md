@@ -30,8 +30,6 @@ The result: ONE template, ONE route, N variants per entry. No code branch in the
 
 This skill is for **user-driven branching only**. The variant is chosen based on who the visitor is (tier, persona, cookie, A/B). For **content-driven branching** (the variation lives in the entry's own fields), use [`use-condition-block`](use-condition-block.md) instead. That stays in the Studio canvas, no variant aliases needed.
 
-Reference: `docs/50-advanced/variant-aliases-deep-dive.md` (full deep-dive), `docs/40-recipes/migrating-hand-coded-pages-to-studio.md` Step 6 (handling edges).
-
 ## Task
 
 1. **Read `routeFilePath`** and locate the `branchExpression`. Confirm it's a user-driven branch (the condition references runtime state: `user`, `cookies`, `headers`, `experiment`, `persona`). If the condition references `entry.<field>`, STOP. That's content-driven branching. Recommend `use-condition-block` instead.
@@ -156,8 +154,6 @@ Reference: `docs/50-advanced/variant-aliases-deep-dive.md` (full deep-dive), `do
 
 ## See also
 
-- `docs/50-advanced/variant-aliases-deep-dive.md`, full deep dive: A/B, personalization, seasonal variants, cache strategy, edge cases
 - `use-condition-block`: for content-driven branching (the variant decision lives in the entry, not in visitor state)
 - `migrate-page-to-studio`: the final route-swap skill. This skill handles ONE specific edge that surfaces during migration (user-driven branch)
-- `docs/40-recipes/migrating-hand-coded-pages-to-studio.md` Step 6: the recipe section that names this skill as the translation for user-driven branches
 - `wire-external-data`: sibling skill for cases where the branch needs external data (not just visitor state) to decide

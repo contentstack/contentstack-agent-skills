@@ -107,7 +107,6 @@ Three outcomes depending on the kind of mismatch:
 |---|---|
 | Create a Section with a linked schema | `build-section` |
 | Understand what happens when a Section drops on a template | `understand-auto-binding` |
-| Read the long-form reference | `docs/90-reference/linked-schema-matching-rules.md` |
 | Inspect a Section's linked schema | Open the Section in Studio, then in the right panel open Settings, then Linked Schema |
 
 ## Sections have no data of their own: `selectedField` scopes the slice
@@ -138,4 +137,3 @@ Consequence: the Section's own canvas always shows **one empty placeholder**, no
 - `understand-auto-binding`: what happens at drop time when a linked schema matches
 - `build-section` § How a Section gets its data: the `selectedField` decision rule
 - `author-composition-via-api` § Authoring a Section composition: full wire shapes for `selectedField` + `resolvedReferences`
-- `docs/32-sections/binding-to-cms.md`: reference

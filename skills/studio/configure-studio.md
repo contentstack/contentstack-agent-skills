@@ -32,9 +32,7 @@ To find the exact UID for THIS project:
 - **Contentstack web app:** open Content Models and look for a content type with the description "Studio compositions" (or similar). The UID column is what you want.
 - **API:** `GET /v3/content_types?query={"_metadata.studio_managed":true}` returns the compositions content type. Its `uid` is the value.
 
-Pass this UID to `studioSdk.init({ contentTypeUid: "<uid>" })` in your app's `lib/contentstack.ts` (the `install-studio` skill writes it from the `studioContentTypeUid` input). **This is the SDK-init `contentTypeUid`, NOT `templateContentTypeUid`, which identifies a composition's CONNECTED content type at fetch time.** See `<StudioComponent />` [reference](../../docs/90-reference/composition-rendering-reference.md#two-different-contenttypeuid-concepts-dont-confuse-them) for the full distinction.
-
-Reference: `docs/10-setup/studio-project/configure-environment-language-and-canvas-url.md`, `docs/30-composition/canvas-url.md`.
+Pass this UID to `studioSdk.init({ contentTypeUid: "<uid>" })` in your app's `lib/contentstack.ts` (the `install-studio` skill writes it from the `studioContentTypeUid` input). **This is the SDK-init `contentTypeUid`, NOT `templateContentTypeUid`, which identifies a composition's CONNECTED content type at fetch time.**
 
 ## Task
 
@@ -125,7 +123,7 @@ Reference: `docs/10-setup/studio-project/configure-environment-language-and-canv
 
 4. **Set Canvas URL** to `canvasUrl`. This is the **path** Studio appends to the Base URL when loading its iframe. Enter the path only, not a full origin. Common values:
    - Any environment: `/canvas` or `/studio-canvas`, must match the route in the app that mounts `<StudioCanvas />`. The same value works for local dev and deployed. The origin differs but comes from the Base URL, not this field.
-   - Studio-hosted playground: leave blank to fall back to Playground Canvas (no canvas-app needed. Deploy is disabled in this mode, see `docs/10-setup/studio-project/try-studio-in-the-playground-canvas-without-an-app.md`)
+   - Studio-hosted playground: leave blank to fall back to Playground Canvas (no canvas-app needed. Deploy is disabled in this mode)
 
 5. **Save.** Studio's Save button grays out post-save. That's the confirmation.
 
@@ -168,8 +166,5 @@ This skill succeeds only when ALL of the following are true.
 
 ## See also
 
-- `docs/10-setup/studio-project/configure-environment-language-and-canvas-url.md`: the canonical reference
-- `docs/30-composition/canvas-url.md`: what Canvas URL is for
-- `docs/10-setup/studio-project/try-studio-in-the-playground-canvas-without-an-app.md`: Studio-hosted canvas (no canvas-app needed. Deploy disabled)
 - `verify-setup`: run after this skill to confirm canvas loads
 - `setup-template-preview-routes`: wire `/blog/:slug` style routes (separate from Canvas URL)

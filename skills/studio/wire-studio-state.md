@@ -40,8 +40,6 @@ Registered components give Studio your markup. **BYOS gives it your behavior.** 
 
 **Why this matters.** Without BYOS every interactive piece must be a self-contained registered component with behavior baked in: authors re-bind props and nothing else. With it, an author-dropped "Add to cart" calls your `cart:add`, and every component reading `cart:count` updates. Skipping BYOS is the difference between Studio composing your app and Studio decorating it.
 
-Full reference: [`docs/20-bring-your-own-components/bring-your-own-state.md`](../../docs/20-bring-your-own-components/bring-your-own-state.md).
-
 ## Decide what's actually needed: don't wire all three by reflex
 
 | Evidence in the app | Reach for |
@@ -172,7 +170,6 @@ Full reference: [`docs/20-bring-your-own-components/bring-your-own-state.md`](..
 
 ## See also
 
-- [`docs/20-bring-your-own-components/bring-your-own-state.md`](../../docs/20-bring-your-own-components/bring-your-own-state.md): full reference
 - [`register-component`](register-component.md): where `action` props are declared
 - [`wire-external-data`](wire-external-data.md): read-only external data, not shared state
 - [`wire-variant-alias`](wire-variant-alias.md): user-state branching via Personalize

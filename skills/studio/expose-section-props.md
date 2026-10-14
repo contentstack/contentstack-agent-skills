@@ -34,8 +34,6 @@ When the user is unsure whether they want Expose Props, use this decision table:
 | Different **component subtree** per template instance | Section Slot |
 | Different **list of entries** per template instance | Linked schema |
 
-Reference: `docs/32-sections/expose-section-props.md`.
-
 ## Task
 
 1. **Open the section in the section canvas.** In Studio, switch to the Sections tab, find `sectionName` in the list, and open it. The section opens in its own canvas, distinct from a template canvas.
@@ -90,6 +88,5 @@ If any check fails, do not claim success. Surface the failure and stop.
 
 ## See also
 
-- `docs/32-sections/expose-section-props.md`: full reference
 - `use-section-slot` skill: for swappable component subtrees
 - `understand-linked-schemas` skill: for per-instance list data

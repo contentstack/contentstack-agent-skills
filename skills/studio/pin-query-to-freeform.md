@@ -16,7 +16,7 @@ Use when a Freeform template needs to iterate a dynamic list of entries (top 3 f
 
 ## Context
 
-Freeform templates can pin a CDA query so a Repeater iterates a dynamic list of entries, for example the top 3 featured products or the latest 5 articles. The query (filter + sort + limit) is stored on the template and re-runs on every render, so content stays fresh as authors publish new entries. Reference doc: `docs/33-freeform/pinned-queries.md`. Pinned queries differ from pinned entries: a pinned entry returns a single record (bind directly to `template.*`), while a pinned query returns a list and must be consumed by a Repeater whose items resolve against `repeater.*`.
+Freeform templates can pin a CDA query so a Repeater iterates a dynamic list of entries, for example the top 3 featured products or the latest 5 articles. The query (filter + sort + limit) is stored on the template and re-runs on every render, so content stays fresh as authors publish new entries. Pinned queries differ from pinned entries: a pinned entry returns a single record (bind directly to `template.*`), while a pinned query returns a list and must be consumed by a Repeater whose items resolve against `repeater.*`.
 
 ## Task
 
@@ -57,5 +57,5 @@ Freeform templates can pin a CDA query so a Repeater iterates a dynamic list of 
 | Expecting the natural-language prompt to re-evaluate at render | The prompt is converted to a stored CDA query once at save time. Render uses the stored query only | To change query behavior, re-open the Pinned Query modal and edit (or re-prompt) |
 | Binding a Repeater to a single-result query | A Repeater expects a list. One entry is wasted scaffolding | Use `pin-entry-to-freeform` for single-entry pinning and bind directly to `template.*` |
 | Selecting a component before opening the Data tab | Tab shows component-scoped pins, not template-level | Click empty canvas to deselect, then open Data tab |
-| Forgetting a Condition Block for references inside the Repeater | References (both single-CT and multi-CT) inside a Repeater require a Condition Block to resolve | Wrap each reference field in a Condition Block. See `use-condition-block` |
+| Forgetting a Condition Block for a **multi-CT** reference inside the Repeater | Items of a multi-CT reference can be different content types, so one card layout cannot bind all of them. Single-CT references and the Repeater itself need no Condition Block (step 9) | Add a Condition Block with a content-type check only where a multi-CT reference needs a different layout per content type. See `use-condition-block` |
 | Binding child fields to `template.*` instead of `repeater.*` | `template.*` resolves to template-level pins, not the current iteration item | Inside a Repeater body, child bindings must use `repeater.<field>` |

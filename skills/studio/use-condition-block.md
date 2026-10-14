@@ -24,7 +24,7 @@ Condition Blocks are required inside a Repeater for:
 - **Reference fields with multiple content types** (the related entry could be any one of the allowed CTs).
 - **Reference fields with a single content type**: still required, because Contentstack composition schema narrows iteration item type via the Condition Block before `repeater.<field>` paths resolve. One Condition Block matching the single CT is enough.
 
-Condition Blocks live in the palette under **Smart Containers**. Reference: `docs/34-smart-containers/control-visibility-with-condition-blocks.md`.
+Condition Blocks live in the palette under **Smart Containers**.
 
 ## Task
 
@@ -73,6 +73,3 @@ This skill succeeds only when ALL of the following are true. If any fails, do no
 
 ## See also
 
-- `docs/34-smart-containers/control-visibility-with-condition-blocks.md`: reference
-- `docs/34-smart-containers/create-repeatable-content-with-repeaters.md`: parent container
-- `docs/40-recipes/marketing-site-walkthrough-with-four-end-to-end-scenarios.md`: Modular Block recipe in action

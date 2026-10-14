@@ -25,7 +25,7 @@ This skill is the **final step** of a section-first migration. The order is:
 3. **Build templates**: almost always `build-connected-template` (the default. Migrate INTO Connected even for one-off pages, via a single-entry CT).
 4. **Swap the route file** (this skill). Only NOW does the route file change.
 
-If sections or templates don't exist yet, STOP. Run the relevant skills first. See [`docs/40-recipes/migrating-hand-coded-pages-to-studio.md`](../../docs/40-recipes/migrating-hand-coded-pages-to-studio.md) for the full section-first migration recipe. This skill is its Step 5.
+If sections or templates don't exist yet, STOP. Run the relevant skills first (`discover-sections`, `build-section`, `build-connected-template`). This skill is the last step of a section-first migration.
 
 **Catch-all is the destination.** This skill swaps ONE route file at a time, useful for incremental migration. Once you've migrated more than a handful of routes, consolidate to a single catch-all (`app/[[...slug]]/page.tsx` for Next.js, `<Route path="*">` for React Router) via [`setup-template-preview-routes`](setup-template-preview-routes.md). The catch-all lets Studio resolve every URL via its CDA query. You stop maintaining one route file per URL. Per-route swapping is the path. The catch-all is the destination.
 
@@ -47,8 +47,6 @@ The route-swap itself is a four-step transform:
 > "It renders" is not the bar. "It renders identically to the current site" is.
 
 The skill is conservative. It stops on anything it can't represent cleanly. Better to surface a blocker than silently strip behavior.
-
-Reference: `docs/40-recipes/migrating-hand-coded-pages-to-studio.md` (the multi-route playbook), `docs/31-templates/overview.md`, `docs/32-sections/overview.md`.
 
 ## Task
 
@@ -156,7 +154,7 @@ Do NOT proceed past step 1 (inventory) if the route file cannot be read or parse
 This skill succeeds only when ALL of the following are true.
 
 - [ ] The convertibility report listed every JSX component the route uses, no component dropped silently.
-- [ ] **Every Section created by this skill has a `ui_preview`**, a blank tile in the Sections accordion otherwise. UI-created sections get one from Studio on Save. API-created ones need `tsx scripts/make-ui-preview.ts --entry <uid>`. See [`author-composition-via-api` § Section thumbnails](author-composition-thumbnails.md#section-thumbnails-ui-preview).
+- [ ] **Every Section created by this skill has a `ui_preview`**, a blank tile in the Sections accordion otherwise. UI-created sections get one from Studio on Save. API-created ones need one attached explicitly. See [`author-composition-via-api` § Section thumbnails](author-composition-thumbnails.md#section-thumbnails-ui-preview).
 - [ ] Every prop assignment in the original JSX was either represented as a Studio binding OR explicitly listed as a blocker.
 - [ ] If any blocker was reported, the skill stopped and did NOT proceed to scaffold.
 - [ ] If the skill proceeded - a new Connected template exists in the Studio project with bindings populated. The user did NOT re-author bindings in the canvas.
@@ -201,14 +199,11 @@ If the route you're migrating is rendered by a **compound component** (an outer 
 
 Only decompose further when a specific inner level needs to become author-editable: reorder body blocks, swap a variant, add a new block type. At each drill-down step: author the next Section, preview it in Studio's canvas, verify the inner sub-tree still renders, then decide whether to go deeper. Every step is opt-in. Every step is reversible.
 
-For each Section you author along the way, use [`build-section`](build-section.md) or [`build-repeating-section`](build-repeating-section.md). Full worked example with a 4-level nested schema: [From components to Studio compositions](../../docs/00-overview/standard-studio-page-anatomy.md).
+For each Section you author along the way, use [`build-section`](build-section.md) or [`build-repeating-section`](build-repeating-section.md). 
 
 ## See also
 
-- `docs/40-recipes/migrating-hand-coded-pages-to-studio.md`: the multi-route migration playbook (this skill is per-route. That recipe is the program around it)
-- `docs/40-recipes/add-studio-to-a-visual-editor-app.md`: Visual Editor projects don't migrate. They layer Studio on top of VE. This skill is optional on VE projects (use it only for routes where you want to switch from hand-coded JSX to a Studio-authored composition).
 - `register-component`: chained by this skill for unregistered components
 - `build-section` / `build-repeating-section`: chained per Section written during the migration
 - `build-connected-template`: chained by this skill for the template scaffold
 - `verify-setup`: chained by this skill at the end
-- `docs/31-templates/connected-content-type.md`: the model this skill produces

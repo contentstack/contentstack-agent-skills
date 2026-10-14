@@ -122,7 +122,7 @@ Phase 0 includes project bootstrap. Recommended: Next.js App Router (catch-all r
 | Studio canvas blank, no console error | env Base URL empty, or Canvas URL set to a full URL instead of a path | `setup-section-preview` + `understand-canvas-url` |
 | Components don't show up in the palette | Registration file isn't imported at app startup | `register-component`: `import "./register-components"` from the app entry |
 | Sections panel is empty even after Phase 2 finished | Wrong project selected in Studio top-bar | switch project, OR re-run `provision-studio-project` if it was provisioned against a different stack |
-| "Internal components missing: page" on the visitor route | SDK is pre-PR-#851 build | `upgrade-studio-sdk`: bump to the patch that ships the visitor-path auto-register |
+| "Internal components missing: page" on the visitor route | SDK predates the release that auto-registers built-ins on the visitor render path | `upgrade-studio-sdk`: bump to the patch that ships the visitor-path auto-register |
 | Template renders in Studio but not on the live route | The visitor route isn't mounting `<StudioComponent />`, OR is mounting `<StudioCanvas />` by mistake | `understand-canvas-vs-component` + `setup-template-preview-routes` |
 | "registered as lazy but hasn't been loaded yet" | `fetchSpec` / `fetchCompositionData` wasn't awaited before `<StudioComponent />` mounted | `configure-csr-vs-ssr`: the SSR / RSC patterns show the right await placement |
 | `useData()` warning in dev console only | Benign. Basic component hit the SSR pass before `DataCtxProvider` attached. Disappears post-hydration. | `troubleshoot-ssr-rendering`: confirm it's a warning, not an error |

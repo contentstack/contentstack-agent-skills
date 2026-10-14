@@ -24,8 +24,6 @@ Studio is three things in one (surface this early if the user hasn't seen it):
 2. **A real-data preview surface for composed components**: the missing rung between Storybook (isolated, fake data) and the live URL (composed, real data, post-deploy)
 3. **An on-the-fly editor for layouts / components / look-and-feel**: when pages are built through templates, swap sections / reorder / re-bind without a redeploy
 
-Reference: `docs/00-overview/contentstack-studio-overview.md`, `docs/00-overview/the-development-flow-with-and-without-studio.md`.
-
 ## The six stages
 
 ```
@@ -88,9 +86,9 @@ Pick the next specialist skill (or doc page) from this matrix.
 
 | Intent | Current stage | Next concrete step |
 |---|---|---|
-| **try** | none | Run `install-studio` only IF user wants real components. Otherwise: read `docs/10-setup/studio-project/try-studio-in-the-playground-canvas-without-an-app.md`, create the project in Studio, then start authoring directly in Playground (no app setup needed). |
+| **try** | none | Run `install-studio` only IF user wants real components. Otherwise: create the project in Studio, leave the Canvas URL blank to use the Playground Canvas, then start authoring directly in Playground (no app setup needed). |
 | **try** | studio-project-only | Author a small section in Playground using Studio's defaults. Skip steps 2 + 4. Use `build-section` with `linkedSchemaUid` blank (static-only). |
-| **understand** | any | Reading path, in order: `docs/00-overview/contentstack-studio-overview.md`, `docs/00-overview/the-development-flow-with-and-without-studio.md`, `docs/00-overview/choosing-between-templates-and-sections.md`, `docs/40-recipes/marketing-site-walkthrough-with-four-end-to-end-scenarios.md`. No skill needed. |
+| **understand** | any | Reading path, in order: `start-here-zero-knowledge`, `understand-templates`, `understand-sections`, `choose-connected-vs-freeform`. |
 | **build** | none | Sequence, in order: `analyze-project-fit`, `enable-visual-experience`, `install-studio`, `setup-section-preview` (or stay on Playground if exploring), `register-component` (one per component), `build-section`, `build-connected-template`, `setup-template-preview-routes`, `verify-setup`, then optionally `deploy-studio-site`. |
 | **build** | sdks-installed | Resume at `setup-section-preview`, then continue the build sequence. |
 | **build** | components-registered | Resume at `build-section`, then `build-connected-template`. |
@@ -151,19 +149,10 @@ In this order:
 | Treating troubleshoot / verify intents as "tour" cases | The user wanted a focused diagnostic, got a journey overview | Recognize troubleshoot-canvas / verify-setup keywords and redirect immediately |
 | Forgetting the 3-in-1 framing for understand intent | User leaves still thinking Studio is "just a page builder" | Open with the three-things-in-one explanation from `what-is-studio.md` |
 
-
-
 ## Driving the canvas
 
 Moving a component on the Studio canvas through browser automation has a required event sequence, and the high-level drag helpers do not satisfy it. See [`drive-studio-canvas-ui`](drive-studio-canvas-ui.md) before attempting a drop.
 
 ## See also
 
-- `docs/00-overview/contentstack-studio-overview.md`: the 3-in-1 framing
-- `docs/00-overview/the-development-flow-with-and-without-studio.md`: without/with Studio comparison
-- `docs/00-overview/choosing-between-templates-and-sections.md`: Templates vs Sections
-- `docs/00-overview/choosing-your-studio-setup-path.md`: onboarding paths
-- `docs/10-setup/studio-project/try-studio-in-the-playground-canvas-without-an-app.md`: try-without-installing path
-- `docs/00-getting-started/quickstart-with-skills.md`: evaluator quickstart
-- `docs/40-recipes/marketing-site-walkthrough-with-four-end-to-end-scenarios.md`: full real-world example
 - Every specialist skill referenced in the Phase 3 routing matrix

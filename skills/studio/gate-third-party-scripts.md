@@ -12,7 +12,6 @@ Use when the user reports a cookie banner / chat bubble inside the canvas, analy
 
 # Gate third-party scripts out of the Studio canvas
 
-Reference: [Detect the Studio canvas](../../docs/40-recipes/detect-the-studio-canvas.md), the canonical recipe with all signals, semantics, and the decision table. This skill is the executable path.
 
 ## Step 1: inventory what the project loads
 
@@ -34,7 +33,7 @@ Classify each hit with the recipe's rule: analytics / flags / banners / chat / p
 | Declaratively injected widgets you can't reach in code | CSS: `html.cs-studio-canvas <widget-selector> { display: none !important; }` |
 | Server-emitted script tags (SSR) | `isStudioCanvas(<request search params>)` (no-arg form is always `false` on the server) |
 
-Import from the package root: `import { isStudioCanvas, isStudioEditorMode } from "@contentstack/studio-react";`. Requires the SDK version shipping the editor-mode contract (PR #878+). On older versions, fall back to the query-param check only.
+Import from the package root: `import { isStudioCanvas, isStudioEditorMode } from "@contentstack/studio-react";`. Requires an SDK version that exports these helpers. On older versions, fall back to the query-param check only.
 
 ## Step 3: apply
 

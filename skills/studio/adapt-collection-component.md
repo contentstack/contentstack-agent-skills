@@ -123,7 +123,7 @@ The leaf is the interesting reuse point: because leaf props are scalars, the Stu
 
    For the carousel case: gap-subtracted `flex-basis` (`calc(90% - var(--gap))`) prevents the last item peek from being cropped by the container's right padding.
 
-9. **Verify per band with the visual-parity skill.** Run `verify-visual-parity` (or the `docs/for-developers/migration/` playbook's manual pass) at authored data (real entries pinned) for each band as it lands, not once at the end. Drift compounds if you defer verification. Catching it band-by-band is 10× faster than debugging a whole page.
+9. **Verify per band with the visual-parity skill.** Run `verify-visual-parity` at authored data (real entries pinned) for each band as it lands, not once at the end. Drift compounds if you defer verification. Catching it band-by-band is 10× faster than debugging a whole page.
 
 ## Inputs needed from the user
 
@@ -162,4 +162,3 @@ The leaf is the interesting reuse point: because leaf props are scalars, the Stu
 - `use-condition-block`: required inside the Repeater when the field is heterogeneous.
 - `use-section-slot`: how to carve the slot the Repeater drops into.
 - `verify-visual-parity`: verification loop. Run per List Section, not once at the end.
-- `docs/for-developers/migration/` playbook: the codified end-to-end brownfield migration this skill lives inside.

@@ -133,4 +133,3 @@ If you're new and asking "do I really need Sections and Templates?" Yes, for any
 - `understand-sections`: what Sections are (the building blocks of Templates)
 - `understand-linked-schemas`: how a Section declares its data shape
 - `understand-auto-binding`: what happens when a Section drops on a Template
-- `docs/31-templates/`: long-form reference

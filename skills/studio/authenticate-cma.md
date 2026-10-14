@@ -197,7 +197,7 @@ This is what makes "we're on OAuth" ambiguous in practice. The same login flow w
 
 **Same OAuth flow, same credential class, three different homes, and none of them reads the others.** So "I authenticated the MCP" historically did not mean a script or a `curl` was authenticated.
 
-A script closes that gap by preferring the env var, then falling back to **reading the MCP's store**, so one `--auth` covers scripts too. Refreshing means **writing the new pair back** to that file (atomic, other fields kept). The MCP's stored config also carries `organization_uid`, which is why org-scoped calls need no extra env var. Its `stack_api_key` is empty, which is why the stack key is still the one thing you supply.
+A script closes that gap by preferring the env var, then falling back to **reading the MCP's store**, so one `--auth` covers scripts too. **Ask the user before reading or refreshing that stored session**: it is their credential, and refreshing it rotates the refresh token, which can sign the MCP server out (its next refresh fails with `400 invalid refresh_token`) unless the new pair is written back. Refreshing means **writing the new pair back** to that file (atomic, other fields kept). The MCP's stored config also carries `organization_uid`, which is why org-scoped calls need no extra env var. Its `stack_api_key` is empty, which is why the stack key is still the one thing you supply.
 
 **If the host blocks reading that file**, the login is fine: don't send the user to `--auth`. Say what was blocked and offer: approve the read, an allow rule `Read(<that path>/**)`, or `export CS_OAUTH_ACCESS_TOKEN`. Meanwhile use the MCP's tools where they cover the task.
 

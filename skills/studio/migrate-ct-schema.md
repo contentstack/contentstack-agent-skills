@@ -17,8 +17,8 @@ Use when a live CT needs to evolve: field added post-launch, prop renamed to mat
 > **Core mechanics runtime-verified against a live stack.** Some risk-table rows (destructive rename, incompatible retype) remain pattern-verified only. Always dry-run on a staging stack before production.
 >
 > - CMA endpoints (`/v3/content_types/<uid>`, entry backfill endpoints) match existing verified skills.
-> - Retry + state-file pattern matches [`agent-idempotency`](../../docs/50-advanced/agent-idempotency.md) reference implementation.
-> - **Safe additive (add optional field), dual-write pattern (add parallel field for rename), bulk entry backfill via PUT, and rollback via schema PUT are all runtime-verified end-to-end** against a live Contentstack stack. 17/17 structural claims pass: schema shape changes, entries survive rollback with core field data intact. Reproduce with `npx ts-node scripts/verify-migrate-ct-schema.ts` (requires `CS_API_KEY` + `CS_AUTH_TOKEN` in `.env`).
+> - Retry + state-file pattern matches the one in [`import-content`](import-content.md).
+> - **Safe additive (add optional field), dual-write pattern (add parallel field for rename), bulk entry backfill via PUT, and rollback via schema PUT are all runtime-verified end-to-end** against a live Contentstack stack. 17/17 structural claims pass: schema shape changes, entries survive rollback with core field data intact.
 >
 > **Best practice: always dry-run on a staging stack** with the exact CT + entries first. Never run a high-risk migration against production the first time. Incompatible-retype and in-place destructive renames are explicitly discouraged in the risk-classification table below in favour of the verified dual-write path. The 14-day cool-off is a suggested default. Tune to your release cadence.
 
@@ -155,6 +155,6 @@ Skill reads the state file + the `before.json` snapshot, walks back the complete
 
 - [`provision-studio-stack`](provision-studio-stack.md): for initial CT creation. This skill picks up after that.
 - [`import-content`](import-content.md): used inside this skill for bulk entry backfills.
-- [`agent-idempotency`](../../docs/50-advanced/agent-idempotency.md): canonical state-file + resume pattern this skill follows.
+- [`import-content`](import-content.md): canonical state-file + resume pattern this skill follows.
 - [`discover-sections`](discover-sections.md): enumerate Sections affected by a schema change, used inside Step 3.
 - [`troubleshoot-data-binding`](troubleshoot-data-binding.md): if the site breaks post-migration and bindings return empty, this troubleshoots the "bound to renamed field" failure mode.

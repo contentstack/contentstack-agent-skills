@@ -31,8 +31,6 @@ type BreakpointInput = [DefaultBreakpoint, ...PreProcessedBreakpoint[]];
 
 The registry tracks unique `id`s and unique `displayName`s. Duplicates throw. The call must run **before** any `<StudioCanvas />` mounts, so it belongs in the same bootstrap module as `registerComponent` / `registerDesignTokens` (commonly `src/studio/bootstrap.ts` or wherever your app shell already imports `@/lib/contentstack`).
 
-Reference doc: `docs/20-bring-your-own-components/configure-custom-breakpoints.md`.
-
 ## Task
 
 1. **Locate the bootstrap module: by content, not by path.** `grep -rln "registerComponent" src app lib 2>/dev/null` (path lists produce false negatives on `src/app`, route groups, and locale segments). Typical homes are ( `src/studio/bootstrap.ts`, `src/studio/registerComponents.ts`, or whatever the project pulls in from `@/lib/contentstack`). If none exists, create `src/studio/bootstrap.ts` and import it from the app shell (`app/layout.tsx`, `src/main.tsx`, `app/root.tsx`, etc.) for its side effects.
@@ -114,6 +112,5 @@ This skill succeeds only when ALL of the following hold. If any fails, surface t
 
 ## See also
 
-- `docs/20-bring-your-own-components/configure-custom-breakpoints.md` for the authoring model and override semantics.
 - `install-studio` and `setup-section-preview` for the prerequisite setup.
 - `troubleshoot-canvas` if the switcher never appears even after a clean restart.

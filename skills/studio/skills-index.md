@@ -4,12 +4,9 @@ The `studio` skill is the only one loaded always. It reads this file to route th
 
 Two lookups below. The **Trigger table** is exact-match against phrases in the user's message. The **Topic map** is a fallback when no phrase matches but the topic is Studio-shaped.
 
-**Resolving a skill file: two layouts, try both, in this order:**
+**Resolving a skill file:** every guide is `<name>.md` in this same folder (fallback: `../<name>/SKILL.md`).
 
-1. `../<name>/SKILL.md`, the **installed** layout (`~/.claude/skills/<name>/SKILL.md`). Claude Code gives every skill its own directory. This is what a customer has.
-2. `./<name>.md`, the **repo** layout (`skills/src/<name>.md`, `docs/prompts/<name>.md`).
-
-Every name below is written `<name>` for readability. Apply this rule to each. Read them from disk. Never rely on remembered summaries. **If neither path resolves, say the pack looks mis-installed and name the skill. Never fall back silently to general knowledge**, because a silent fallback is indistinguishable from the pack working.
+Every name below is written `<name>` for readability. Apply this rule to each. Read them from disk. Never rely on remembered summaries. **If it doesn't resolve, say the pack looks mis-installed and name the skill. Never fall back silently to general knowledge**, because a silent fallback is indistinguishable from the pack working.
 
 ---
 
@@ -178,11 +175,11 @@ Grouped by intent. Use when the user's message is Studio-shaped but no trigger p
 - **provision-studio-project**: bootstrap the compositions CT + publish + delivery-token via API.
 - **provision-studio-stack**: seed page CTs, global fields, entries, assets outside the compositions CT.
 - **migrate-ct-schema**: evolve a live CT schema safely (add / rename / retype / remove fields. Extract to Global Field). Risk-classified, dry-run-first, dual-write for high-risk changes, rollback via before-snapshot.
-- **import-content**: bulk-ingest entries into CTs from a customer-owned source (JSON / CSV / Markdown / existing Contentstack stack). Idempotent + resumable. Competitor-CMS migrations are out of scope. Use `@contentstack/cli-cm-import` for those. See `docs/50-advanced/agent-idempotency.md`.
+- **import-content**: bulk-ingest entries into CTs from a customer-owned source (JSON / CSV / Markdown / existing Contentstack stack). Idempotent + resumable. Competitor-CMS migrations are out of scope. Use `@contentstack/cli-cm-import` for those.
 
 ### 4. Components — plan and register
 
-- **design-component-library**: meta-planning skill. Apply the atom + layout taxonomy from `docs/00-getting-started/composable-primitives.md` to the user's design system BEFORE any registration is written. Emits a decomposition sheet with the 10-primitive proposal and DS token gaps flagged. Run first when a project is starting fresh with a component library or when the user asks "what should I register".
+- **design-component-library**: meta-planning skill. Apply the atom + layout taxonomy to the user's design system BEFORE any registration is written. Emits a decomposition sheet with the 10-primitive proposal and DS token gaps flagged. Run first when a project is starting fresh with a component library or when the user asks "what should I register".
 - **classify-existing-component**: diagnostic. Runs Q1 of the four-question framework on **one** component and stops: Atom, Layout, or Compound. Routes to the right next skill (`register-component` for atoms/layouts, `decompose-jsx-to-atomics` for JSX compounds, `decompose-design` for design-input compounds). Use when auditing an existing registry, sanity-checking before registration, or triaging "authors can't rearrange this" reports.
 - **decompose-jsx-to-atomics**: break an existing React component (often a whole page in one file) into Layer-1 atomics, Layer-2 containers and Layer-3 Sections so its parts become reusable. Run before `discover-sections` on an existing codebase. The code-input twin of `decompose-design`.
 - **register-component**: read a React component, infer prop schema, emit a `registerComponent` call.

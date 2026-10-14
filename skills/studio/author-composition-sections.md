@@ -123,7 +123,6 @@ console.log(JSON.stringify(spec.data.section_scoped_data["<instance-uid>"], null
 
 `spec.data.section_scoped_data[<instance-uid>]` is the runtime resolution: `selectedField` + the actual scoped `template` array. If `template` shows the right array length and right entry sample, the section's scope is correct. If it's `undefined` or wrong-shaped, the bindings won't work.
 
-
 ## `section-slot` node shape: the one legitimate empty-slots node
 
 The built-in `section-slot` type declares a **placeholder** inside a section's `ui`. The template that embeds this section then fills the slot via a `section-composition` node (see next recipe: Pattern B). Non-obvious shape:

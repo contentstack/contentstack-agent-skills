@@ -26,8 +26,6 @@ When the iteration items are heterogeneous (Modular Block lists, or References [
 
 When the Repeater contains a Section Slot (the common "list of cards" pattern), what fills the slot is **another Section**, not a raw registered component: the Section's pre-bound linked schema auto-binds to each iterated item, so no per-prop hand-binding is needed. See `understand-section-slots` § What fills a Slot: a Section, not a raw component.
 
-Reference: `docs/34-smart-containers/create-repeatable-content-with-repeaters.md`.
-
 ## Task
 
 1. **Confirm the source field is multi-valued.** Inspect `sourceFieldPath` on the connected content type or Pinned Query. If it is single-valued (single reference, group with `multiple: false`, scalar), stop. Redirect the user to bind the component directly without a Repeater.
@@ -102,6 +100,4 @@ Succeeds only when ALL are true. If any fails, surface it and stop.
 - `adapt-collection-component`: reach for this when the iteration wraps a **production component whose interface takes an array/object prop** (`<Carousel items={[…]} />`). Native `array`/`object` prop types don't bind to CMS fields, so the wrapper needs a `slot` prop + leaf adapter to become a List Section. Migration flavor of List Section authoring.
 - `verify-visual-parity`: Repeater's per-iteration `display:contents` wrapper is a common source of layout drift and breaks JS libraries that measure children (Embla, Swiper). If a slider/carousel misbehaves at runtime, run visual parity per Section against the production URL and classify the drift.
 - `author-composition-via-api` § Recipe: Nested Repeaters: nested-repeater shapes (inner `items` binding uses the OUTER repeater's `repeaterUID`, inner card props bind to the inner repeater scope). Studio's UI doesn't have a direct authoring path for nested repeaters yet. The API recipe is the reference
-- `docs/34-smart-containers/create-repeatable-content-with-repeaters.md`: full reference
-- `docs/34-smart-containers/control-visibility-with-condition-blocks.md`: when and how to wrap heterogeneous iteration
-- `skills/src/08-section-slots-and-smart-containers/use-condition-block.md`: sibling skill, always invoked for Modular Block and Reference iteration
+- [`use-condition-block`](use-condition-block.md): sibling skill, always invoked for Modular Block and Reference iteration

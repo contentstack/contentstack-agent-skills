@@ -4,7 +4,7 @@ name: design-component-library
 
 ## When to use
 
-Decide the SHAPE of a Studio component library (which atomic and layout primitives to register) BEFORE any `registerComponent` call is written. Applies the atom + layout taxonomy from `docs/00-getting-started/composable-primitives.md` to the user's design system so authors compose sections on the fly without visual drift.
+Decide the SHAPE of a Studio component library (which atomic and layout primitives to register) BEFORE any `registerComponent` call is written. Applies the atom + layout taxonomy to the user's design system so authors compose sections on the fly without visual drift.
 
 Use when the user says "which components should I register", "design our Studio library", "what should the component library look like", "we're starting fresh, what do we register", "atomic + layout primitives for Studio", or when someone brings a design system (Tailwind + shadcn, Chakra, MUI, a custom kit) and asks how it maps to Studio. Do NOT use to write registration calls for one component (use `register-component`). Do NOT use to break one over-large existing component into pieces (use `decompose-jsx-to-atomics`). Do NOT use for per-page decomposition of a specific design (use `decompose-design`).
 
@@ -14,11 +14,11 @@ Use when the user says "which components should I register", "design our Studio 
 
 ## Context
 
-The trap is registering either (a) one giant Hero with 20 props, or (b) ten differently-shaped Heros. Both fragment the design system: (a) hides variety behind a monolith authors can't extend without engineering. (b) lets every Hero pick its own spacing and type scale. The alternative is a small set of **atomic** and **layout** primitives, the 10-primitive pattern in [`docs/00-getting-started/composable-primitives.md`](../../docs/00-getting-started/composable-primitives.md).
+The trap is registering either (a) one giant Hero with 20 props, or (b) ten differently-shaped Heros. Both fragment the design system: (a) hides variety behind a monolith authors can't extend without engineering. (b) lets every Hero pick its own spacing and type scale. The alternative is a small set of **atomic** and **layout** primitives: the 10-primitive pattern this skill walks.
 
 ## The four-question decision framework
 
-This skill walks the [four-question framework](../../docs/00-getting-started/composable-primitives.md#four-questions-to-answer-when-building-any-component) from the pattern doc. **The framework is an open validator**. It works on any input (React component, Figma frame, verbal description) regardless of what's already registered:
+This skill walks the four-question framework below. **The framework is an open validator**. It works on any input (React component, Figma frame, verbal description) regardless of what's already registered:
 
 - **Q1. Classify: Atom, Layout, or Compound?** Look at the input in isolation. A component that carries a single content unit is an Atom. One that arranges children via slots is a Layout. One that does both content AND arrangement is a Compound (refuse and decompose recursively). This is a validator question. It tells you what shape the component actually is.
 - **Q2. Does the library already have it?** Only after Q1 confirms atom or layout, check reuse. On a fresh project the answer is trivially "no" for the first primitives. In an existing library, check the registry. With legacy monoliths, check the atom/layout registry, not the monolith list.
@@ -266,7 +266,6 @@ If a proposed library would produce sections averaging 2 to 3 nodes, or would bi
 
 ## See also
 
-- [`docs/00-getting-started/composable-primitives.md`](../../docs/00-getting-started/composable-primitives.md): foundational pattern doc.
 - `register-component`: the mechanical registration once the shape is decided.
 - `decompose-jsx-to-atomics`: for breaking one existing over-large component into its parts.
 - `decompose-design`: for taking a single design and mapping it to the primitive set + a Content Type shape.

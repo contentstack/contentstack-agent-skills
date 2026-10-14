@@ -42,7 +42,7 @@ This skill fixes all four by decomposing site-wide, not page-wide. It emits **on
 
 ## The four-question decision framework, applied site-wide
 
-Every fragment on every page is walked through the [four-question decision framework](../../docs/00-getting-started/composable-primitives.md#four-questions-to-answer-when-building-any-component). The framework is an open validator (works on any input, no assumed registry). The multi-page context adds a deduplication dimension the single-template `decompose-design` doesn't have:
+Every fragment on every page is walked through the [four-question decision framework](design-component-library.md). The framework is an open validator (works on any input, no assumed registry). The multi-page context adds a deduplication dimension the single-template `decompose-design` doesn't have:
 
 - **Q1. Classify: Atom, Layout, or Compound?** Applied per distinct shape across ALL templates. A `Card` shape identified on 6 pages is classified once as a layout. Compounds (marketing sections, page hero blocks) always decompose recursively until every leaf is an atom or a layout.
 - **Q2. Does the shared registry already have it?** Two layers: (a) does the customer's existing project registry cover it? (b) has it already been proposed for the shared registry by an EARLIER template in this pass? Aggressively dedup: 6 pages proposing "Card" produce one Card entry, not six.
@@ -214,7 +214,7 @@ After all artifacts land, emit the closing offers in one block:
 > **Offer 4: content.** Populate the CTs with real entries? Chains [`import-content`](import-content.md) if source data exists. Otherwise leaves entries for manual authoring.
 > **Offer 5: verify + deploy.** Run [`verify-setup`](verify-setup.md) end-to-end and [`deploy-studio-site`](deploy-studio-site.md).
 
-An agent accepting all five drives the full site build with no manual canvas clicks. Failures at any offer stop the pipeline and report which step needs attention, see [`agent-idempotency`](../../docs/50-advanced/agent-idempotency.md) for the resume semantics.
+An agent accepting all five drives the full site build with no manual canvas clicks. Failures at any offer stop the pipeline and report which step needs attention, see [`import-content`](import-content.md) for the resume semantics.
 
 ## Inputs needed from the user
 
@@ -247,7 +247,7 @@ An agent accepting all five drives the full site build with no manual canvas cli
 
 ## See also
 
-- [`composable-primitives`](../../docs/00-getting-started/composable-primitives.md): the pattern the multi-page decomposition converges on. Every atom + layout deduplicated across templates should map to one of the 10 primitives (or become a candidate addition to the library, per the additive-growth rule).
+- [`design-component-library`](design-component-library.md): the pattern the multi-page decomposition converges on. Every atom + layout deduplicated across templates should map to one of the 10 primitives (or become a candidate addition to the library, per the additive-growth rule).
 - [`decompose-design`](decompose-design.md): per-template skill this orchestrator loops. Same output format per template.
 - [`build-page-builder-template`](build-page-builder-template.md): assembles the collapsed Sections into one template an author can compose per page.
 - [`author-composition-via-api`](author-composition-via-api.md) § Skeleton first, bind later: build the Sections before the schema exists.
@@ -255,5 +255,5 @@ An agent accepting all five drives the full site build with no manual canvas cli
 - [`provision-studio-stack`](provision-studio-stack.md): schema provisioning. Chained by Offer 1.
 - [`register-component`](register-component.md): component registration. Chained by Offer 2.
 - [`import-content`](import-content.md): content ingestion. Chained by Offer 4.
-- [`from-designs-to-sections`](../../docs/00-overview/from-designs-to-sections.md): the three-layer taxonomy this skill applies at scale.
-- [`from-designs-to-sections`](../../docs/00-overview/from-designs-to-sections.md): the three-layer taxonomy this skill applies at scale.
+- [`decompose-design`](decompose-design.md): the three-layer taxonomy this skill applies at scale.
+- [`decompose-design`](decompose-design.md): the three-layer taxonomy this skill applies at scale.

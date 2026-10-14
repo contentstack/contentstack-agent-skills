@@ -29,11 +29,11 @@ The CT must carry an exact set of fields. If any are missing, mistyped, or wrong
 
 Once the project exists, composition entries are created via [`author-composition-via-api`](author-composition-via-api.md). Stack content outside the compositions CT (assets, page CTs the compositions reference) belongs in [`provision-studio-stack`](provision-studio-stack.md).
 
-Reference: [`reference_studio_provisioning_api`](../../docs/90-reference/studio-provisioning-api.md) for the host map across regions.
+Regional hosts: see Step 10 below (Studio API hosts mirror the CMA region prefixes).
 
 ## Task
 
-1. **Confirm prerequisites.** You have a resolved CMA credential, **OAuth Bearer by default**, session `authtoken` only as the last rung ([`authenticate-cma`](authenticate-cma.md)), AND `api_key` for the target stack. Both Studio API and CMA expect these two headers together. Know the region: regional host map in [`reference_studio_provisioning_api`](../../docs/90-reference/studio-provisioning-api.md). NA defaults: CMA `api.contentstack.io`, Studio API `composable-studio-api.contentstack.com`. **Non-prod (the non-prod domain your team uses) has no `region` shortcut**. Every host is `<env>-<service>.<non-prod-domain>` and must be set explicitly. The full table is [`install-studio`](install-studio.md) § Non-prod hosts. Establish which data center you're on first via [`analyze-project-fit`](analyze-project-fit.md) § 2b: Determine the data center. Getting this wrong here provisions a CT, tokens and a Studio project **in the wrong data center**, with no error. The calls succeed against prod.
+1. **Confirm prerequisites.** You have a resolved CMA credential, **OAuth Bearer by default**, session `authtoken` only as the last rung ([`authenticate-cma`](authenticate-cma.md)), AND `api_key` for the target stack. Both Studio API and CMA expect these two headers together. Know the region (regional Studio API hosts are listed in Step 10). NA defaults: CMA `api.contentstack.io`, Studio API `composable-studio-api.contentstack.com`. **Non-prod (the non-prod domain your team uses) has no `region` shortcut**. Every host is `<env>-<service>.<non-prod-domain>` and must be set explicitly. The full table is [`install-studio`](install-studio.md) § Non-prod hosts. Establish which data center you're on first via [`analyze-project-fit`](analyze-project-fit.md) § 2b: Determine the data center. Getting this wrong here provisions a CT, tokens and a Studio project **in the wrong data center**, with no error. The calls succeed against prod.
 
    > **MCP-first execution.** Discover tools and verify the target with a read call per [`install-contentstack-mcp`](install-contentstack-mcp.md). When supported tools are callable, the **CMA** steps here run as MCP tool calls with no pasted `authtoken`: step 8 CT-create (POST then PUT) becomes `create_a_content_type` plus `update_content_type`, step 4 environment-create becomes `create_an_environment`, and verify becomes `get_a_single_content_type`. The MCP does **not** cover the Studio API or tokens: steps **5 (enable Live Preview), 6 (delivery+preview token), 10 (`/v1/projects` register)**, and stack-create stay raw HTTP, authenticated with the same OAuth credential (`-H "$CS_AUTH"`), not a pasted session token. **Step 10 (`/v1/projects`) has no MCP tool, but try the OAuth token there first (`Authorization: Bearer`). A session authtoken is the fallback only if the API rejects it. See step 10's callout.** Org comes from the login. Read the stack `api_key` from the MCP registration ([`understand-contentstack-mcp`](understand-contentstack-mcp.md)) and confirm before asking. A missing readiness flag requires discovery; use HTTP only for unavailable operations or a recorded connection limitation.
 
@@ -109,7 +109,7 @@ Reference: [`reference_studio_provisioning_api`](../../docs/90-reference/studio-
 
    A `200` is not proof. Re-read and assert `live_preview.enabled`. Without it the canvas iframe hangs on "Loading composition…" because the canvas-app's calls to `rest-preview.contentstack.*` fail CORS preflight.
 
-6. **Create the delivery token, then the preview token** (CMA). Two calls. `scripts/provision.ts` is the reference implementation. `?create_with_preview_token=true` returns `token.preview_token` on the same call, measured at `201` with a 26-char `cs…` value. Query param only: in the body it is accepted and the token is silently absent. Either route works; assert the token is non-empty, because an empty one 401s every Preview call silently. Use the dedicated endpoint below:
+6. **Create the delivery token, then the preview token** (CMA). Two calls. `?create_with_preview_token=true` returns `token.preview_token` on the same call, measured at `201` with a 26-char `cs…` value. Query param only: in the body it is accepted and the token is silently absent. Either route works; assert the token is non-empty, because an empty one 401s every Preview call silently. Use the dedicated endpoint below:
    ```
    POST /v3/stacks/delivery_tokens
    { "token": { "name": "...", "scope": [
@@ -250,7 +250,7 @@ The picker's "Static Value" branch enumerates these sub-groups by uid. Missing s
 | Composition entry not published | CDA returns 404. Canvas blank | Publish to the environment after entry create (P5) |
 | Preview token missing / set to literal `"undefined"` | Canvas iframe gets HTTP 401 with no CORS headers, "Component Loading Error" | See [`troubleshoot-canvas`](troubleshoot-canvas.md) preview-token row |
 | JSON-RTE static values fail to embed correctly | JSON-RTE embeds carry `attrs.locale`, missing in API-authored payloads | Set `attrs.locale` on every embedded entry/asset in `static_value.json_rte[*].value` (P6) |
-| Wrong region host | CT creation 404s | Use region-specific CMA host. See [`reference_studio_provisioning_api`](../../docs/90-reference/studio-provisioning-api.md) |
+| Wrong region host | CT creation 404s | Use the region-specific CMA and Studio API hosts (Step 10) |
 | Live Preview not enabled on stack | Canvas iframe hangs on "Loading composition…". Rest-preview CORS preflight fails | `POST /v3/stacks/settings` with `live_preview.enabled`, `default-env` and `default-url` (step 5). `PUT /v3/stacks` answers `200` and changes nothing |
 | Studio project configured with environment **name** instead of **uid** | Studio API accepts the PUT but environment binding silently misses. Compositions never resolve | Look up env uid via `GET /v3/environments`, pass `settings.configuration.environment = <uid>` |
 | Re-using a Studio project across stacks (name match, stale `connectedStackApiKey`) | Project surfaces last stack's compositions. Current stack invisible in canvas | On every provision, PUT the project with the current `connectedStackApiKey` to re-bind |
@@ -266,4 +266,3 @@ The picker's "Static Value" branch enumerates these sub-groups by uid. Missing s
 - [`provision-studio-stack`](provision-studio-stack.md): assets + page CTs the compositions reference.
 - [`install-studio`](install-studio.md): host-app wiring + env vars.
 - [`troubleshoot-canvas`](troubleshoot-canvas.md): preview token, linked_sections, blank canvas symptoms.
-- [`reference_studio_provisioning_api`](../../docs/90-reference/studio-provisioning-api.md): host map and `/v1/projects` shape.

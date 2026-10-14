@@ -106,11 +106,7 @@ Blocking problems return **`422` `composition_invalid`** with every failing path
 
 A section created through this API has no `ui_preview`, so it lands as a blank tile in the Sections accordion and the Section Slot picker. Studio only captures one when an author opens the section and clicks **Save**. Browsing or reloading never repairs it.
 
-```bash
-tsx scripts/make-ui-preview.ts --entry <composition-entry-uid>
-```
-
-Routes, trade-offs and pitfalls: [`author-composition-via-api` § Section thumbnails](author-composition-thumbnails.md#section-thumbnails-ui-preview).
+Upload an image asset and set its uid as `ui_preview` on the entry. Routes (including generating a schematic from the entry's own `ui`), trade-offs and pitfalls: [`author-composition-via-api` § Section thumbnails](author-composition-thumbnails.md#section-thumbnails-ui-preview).
 
 **This step is mandatory, not optional.** A create is not complete until `ui_preview` is set. If the thumbnail call fails, report it and retry, do not silently continue, and do not describe the section as created. "Cosmetic" means it cannot corrupt data. It does not mean skippable.
 

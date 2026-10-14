@@ -4,7 +4,7 @@ name: classify-existing-component
 
 ## When to use
 
-Diagnose what shape an **existing** component is (Atom, Layout, or Compound) and hand off to the right next skill. Runs [Q1 of the four-question framework](../../docs/00-getting-started/composable-primitives.md#q1-is-this-an-atom-a-layout-or-a-compound) as a standalone step, without committing to registration or decomposition upfront.
+Diagnose what shape an **existing** component is (Atom, Layout, or Compound) and hand off to the right next skill. Runs [Q1 of the four-question framework](design-component-library.md) as a standalone step, without committing to registration or decomposition upfront.
 
 Use when the user has a component (already registered, or about to be) and asks what it is, not what to do about it. Phrases: "is this atom or layout?", "classify this component", "what shape is this?", "audit my registered components", "which of my registrations are compounds?", "should this be decomposed?", "sanity-check my palette", "review this component before I register it". Do NOT use to **design** a fresh library (that's [`design-component-library`](design-component-library.md)), to **break a monolith apart** (that's [`decompose-jsx-to-atomics`](decompose-jsx-to-atomics.md)), to **write the registration call** (that's [`register-component`](register-component.md)), or to **derive a schema** from an already-classified atom (that's [`design-section-from-jsx`](design-section-from-jsx.md)). This skill answers what shape only, then routes.
 
@@ -12,7 +12,7 @@ Use when the user has a component (already registered, or about to be) and asks 
 
 ## Context
 
-The full [four-question framework](../../docs/00-getting-started/composable-primitives.md#four-questions-to-answer-when-building-any-component) chains four questions in order: Q1 (classify), Q2 (reuse?), Q3 (props?), Q4 (expose?). Skills like `design-component-library` and `decompose-jsx-to-atomics` walk all four for a whole library or a whole monolith. This skill runs **only Q1**, on **one component at a time**, and stops.
+The full [four-question framework](design-component-library.md) chains four questions in order: Q1 (classify), Q2 (reuse?), Q3 (props?), Q4 (expose?). Skills like `design-component-library` and `decompose-jsx-to-atomics` walk all four for a whole library or a whole monolith. This skill runs **only Q1**, on **one component at a time**, and stops.
 
 Why break Q1 out:
 
@@ -72,7 +72,7 @@ Emit one paragraph in this shape:
 | Classification | Next step | Why |
 |---|---|---|
 | **Atom**: not yet registered | [`register-component`](register-component.md) | Shape confirmed. Write the registration. |
-| **Atom**: already registered, but you're auditing | Stop. It's fine. | Optionally verify the prop schema follows the [content-vs-design split](../../docs/00-getting-started/composable-primitives.md#the-rule-of-thumb-what-to-expose-as-a-prop) via `design-section-from-jsx`. |
+| **Atom**: already registered, but you're auditing | Stop. It's fine. | Optionally verify the prop schema follows the [content-vs-design split](design-component-library.md) via `design-section-from-jsx`. |
 | **Layout**: not yet registered | [`register-component`](register-component.md) with a `slot` prop | Layout confirmed. Write the registration with the slot contract. |
 | **Layout**: already registered | Stop. It's fine. | Shape confirmed and the registration is in place. |
 | **Compound**: from JSX | [`decompose-jsx-to-atomics`](decompose-jsx-to-atomics.md) | Break the render tree into Layer-1 atoms + Layer-2 containers. Re-run Q1 on each fragment. |
@@ -177,7 +177,7 @@ Every downstream failure starts here. Cheap to run, catches expensive mistakes.
 
 ## See also
 
-- [`docs/00-getting-started/composable-primitives.md`](../../docs/00-getting-started/composable-primitives.md): the canonical 10-primitive taxonomy and the full four-question framework (Q1 to Q4).
+- [`design-component-library`](design-component-library.md): the canonical 10-primitive taxonomy and the full four-question framework (Q1 to Q4).
 - [`design-component-library`](design-component-library.md): walks all four questions across a whole library. Use this when starting fresh.
 - [`decompose-jsx-to-atomics`](decompose-jsx-to-atomics.md): the next step after Q1 = Compound on an existing React component.
 - [`decompose-design`](decompose-design.md): the next step after Q1 = Compound when input is a Figma frame or screenshot.

@@ -186,5 +186,5 @@ After the proposal is emitted, the customer walks the build order:
 - [`discover-sections`](discover-sections.md) (Section discovery from EXISTING ROUTE FILES (Profile C) hand-coded migration). Same output shape, different input.
 - [`decompose-design`](decompose-design.md) (Section discovery from a DESIGN (Profile B) greenfield with a design).
 - [`build-section`](build-section.md): authors each Section this proposal identifies.
-- [`from-designs-to-sections`](../../docs/00-overview/from-designs-to-sections.md): the three-layer mental model + scope rules (one Section per scope).
+- [`decompose-design`](decompose-design.md): the three-layer mental model + scope rules (one Section per scope).
 - [`migrate-ct-schema`](migrate-ct-schema.md): evolves the CT AFTER this proposal, if scope boundaries need adjusting.

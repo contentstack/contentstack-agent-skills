@@ -44,8 +44,6 @@ The right panel (nothing selected) surfaces three sections:
 - **Pinned Queries**: saved CDA queries. Repeater item sources.
 - **External Data**: non-Contentstack sources via Component Default Data at runtime.
 
-Reference docs: `docs/33-freeform/`.
-
 ## Prerequisite
 
 In Project Configuration, **Enable Freeform Feature** must be ON. Without it, the right panel collapses to **Settings only**, no Design tab, no Data tab, no way to pin. If the user sees only Settings, stop and direct them to flip the feature flag at the project level before continuing.
@@ -66,7 +64,7 @@ In Project Configuration, **Enable Freeform Feature** must be ON. Without it, th
 3. **Edit the URL pattern.**
    - Click the **pencil icon** next to the URL in the canvas navbar to open **Edit URL**.
    - Replace the auto-generated default with `urlPattern` from inputs.
-   - The Insert chip row exposes exactly one entry-style variable: `{{composition_uid}}`. There is intentionally no `{{entry.*}}` and no `{{content_type_uid}}`. Freeform has no connected entry/content-type. You may type context vars (`{{environment}}`, `{{branch}}`) by hand. `{{locale}}` is also accepted by the pattern engine but **avoid using it**. The recommended way to carry locale is via your routing layer + the SDK's `locale` query option (see [multi-locale-at-scale](../../docs/50-advanced/managing-multiple-locales-at-scale.md)).
+   - The Insert chip row exposes exactly one entry-style variable: `{{composition_uid}}`. There is intentionally no `{{entry.*}}` and no `{{content_type_uid}}`. Freeform has no connected entry/content-type. You may type context vars (`{{environment}}`, `{{branch}}`) by hand. `{{locale}}` is also accepted by the pattern engine but **avoid using it**. The recommended way to carry locale is via your routing layer + the SDK's `locale` query option.
    - Save.
 
 4. **Open the template-level Data tab.**
@@ -134,8 +132,6 @@ This skill succeeds only when ALL applicable items below are true. If any fails,
 | Adding a Repeater for a non-list use case | Repeater iterates a multi-valued field. One hero + one promo card needs zero iteration | Use Repeater ONLY when the data source is genuinely a list (Pinned Query, multi-entry Pinned Reference) |
 | Leaving empty "Drop Here" zones at the bottom | Saved compositions render those zones as visible placeholders | Before Save, switch to Layers and delete any orphan empty Box / Slot rows |
 
-
-
 ## Driving the canvas
 
 Moving a component on the Studio canvas through browser automation has a required event sequence, and the high-level drag helpers do not satisfy it. See [`drive-studio-canvas-ui`](drive-studio-canvas-ui.md) before attempting a drop.
@@ -144,4 +140,3 @@ Moving a component on the Studio canvas through browser automation has a require
 
 - `install-studio`: install SDKs and wire `studioSdk.init` at the app shell.
 - `setup-section-preview`: add the `<StudioCanvas />` route for previewing Sections in Studio.
-- `docs/33-freeform/freeform-templates.md`, `page-data-tab.md`, `pinned-entries.md`, `pinned-queries.md`: reference documentation.

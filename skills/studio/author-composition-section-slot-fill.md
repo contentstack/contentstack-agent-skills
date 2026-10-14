@@ -10,7 +10,7 @@ Part of the API-authoring set. Start at [`author-composition-via-api`](author-co
 
 # Pattern B by API: wrapper + `section-slot`, filled by a Simple Section
 
-Sibling to the multi-reference recipe in [`author-composition-repeater-recipes`](author-composition-repeater-recipes.md). Same iteration outcome (one card per reference / MB item), but the leaf content lives in a **separate section composition** rather than in the wrapper's own `ui`. Verified end-to-end for references (Case 8) and modular blocks (Case 9) in `docs/api/sections.md`.
+Sibling to the multi-reference recipe in [`author-composition-repeater-recipes`](author-composition-repeater-recipes.md). Same iteration outcome (one card per reference / MB item), but the leaf content lives in a **separate section composition** rather than in the wrapper's own `ui`. Verified end-to-end for references and modular blocks.
 
 **When to prefer Pattern B over Pattern A (self-contained):**
 - Leaf content is reused across multiple wrappers (e.g. an author card shown in blog lists AND author-page hero).

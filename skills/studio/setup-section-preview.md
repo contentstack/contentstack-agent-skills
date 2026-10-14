@@ -151,20 +151,24 @@ Only once 1 to 3 hold, continue.
    },
    ```
 
-   For Next.js, set the headers in `next.config.js`:
+   For Next.js, set the headers in `next.config.js`, **scoped to the canvas route only** (replace `/canvas` with your `<canvasPath>`). Visitor routes keep their normal framing policy, so the rest of the site cannot be framed by arbitrary origins:
    ```js
    module.exports = {
      async headers() {
-       return [{
-         source: '/:path*',
-         headers: [
-           { key: 'Content-Security-Policy', value: 'frame-ancestors *;' },
-           { key: 'Access-Control-Allow-Origin', value: '*' },
-         ],
-       }];
+       const canvasHeaders = [
+         // Studio runs on *.contentstack.com (all regions). Add your own origin if you embed the canvas elsewhere.
+         { key: 'Content-Security-Policy', value: "frame-ancestors 'self' https://*.contentstack.com;" },
+         { key: 'Access-Control-Allow-Origin', value: '*' },
+       ];
+       return [
+         { source: '/canvas', headers: canvasHeaders },
+         { source: '/canvas/:path*', headers: canvasHeaders },
+       ];
      },
    };
    ```
+
+   The Vite blocks above use `frame-ancestors *` because they only serve local dev / preview builds. Don't ship a global `frame-ancestors *` or `Access-Control-Allow-Origin: *` to production.
 
    **Why both:** `allowedHosts: true` (Vite) prevents the "host not allowed" 403 from the dev server. The `frame-ancestors *` CSP header tells the browser the page may be embedded in any frame. Without either, Studio's iframe stays blank with no console error, a particularly hard failure to diagnose.
 

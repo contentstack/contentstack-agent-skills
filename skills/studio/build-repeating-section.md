@@ -43,7 +43,7 @@ The pattern:
 registerComponent({
   type: "doc-card-list",
   component: CardList,
-  schema: {
+  props: {
     cards: { type: "array" }, // <-- bound to a multi-Reference field on the section's linked schema
   },
 });
@@ -187,7 +187,7 @@ This skill succeeds only when ALL are true:
 
 - [ ] The child Section exists, is layout-agnostic, and renders correctly standalone at any width.
 - [ ] The parent Section exists with this nesting: a Box inside the Section, a Repeater inside the Box, one item Box inside the Repeater, a Condition Block inside that where one is needed, and a Section Slot innermost. A Section Slot directly under the Repeater drops the item's Visual Editor tag ([`make-visual-editor-editable`](make-visual-editor-editable.md) § 2).
-- [ ] **BOTH Sections (child and parent) have a `ui_preview`**, a blank tile in the Sections accordion otherwise. UI-created sections get one from Studio on Save. API-created ones need `tsx scripts/make-ui-preview.ts --entry <uid>`. See [`author-composition-via-api` § Section thumbnails](author-composition-thumbnails.md#section-thumbnails-ui-preview).
+- [ ] **BOTH Sections (child and parent) have a `ui_preview`**, a blank tile in the Sections accordion otherwise. UI-created sections get one from Studio on Save. API-created ones need one attached explicitly. See [`author-composition-via-api` § Section thumbnails](author-composition-thumbnails.md#section-thumbnails-ui-preview).
 - [ ] The parent Section's Box has explicit layout CSS for `layoutShape` (grid tracks, flex with basis, etc.) defining each cell's size.
 - [ ] The Repeater is bound to `iterationSourceField` via the Data Picker (confirmed by inspecting the Bind items breadcrumb).
 - [ ] Exactly ONE Section Slot sits inside the Repeater (or its Condition Block).

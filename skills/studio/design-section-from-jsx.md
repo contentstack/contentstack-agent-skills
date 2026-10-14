@@ -20,8 +20,6 @@ Studio sections **link to a structural schema**: Content Type / Global Field / G
 
 This skill **does not write to Contentstack**: it has no auth token, no Management Token, no CMA access (Studio's public skills never ask for those credentials). It emits the schema spec + step-by-step UI instructions. The user creates the Global Field manually in Contentstack's web app, then runs `build-section` to author the section against it.
 
-Reference: `docs/90-reference/linked-schema-matching-rules.md` (rules for linked-schema shapes), `docs/40-recipes/migrating-hand-coded-pages-to-studio.md` (section-first migration flow).
-
 ## Task
 
 1. **Read `componentPath`.** Extract the component's prop names and types. Use the TypeScript interface (best), `propTypes` (second), or destructured args (fallback).
@@ -151,9 +149,6 @@ If the user hasn't run `discover-sections`, recommend that first. The skill work
 
 ## See also
 
-- [`composable-primitives`](../../docs/00-getting-started/composable-primitives.md): the pattern this schema-design applies. This skill runs **Q3 + Q4 of the [four-question framework](../../docs/00-getting-started/composable-primitives.md#four-questions-to-answer-when-building-any-component)**: for each JSX prop, decide whether it earns a place in the linked schema (Q3: varies + functional intent) and whether it's an Exposed Prop candidate (Q4: author-understandable + DS-portable). Refuse polish props at schema-design time.
+- [`design-component-library`](design-component-library.md): the pattern this schema-design applies. This skill runs **Q3 + Q4 of the [four-question framework](design-component-library.md)**: for each JSX prop, decide whether it earns a place in the linked schema (Q3: varies + functional intent) and whether it's an Exposed Prop candidate (Q4: author-understandable + DS-portable). Refuse polish props at schema-design time.
 - `discover-sections`: run BEFORE this skill to identify which components become sections. This skill designs the schema for each
 - `build-section`: run AFTER this skill creates the schema, binds the component against it
-- `docs/90-reference/linked-schema-matching-rules.md`: the full rules for linked-schema kinds
-- `docs/20-bring-your-own-components/component-schema-prop-types.md`: registered-component prop type reference (for distinguishing CMS-field props from defaults-only props)
-- `docs/40-recipes/migrating-hand-coded-pages-to-studio.md`: the section-first migration recipe. This skill automates the "design the schema" sub-step

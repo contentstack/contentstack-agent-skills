@@ -6,7 +6,7 @@ name: figma-generate-components
 
 Generate React components from a Figma design and register them with Studio via the Studio Figma Plugin + `csdx studio:component:sync/add/register` CLI commands. Optionally imports Figma design tokens.
 
-Use when the user wants real, committable React components in their project generated from a Figma design (component library, design system, frames). NOT for one-off pastes (for that, point them at [Copy and paste from Figma to Studio](../../docs/20-bring-your-own-components/copy-and-paste-from-figma-to-studio.md). Phrases) "generate components from Figma", "Figma to React", "import my design system". This skill produces source files + registry entries + (optionally) design tokens.
+Use when the user wants real, committable React components in their project generated from a Figma design (component library, design system, frames). NOT for one-off pastes (for that, point them at the Figma plugin's "Copy to Studio" flow). Phrases: "generate components from Figma", "Figma to React", "import my design system". This skill produces source files + registry entries + (optionally) design tokens.
 
 > **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
@@ -15,10 +15,6 @@ Use when the user wants real, committable React components in their project gene
 ## Standard: REQUIRED reading
 
 This skill orchestrates the **canonical Studio Figma Plugin + Studio CLI workflow**. The authoritative in-repo documents are:
-
-- `/docs/20-bring-your-own-components/generate-components-from-figma.md`: the full developer-facing flow with reference diagram, four CLI commands, plugin walkthrough, screenshots
-- `/docs/20-bring-your-own-components/copy-and-paste-from-figma-to-studio.md`: the lighter-weight Copy to Studio path
-- `/docs/20-bring-your-own-components/studio-design-tokens-overview.md`: the design-token side
 
 The workflow has **two sides**:
 
@@ -222,8 +218,6 @@ If any check fails, surface the specific failure with file paths.
 
 ## See also
 
-- [Copy and paste from Figma to Studio](../../docs/20-bring-your-own-components/copy-and-paste-from-figma-to-studio.md): the simpler "Copy to Studio" flow, for a one-off composition tree instead of committable React source
+- The Figma plugin's "Copy to Studio" flow: the simpler path, for a one-off composition tree instead of committable React source
 - `register-component` skill: for hand-authored components (skips the plugin entirely, only runs `Register`)
 - `import-design-tokens` skill: for token imports from non-Figma sources
-- [`/docs/20-bring-your-own-components/generate-components-from-figma.md`](../../docs/20-bring-your-own-components/generate-components-from-figma.md): the full developer-facing flow with reference diagram
-- `/docs/20-bring-your-own-components/studio-design-tokens-overview.md`: token reference (source of truth for commands/flags)

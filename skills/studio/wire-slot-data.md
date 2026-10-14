@@ -18,8 +18,6 @@ A `slot`-typed prop is a region an author fills by dropping components into it. 
 
 `<Slot data={...}>` bridges that. Wrap the slot's value and the components dropped inside can **bind** those keys through the `component_props` data source, with the nearest slot winning over data provided higher up.
 
-Reference: `docs/25-bring-your-own-data/slot-data.md`, `docs/25-bring-your-own-data/slot-props-reference.md`.
-
 Reach for it when **both** are true:
 
 1. A component exposes a `slot`, a spot authors fill with whatever component fits, not one you hard-wire.
@@ -111,8 +109,6 @@ This skill succeeds only when ALL of the following are true. If any fails, surfa
 
 ## See also
 
-- `docs/25-bring-your-own-data/slot-data.md`: the conceptual guide + worked Hero banner example
-- `docs/25-bring-your-own-data/slot-props-reference.md`: the full `<Slot>` prop surface and merge behavior
 - `understand-bring-your-own-data`: which of the three data surfaces fits
 - `render-with-own-data`: the other bring-your-own-data surface (whole composition)
 - `register-component` § 5a: declaring the `slot` prop this skill wires

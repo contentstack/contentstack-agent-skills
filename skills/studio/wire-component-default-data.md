@@ -16,8 +16,6 @@ Use when registering (or revisiting) a component that needs placeholder content 
 
 Studio renders a component the moment it's dropped on the canvas, long before the author wires any prop to entry data. If the `props` schema passed to `registerComponent` doesn't set `defaultValue` on each visible prop, the canvas shows empty rectangles, missing images, and unlabeled buttons. Authors read that as "broken", not "unbound".
 
-Reference: `docs/20-bring-your-own-components/set-component-default-data.md`.
-
 Mental model:
 
 - `defaultValue` lives **on each prop**, never on the component as a whole.
@@ -133,7 +131,6 @@ This skill succeeds only when ALL of the following are true. If any fails, surfa
 
 ## See also
 
-- `docs/20-bring-your-own-components/set-component-default-data.md`: full reference.
 - Pair with `register-component` when you're introducing the component for the first time.
 - Pair with `build-connected-template` once the component renders and the author is ready to bind real data in the UI (`author-composition-bindings` for the same by API).
 - `wire-slot-data`: when the values a child needs come from the component that owns its slot, not from a static default.

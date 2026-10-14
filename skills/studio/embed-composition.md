@@ -14,7 +14,7 @@ Use when exposing ONE editable region inside a code-owned page (marketing band o
 
 ## Context
 
-This skill operationalizes the [Embed composition recipe](../../docs/40-recipes/embedding-a-composition-in-a-code-owned-page.md). The user has a code-owned page (PDP, checkout, home, account). One region should be marketer-editable without code changes.
+The user has a code-owned page (PDP, checkout, home, account). One region should be marketer-editable without code changes.
 
 Mechanism: `useCompositionData({ compositionUid })` resolves a known composition by its slug. The result hands to `<StudioComponent specOptions={specOptions} />` rendered inline. A Section composition renders correctly through this path.
 
@@ -76,7 +76,6 @@ interface StudioEmbedProps {
 
 /**
  * Render a Studio-managed composition inline inside a code-owned page.
- * Verified pattern (see docs/40-recipes/embedding-a-composition-in-a-code-owned-page.md).
  *
  *   <StudioEmbed compositionUid="pdp_marketing_band" />
  */
@@ -221,8 +220,8 @@ If the embed doesn't render visually, do NOT claim success: surface the debuggin
 
 ## See also
 
-- [`docs/40-recipes/partial-adoption-coexisting-with-a-code-driven-app.md`](../../docs/40-recipes/partial-adoption-coexisting-with-a-code-driven-app.md): when to embed vs use catch-all vs full route swap
-- [`docs/40-recipes/partial-adoption-coexisting-with-a-code-driven-app.md`](../../docs/40-recipes/partial-adoption-coexisting-with-a-code-driven-app.md): when to embed vs use catch-all vs full route swap
+- [`convert-project-to-studio`](convert-project-to-studio.md): when to embed vs use catch-all vs full route swap
+- [`convert-project-to-studio`](convert-project-to-studio.md): when to embed vs use catch-all vs full route swap
 - `migrate-page-to-studio`: when you want the WHOLE page Studio-managed instead of just one band
 - `setup-template-preview-routes`: for the catch-all route pattern that handles full pages
 - `install-studio`: prerequisite (SDK + init must be wired before any embed works)

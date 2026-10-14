@@ -18,10 +18,10 @@ The SDK ships two App Router paths (client-component SSR via the main entry, and
 
 Pick your recipe from the framework recipes chapter and copy it verbatim:
 
-- **[Next.js Pages Router](../../docs/60-framework-recipes/nextjs-pages-router.md)**, **[Remix / React Router 7](../../docs/60-framework-recipes/remix.md)**, **[Astro](../../docs/60-framework-recipes/astro.md)**, **[Gatsby](../../docs/60-framework-recipes/gatsby.md)**: adapted recipes.
-- **[Next.js App Router: RSC entry](../../docs/60-framework-recipes/nextjs-rsc.md)**: CI-tested on Next 14 + Next 16. Smallest possible client bundle.
-- **[Next.js App Router: client-component SSR](../../docs/60-framework-recipes/nextjs-app-router.md)**: main-entry path, simplest wiring, full SEO.
-- **[Next.js Pages Router](../../docs/60-framework-recipes/nextjs-pages-router.md)**, **[Remix / React Router 7](../../docs/60-framework-recipes/remix.md)**, **[Astro](../../docs/60-framework-recipes/astro.md)**, **[Gatsby](../../docs/60-framework-recipes/gatsby.md)**: adapted recipes.
+- **Next.js Pages Router**, **Remix / React Router 7**, **Astro**, **Gatsby**: adapted recipes.
+- **Next.js App Router: RSC entry**: CI-tested on Next 14 + Next 16. Smallest possible client bundle.
+- **Next.js App Router: client-component SSR**: main-entry path, simplest wiring, full SEO.
+- **Next.js Pages Router**, **Remix / React Router 7**, **Astro**, **Gatsby**: adapted recipes.
 
 Same three-call contract everywhere (`fetchCompositionData`, then `<StudioComponent />`, then `getSSRStyleTags` or `<StudioServerStyles>`), plus `getCompositionMetadata` for SEO. Sections below cover the render-strategy decision itself. The mechanics live in the recipes above.
 
@@ -43,13 +43,11 @@ export const sdk = studioSdk.init({ stackSdk, contentTypeUid });
 const specOptions = await sdk.fetchCompositionData({ url, searchQuery }, { locale });
 ```
 
-Reference doc: `docs/10-setup/app-prerequisites/choosing-between-csr-and-ssr-rendering.md` and `05-ssr-composition-query.md`.
-
 ## The render-pipeline rule (read this first)
 
 What determines **true SSR** (the composition DOM in the server HTML) is whether `<StudioComponent>` renders through a **`renderToString` pipeline** (Pages Router / Vite custom server / Remix: server React dispatcher present, built-ins execute server-side) OR through **React Server Components** (App Router: built-ins are `"use client"` and the SDK renderer detects them as `Symbol.for("react.client.reference")` and so emits `data-cs-defer-builtin` placeholders, deferring real render to client hydration). The data-fetch function (`fetchCompositionData` vs `useCompositionData`) is orthogonal and does **not** by itself produce SSR.
 
-**Net:** every mainstream host, including Next App Router (main entry and RSC entry), Pages Router, Remix, Astro, Gatsby, and plain Node, renders the composition into the server HTML via the SDK's three-call contract. See the [framework recipes](../../docs/60-framework-recipes/index.md) for the per-host wiring. The historical `data-cs-defer-builtin` placeholder path was removed in the SDK's dist-ESM restructure (#871 / #874).
+**Net:** every mainstream host, including Next App Router (main entry and RSC entry), Pages Router, Remix, Astro, Gatsby, and plain Node, renders the composition into the server HTML via the SDK's three-call contract. See [`install-studio`](install-studio.md) for the per-host wiring. The historical `data-cs-defer-builtin` placeholder path was removed in a later SDK release.
 
 ## Decision table
 
@@ -334,4 +332,3 @@ If acceptance fails, report exactly which step broke and stop.
 - `install-studio`: installs the three SDKs and wires `studioSdk.init`
 - `setup-section-preview`: adds the `<StudioCanvas />` route
 - `troubleshoot-canvas`: when the iframe still doesn't render after both skills are run
-- `docs/90-reference/composition-rendering-reference.md`: every prop + fetcher option the CSR / SSR pattern below pulls from

@@ -16,7 +16,6 @@ Use when authoring compositions programmatically via CMA: seed pipelines, script
 
 > **Mandatory structural check before reporting success.** Read the saved template back and count `section-composition` nodes in `ui` and entries in `linked_sections`. Both zero means a monolith. The runnable check is [`build-connected-template`](build-connected-template.md) § Post-build structural check. It applies identically here, and it is the only acceptance check a monolith fails. When the page body is one modular-blocks field, [`decompose-blocks-page`](decompose-blocks-page.md) is the recipe for splitting it.
 
-
 ## When to use this: and when NOT to
 
 Studio's Data Picker writes every binding shape this skill describes **automatically**. UI authors never need to know about `data_sources.resolvedReferences`, the `repeaterUID` discriminator, or any of the binding types. Studio's runtime resolves them under the hood.
@@ -68,7 +67,6 @@ single task loads what it needs instead of the whole contract.
 
 Minimum path for any composition: `author-composition-entry`, then
 `author-composition-bindings`, then `author-composition-pitfalls` before you report done.
-
 
 ## Acceptance
 

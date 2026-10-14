@@ -68,8 +68,6 @@ In Path B, the parent's Repeater contains a Section Slot (see `use-section-slot`
 
 A Section that exposes a Slot must wrap it in a sized layout container. See `use-section-slot` § Layout container and `register-component` § Layout contract.
 
-Reference: `docs/32-sections/overview.md`, `docs/32-sections/binding-to-cms.md`, `docs/20-bring-your-own-components/register-components.md`, `docs/34-smart-containers/create-repeatable-content-with-repeaters.md`.
-
 ## How a Section gets its data: the `selectedField` model
 
 A Section has **no data of its own**. When it's dropped on a template, the SDK hands it a scoped slice of the page entry via `getScopedData(pageEntry, selectedField)`:
@@ -89,7 +87,6 @@ The section's own canvas therefore always shows **one empty placeholder** (no pa
 Setting `selectedField` on a multi-field section loses access to everything outside the scoped path. Bindings to those fields resolve to `undefined`.
 
 Background only (this skill builds in the UI): full mechanism, wire shapes, and the reference-iteration `data_sources.resolvedReferences` handling: `author-composition-via-api` § Authoring a Section composition (scoping rules and § Decision rule) single-field repeater section vs whole-entry section.
-
 
 ## Prerequisite: the canvas chain must be wired
 
@@ -172,7 +169,6 @@ This skill succeeds only when ALL of the following are true. If any fails, do no
 - [ ] Dropping the saved section onto a template that has a field of the linked schema's shape auto-binds with no manual picker steps.
 - [ ] **Migration builds only**: if this Section is replacing an existing production Section on a live route, run `verify-visual-parity` against the production URL at all target viewports before declaring success. Structural checkpoints (component present, prop bound) are necessary but not sufficient. Pixel drift ships silently otherwise. Skip this line for greenfield Sections that have no production counterpart to compare.
 
-
 ## Driving the canvas
 
 Moving a component on the Studio canvas through browser automation has a required event sequence, and the high-level drag helpers do not satisfy it. See [`drive-studio-canvas-ui`](drive-studio-canvas-ui.md) before attempting a drop.
@@ -186,10 +182,6 @@ Moving a component on the Studio canvas through browser automation has a require
 
 ## See also
 
-- `docs/32-sections/binding-to-cms.md`: how schema connection drives auto-binding
-- `docs/20-bring-your-own-components/register-components.md`: getting components into the Registered Components palette
-- `docs/34-smart-containers/create-repeatable-content-with-repeaters.md`: Repeater + multi-variant sections
-- `docs/34-smart-containers/control-visibility-with-condition-blocks.md`: required wrapping for Reference / Modular Block iteration
 - `use-section-slot`: carve a drop region into the section
 - `expose-section-props`: value-level overrides on Save
 - `build-connected-template`: drop the saved section onto a template with a matching field

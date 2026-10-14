@@ -42,7 +42,6 @@ The MCP server does not provide every Studio operation. At minimum, expect the S
 
 Scope, and the things it deliberately does not cover, are in [`understand-contentstack-mcp`](understand-contentstack-mcp.md). Read that first if you are still deciding whether to install.
 
-
 ## Task
 
 ### Step 0: Region gate (run BEFORE anything else)

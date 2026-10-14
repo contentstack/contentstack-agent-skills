@@ -16,7 +16,7 @@ Use when the user wants Studio's Design Panel to show THEIR tokens instead of St
 
 Studio's right-panel **Design Panel** lets authors style component instances: spacing, color, typography. By default it shows Studio's built-in tokens (generic sans-serif, neutral grays). For a brand-consistent site, replace those with the customer's design system tokens.
 
-The mechanism is `registerDesignTokens(tokens, options)` from `@contentstack/studio-react`. **The payload is sectioned, not flat**: colors and spacing are top-level globals. Everything else nests under a section that maps to a Design-panel control. The full surface is in `docs/20-bring-your-own-components/studio-design-tokens-overview.md`.
+The mechanism is `registerDesignTokens(tokens, options)` from `@contentstack/studio-react`. **The payload is sectioned, not flat**: colors and spacing are top-level globals. Everything else nests under a section that maps to a Design-panel control.
 
 | Source concept                        | Goes in                                                                                                                                               | Value shape                                                                                                |
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -32,8 +32,6 @@ The mechanism is `registerDesignTokens(tokens, options)` from `@contentstack/stu
 
 Tokens are read once at registration time. They don't hot-reload. If the user changes their Tailwind config, re-run this skill (or restart the app).
 
-Reference: `docs/20-bring-your-own-components/studio-design-tokens-overview.md`, `docs/30-composition/style-components-with-the-design-panel.md`.
-
 ## Prerequisites: without these the panel stays empty or locked
 
 Registering tokens cleanly can still produce **zero visible effect**. Three conditions gate whether the author ever sees or can use them. Check all three: registering tokens against a project that fails any of them looks like a silent no-op.
@@ -42,8 +40,8 @@ Registering tokens cleanly can still produce **zero visible effect**. Three cond
    - `"dynamic"` (SDK default): only data can be bound. **Tokens are not pickable**
    - `"tokens"`: authors pick from your registered tokens (the design-system default, use this)
    - `"arbitrary"`: tokens, data binding, **and** free-form CSS values
-2. **"Enable Freeform Feature" must be ON** at the project level (in Studio, open Settings, then Configuration). The Design tab only renders with Freeform on. With it off the right panel collapses to **Settings only** and no component (not even Studio's built-ins) can be styled. (See `docs/30-composition/style-components-with-the-design-panel.md`. Toggle via `configure-studio`.)
-3. **Custom components need a `styles` group** in their `registerComponent` config, or they show no Design controls even with Freeform on. Built-ins have styles implicitly. Your own components don't. (See `register-component` and `docs/20-bring-your-own-components/component-schema-prop-types.md`.)
+2. **"Enable Freeform Feature" must be ON** at the project level (in Studio, open Settings, then Configuration). The Design tab only renders with Freeform on. With it off the right panel collapses to **Settings only** and no component (not even Studio's built-ins) can be styled. (Toggle via `configure-studio`.)
+3. **Custom components need a `styles` group** in their `registerComponent` config, or they show no Design controls even with Freeform on. Built-ins have styles implicitly. Your own components don't. (See `register-component`.)
 
 If the user reports "every field is disabled" or "there's no Design tab," walk these three in order: #1 explains disabled controls, #2 explains a missing tab on every component (built-ins included), #3 explains a missing tab on only their own component.
 
@@ -153,8 +151,6 @@ If the user has tokens spread across multiple sources (e.g. Tailwind colors + a 
 
 ## See also
 
-- `docs/20-bring-your-own-components/studio-design-tokens-overview.md`: full token-surface reference (sectioned schema, CSS-variable emission)
-- `docs/30-composition/style-components-with-the-design-panel.md`: what the Design Panel shows authors, the Freeform requirement
 - `register-component`: register components FIRST, with a `styles` group, so the Design Panel has something to apply tokens to
 - `configure-studio`: enable "Enable Freeform Feature" (gates the Design tab)
 - `register-breakpoints`: separate skill for responsive breakpoints

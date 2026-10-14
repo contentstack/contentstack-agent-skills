@@ -14,7 +14,7 @@ Use for whole-project Studio enable/setup requests, including an existing app or
 
 > ## Verification status
 >
-> Orchestrator over verified skills. The route pattern it wires is the documented one in [`partial-adoption-coexisting-with-a-code-driven-app`](../../docs/40-recipes/partial-adoption-coexisting-with-a-code-driven-app.md) (catch-all + code-route precedence). **The locale step (§ Step 3) is not yet runtime-verified against a `next-intl` app.** Until it is, treat the single Base URL rule there as the working model, run the redirect probe on every locale, and report anything that does not match rather than improvising around it.
+> Orchestrator over verified skills. The route pattern it wires is the catch-all + code-route precedence pattern (code-owned routes win, the catch-all serves everything else). **The locale step (§ Step 3) is not yet runtime-verified against a `next-intl` app.** Until it is, treat the single Base URL rule there as the working model, run the redirect probe on every locale, and report anything that does not match rather than improvising around it.
 
 ## Why this skill exists
 
@@ -228,7 +228,6 @@ This skill succeeds only when ALL of the following are true.
 
 ## See also
 
-- [`partial-adoption-coexisting-with-a-code-driven-app`](../../docs/40-recipes/partial-adoption-coexisting-with-a-code-driven-app.md): canonical home of the catch-all + code-route precedence pattern
 - [`setup-template-preview-routes`](setup-template-preview-routes.md): the route wiring, chrome and 404 handling, locale redirect probe
 - [`analyze-project-fit`](analyze-project-fit.md), [`install-studio`](install-studio.md), [`setup-section-preview`](setup-section-preview.md), [`configure-studio`](configure-studio.md), [`verify-setup`](verify-setup.md): the chained skills
 - [`migrate-page-to-studio`](migrate-page-to-studio.md), [`decompose-site`](decompose-site.md): the option 2 and option 3 follow-ons

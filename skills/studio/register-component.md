@@ -20,7 +20,7 @@ Use when the user wants Studio's palette to surface their components: "make my H
 
 ## Before you start: walk Q2, Q3, Q4 of the framework
 
-This skill runs the last three questions of the [four-question decision framework](../../docs/00-getting-started/composable-primitives.md#four-questions-to-answer-when-building-any-component). Q1 (classify: atom, layout, or compound?) is answered before you land here. If the input is a compound, `decompose-jsx-to-atomics` or `decompose-design` decomposes it into atoms + layouts before registration. If the input is already a valid atom or layout, proceed.
+This skill runs the last three questions of the [four-question decision framework](design-component-library.md). Q1 (classify: atom, layout, or compound?) is answered before you land here. If the input is a compound, `decompose-jsx-to-atomics` or `decompose-design` decomposes it into atoms + layouts before registration. If the input is already a valid atom or layout, proceed.
 
 - **Q2: Does the registry already have it?** Before writing a `registerComponent` call, check whether an existing primitive covers the shape. If yes, reuse (don't re-register). If not, proceed to Q3.
 - **Q3: Which props?** For each proposed prop: does it vary per-instance AND represent functional/content intent (not visual polish)? If either is no, refuse the prop. Let a DS token decide.
@@ -35,15 +35,13 @@ Every component you register is one of two shapes. Decide which before writing t
 - **Layer 1: Atomic** (renders one CMS field). All scalar props. `<Heading>`, `<Text>`, `<Image>`, `<Button>`. This skill's default path.
 - **Layer 2: Container / Skeleton / Layout** (holds other components). Has at least one `slot`-typed prop as a drop zone. `<Card>` with a body slot, `<Split>` with left+right slots. Same skill. § "Exposing extensible regions with slot props" covers it.
 
-If the thing you want to register is neither: a pure layout primitive (Grid, Stack, Container, Box), a whole page-shaped composition, or a component with an array-of-objects prop. **Stop.** Read [From designs to Sections: the three-layer mental model](../../docs/00-overview/from-designs-to-sections.md) first. It's a 10-minute page that saves hours of "why doesn't my Grid work in Studio."
+If the thing you want to register is neither: a pure layout primitive (Grid, Stack, Container, Box), a whole page-shaped composition, or a component with an array-of-objects prop. **Stop.** Read [From designs to Sections: the three-layer mental model](decompose-design.md) first. It's a 10-minute page that saves hours of "why doesn't my Grid work in Studio."
 
 ## Context
 
 Studio composes pages from React components. By default it uses its **own** built-ins (Hero, Card, Button) so authors can play immediately, but for production, every component should come from the customer's library. Registering tells Studio's palette "use THIS component for type 'site-hero'" so authors drop branded components, not defaults.
 
 The registration is a `registerComponent` call that names the component, gives it a unique `type`, and declares the **prop schema** Studio's right-panel will offer for binding. Prop types are strict: only the 14 in step 3. There is no `text`, `link`, `color`, or `image` (false friends from other systems).
-
-Reference: `docs/20-bring-your-own-components/register-components.md`, `docs/20-bring-your-own-components/component-schema-prop-types.md`.
 
 ## Task
 
@@ -62,7 +60,7 @@ Reference: `docs/20-bring-your-own-components/register-components.md`, `docs/20-
    | plain-text-only `string` | `plaintext` (Single / Multi Line only) |
    | `number` | `number` |
    | `boolean` | `boolean` |
-   | `string` constrained to known values (union literal, enum) | `choice` (set `options:` to the literal values. `defaultValue` is the **bare value** for single-select (`"centered"`) and an **array** only when `multiSelect: true`) |
+   | `string` constrained to known values (union literal, enum) | `choice` (set `options:` to the literal values. Write `defaultValue` as an **array** (`["centered"]`) for both single- and multi-select, per [`wire-component-default-data`](wire-component-default-data.md)) |
    | URL string used as `href` | `href` |
    | URL string used as image `src` | `imageurl` |
    | ISO date string | `datestring` |
@@ -105,13 +103,13 @@ Reference: `docs/20-bring-your-own-components/register-components.md`, `docs/20-
 
    This is a **resolver-level** behavior (`retrievePropValue`), so it bites UI / picker-authored bindings exactly as it bites API-authored ones, not an API-only footgun. It is also **not specific to Modular Blocks**: any single-key object collapses: a Group with one sub-field, a single-item wrapper, a block carrying one field plus `_metadata`. Rule of thumb: whenever the value you want is an object or a list, type the prop `object` / `array`. `any` is safe only for a genuine primitive.
 
-   **These 12 strings govern YOUR registered components only.** Studio's built-in nodes (`header`, `plain-text`, `rich-text`, `image`, …) carry their own prop-type vocabulary, e.g. the built-in Header's text prop is typed **`plaintext`**, which is not in the list above and is not valid in a `registerComponent` schema. Reading an existing composition and copying a built-in's prop type into your registration is a silent rejection. The two vocabularies overlap in places and diverge in others. Never transplant between them. Built-in node types are cataloged in [`author-composition-via-api`](author-composition-via-api.md) § Built-in node `type` values.
+   **These 14 strings govern YOUR registered components only.** Studio's built-in nodes (`header`, `plain-text`, `rich-text`, `image`, …) carry their own prop-type vocabulary. Reading an existing composition and copying a built-in's prop type into your registration can produce a string outside the 14, which is rejected. The two vocabularies overlap in places (both use `plaintext`, for example) and diverge in others. Never transplant between them. Built-in node types are cataloged in [`author-composition-via-api`](author-composition-via-api.md) § Built-in node `type` values.
 
 4. **Set `defaultValue` for every prop** where the component has a default value in its source. The default appears as the palette tile preview. Without it, the tile renders blank and authors don't know what the component looks like. Use `defaultValue:` exactly, NOT `default:` (the latter is silently ignored).
 
 5. **Ship a `thumbnailUrl`: every registration, no exceptions.** (This and the `studioAttributes` contract below are two of the six in [`complete-the-build`](complete-the-build.md). Both ship in the same commit as the registration, never as a follow-up.) `thumbnailUrl` defaults to `""` in the registry (`studio-registry`, `registry-options-processor`), and Studio then renders a **text placeholder** instead of a preview. A palette of twenty text placeholders is unusable for the marketers this whole exercise exists to serve, and nothing errors, so it ships unnoticed.
 
-   Rules that matter (full guidance + the `thumb()` helper and tier glyph library: [`palette-conventions`](../../docs/20-bring-your-own-components/component-palette-conventions.md)):
+   Rules that matter:
 
    - **Inline SVG data URI**, built with `encodeURIComponent`. **Never a CDN/asset URL**. The palette renders inside Studio's iframe, where external requests hit CORS or fail silently, leaving you back at a blank tile.
    - **Brand tokens for colors**, not invented hex.
@@ -194,7 +192,6 @@ Reference: `docs/20-bring-your-own-components/register-components.md`, `docs/20-
 
    At template-authoring time, the slot region shows as a dashed drop target. Authors drop a component or Section into it (see `use-section-slot` § component-slot-prop placement for the canonical filling pattern). Slots take ANY component or Section. There is no type constraint. Slot fills are stored per-template, so the same Card can carry different filled content on different templates.
 
-   For a richer pattern (slot count driven by another prop, slot template factories), see `docs/20-bring-your-own-components/component-schema-prop-types.md` § slot.
 
    **5b. The two valid `component:` shapes**, decided by arity:
 
@@ -242,9 +239,9 @@ This skill succeeds only when ALL of the following are true.
 - [ ] **Every bindable prop that renders visible content spreads its `$`-twin** on the element rendering it, verified by a `data-cslp` on each of those elements.
 - [ ] **An empty bound value still renders its element** when its `$`-twin is present (not `null`), so a new entry's field can be clicked, and decorative overlays over images have `pointer-events: none` ([`make-visual-editor-editable`](make-visual-editor-editable.md) § 4–5).
 - [ ] Every prop on the source component's TypeScript interface (or propTypes) appears in the `props:` object, no prop dropped silently.
-- [ ] Every `type:` value is one of the 13 allowed strings (`string`, `boolean`, `number`, `choice`, `href`, `imageurl`, `datestring`, `array`, `object`, `slot`, `json_rte`, `any`, `action`), not `text`, `link`, `color`, or `image`.
+- [ ] Every `type:` value is one of the 14 allowed strings (`string`, `plaintext`, `boolean`, `number`, `choice`, `href`, `imageurl`, `datestring`, `array`, `object`, `slot`, `json_rte`, `any`, `action`), not `text`, `link`, `color`, or `image`.
 - [ ] **Any callback an author should control is an `action` prop**, not a hardcoded handler. Otherwise the component's behavior is fixed at build time. See [`wire-studio-state`](wire-studio-state.md).
-- [ ] A `choice` prop's `defaultValue` shape follows `multiSelect`: **multi-select (`multiSelect: true`) must be an array** (`["centered"]`). **Single-select takes the bare value** (`"centered"`). Single-select still accepts a one-element array, but only for backward compatibility, prefer the bare value. Source: `SingleChoiceProp = PropBase<…, string | string[]>` and `MultiChoiceProp = PropBase<…, string[]>` in `studio-registry`.
+- [ ] Every `choice` prop's `defaultValue` is an array (`["centered"]`), for single- and multi-select alike. It works on every SDK version. A bare value (`"centered"`) is accepted for single-select only from `studio-registry` 1.7.0, and multi-select always requires the array. Same rule as [`wire-component-default-data`](wire-component-default-data.md).
 - [ ] `defaultValue:` (not `default:`) is set on every prop where the source component has a default. **Exception: `slot` props never carry a `defaultValue`**, they start empty until template authors fill them.
 - [ ] Choice props include an `options:` array of the allowed literal values.
 - [ ] The registration file is imported once at app startup, verified by grep for the import in `main.tsx` / `_app.tsx` / `App.tsx`.
@@ -255,7 +252,7 @@ This skill succeeds only when ALL of the following are true.
 - [ ] **Call-site literal sweep**. If this component is already used in production code, grep every JSX use of it. Every literal prop set at a call site (`isInteractive={false}`, `variant="compact"`, `columns={3}`, `isLogoBgWhite={false}`) becomes a `defaultValue` on the corresponding registered prop, or a named preset. Skipping this is the single most common cause of "composed page looks 80% right but wrong on hover/motion/spacing." Sample grep: `rg -tn tsx -o "<ComponentName[^>]*/>" | head`. If the component is new (no production call sites yet), acceptance is trivially satisfied, but state that explicitly.
 - [ ] **Tolerant image signatures**: every `imageurl` prop's TS type accepts `string | { url?: string } | null | undefined`, and the component internally coerces. See § Tolerant image signatures above. This is a first-class contract, not an optional nicety. Studio's picker binds sometimes the object, sometimes `.url`, and either shape must render correctly.
 - [ ] **Tolerant link signatures**: every `href`-typed prop binds against a link field's `href` leaf (never the whole link object). Where the design mandates a single link prop, the component coerces `string | {title, href}` inside via `href()` / `label()` helpers. See § Tolerant link signatures above.
-- [ ] **Palette group + thumbnail**: the registration declares `sections: ["<Brand> · Elements | Patterns | Layouts"]` (never `"Template"` or `"Section"` in the name) and a `thumbnailUrl` data URI that visually previews the tier. See [`palette-conventions`](../../docs/20-bring-your-own-components/component-palette-conventions.md).
+- [ ] **Palette group + thumbnail**: the registration declares `sections: ["<Brand> · Elements | Patterns | Layouts"]` (never `"Template"` or `"Section"` in the name) and a `thumbnailUrl` data URI that visually previews the tier (step 5).
 
 ## After registering: plan your Section shape
 
@@ -266,13 +263,10 @@ Register the component first. Then decide which Section(s) to author in Studio f
 
 Both directions produce the same Section chain in the end. Top-down is faster for existing compound-heavy apps. Bottom-up has a cleaner mental model for greenfield.
 
-Use [`build-section`](build-section.md) (or [`build-repeating-section`](build-repeating-section.md) for List Sections) to author each Section. The skill walks the Studio-UI flow. Full worked example with a 4-level nested schema: [From components to Studio compositions](../../docs/00-overview/standard-studio-page-anatomy.md).
+Use [`build-section`](build-section.md) (or [`build-repeating-section`](build-repeating-section.md) for List Sections) to author each Section. The skill walks the Studio-UI flow. 
 
 ## See also
 
-- `docs/20-bring-your-own-components/register-components.md`: full reference, including `registerComponents` (batch) and `registerLazyComponent` (code-split)
-- `docs/20-bring-your-own-components/component-schema-prop-types.md`: every prop type with all options
-- `docs/20-bring-your-own-components/set-component-default-data.md`: separate `wire-component-default-data` skill for advanced default data
 - `wire-component-default-data`: for components whose defaults aren't representable as static `defaultValue:` literals
 - `use-section-slot`: fill a `slot`-typed prop on a registered component (the `component-slot-prop` placement mode), or carve a Section Slot inside one
 - `wire-slot-data`: carry data the component holds into whatever an author drops into its `slot` prop

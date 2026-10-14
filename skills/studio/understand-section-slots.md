@@ -72,7 +72,6 @@ In the Hero Strip example, the CTA-area variations are each their own Section: a
 
 ## Slot vs Exposed Prop: when do I use which?
 
-
 | Section Slot | Exposed Prop |
 |---|---|
 | Swap a **child component** (Button vs Form vs Cart widget) | Override a **value on an existing prop** (button label = "Buy" vs "Get started") |
@@ -131,7 +130,6 @@ If every template uses a different layout shape, the Sections probably aren't re
 
 ## See also
 
-- `docs/34-smart-containers/section-slots.md`: long-form reference
 - `understand-sections`: the parent concept (Sections themselves)
 - `use-section-slot`: actually add a slot after the concept is clear
 - `configure-slot-defaults`: the two optional settings on a slot: a default section for the empty state, and an allowed-sections whitelist

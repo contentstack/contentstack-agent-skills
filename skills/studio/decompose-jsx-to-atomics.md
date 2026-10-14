@@ -27,7 +27,7 @@ Use when the customer HAS code and a component is too coarse to reuse: a page-le
 
 An existing React component is **not** a reason to skip decomposition. It's the input to it: **a component becomes a Section by being broken up**, and its parts become the reusable pieces.
 
-Taxonomy (Layer-1 atomic / Layer-2 container / Layer-3 Section) is defined once in [`from-designs-to-sections`](../../docs/00-overview/from-designs-to-sections.md) and applied to visual input by [`decompose-design`](decompose-design.md). This skill applies the same taxonomy to **code**. Don't re-derive the layers here. Read them there.
+Taxonomy (Layer-1 atomic / Layer-2 container / Layer-3 Section) is defined once in [`decompose-design`](decompose-design.md) and applied to visual input by [`decompose-design`](decompose-design.md). This skill applies the same taxonomy to **code**. Don't re-derive the layers here. Read them there.
 
 ## Task
 
@@ -223,8 +223,8 @@ The full contract, the `wrap` alternative and the `cslp: { appendTags: true }` p
 
 ## See also
 
-- [`from-designs-to-sections`](../../docs/00-overview/from-designs-to-sections.md): the Layer-1/2/3 taxonomy this applies
-- [`from-designs-to-sections`](../../docs/00-overview/from-designs-to-sections.md): the Layer-1/2/3 taxonomy this applies
+- [`decompose-design`](decompose-design.md): the Layer-1/2/3 taxonomy this applies
+- [`decompose-design`](decompose-design.md): the Layer-1/2/3 taxonomy this applies
 - [`decompose-design`](decompose-design.md): same taxonomy, visual input instead of code
 - [`discover-sections`](discover-sections.md): which components recur across routes. Run this after decomposition
 - [`design-section-from-jsx`](design-section-from-jsx.md): derive a Section's linked schema once boundaries are drawn

@@ -60,7 +60,7 @@ curl -X PUT "https://<cma-host>/v3/content_types/<compositions-CT>/entries/<sect
 This is not a follow-up task or a nice-to-have. **Attaching the thumbnail is part of creating the section**, in the same run, before you report the section as built.
 
 - Write the composition, **immediately** attach `ui_preview`, and only then report success.
-- Creating five sections means five thumbnails. Batch the write and the thumbnail together per section, or run `--missing` at the end of the batch. Never move on to the next page while any section you created is blank.
+- Creating five sections means five thumbnails. Batch the write and the thumbnail together per section, or run a backfill over every section lacking one at the end of the batch. Never move on to the next page while any section you created is blank.
 - **Never report "section created" for a section whose `ui_preview` is unset.** Say "created, thumbnail pending" and then finish it.
 - If the thumbnail step errors, that is a failure to **report and retry**, not to skip silently. Cosmetic means "does not corrupt data". It does not mean optional.
 
@@ -70,14 +70,14 @@ The symmetric rule for components is `thumbnailUrl` on every `registerComponent`
 
 ### Fix D: generate one from the composition's own `ui` (scripted, no canvas, no clicking)
 
-```bash
-tsx scripts/make-ui-preview.ts --entry <composition-entry-uid>
-tsx scripts/make-ui-preview.ts --composable-uid <composable_uid>
-tsx scripts/make-ui-preview.ts --missing            # backfill every section lacking one
-tsx scripts/make-ui-preview.ts --entry <uid> --dry-run   # render the PNG, upload nothing
-```
+No script for this ships with the pack. Write one in the project (or inline in the build script) that, per section:
 
-Decodes the entry's `ui` (`zlib:` + base64), renders a schematic (containers in their real direction and gap, the outermost repeater as three items, media as a framed block, static text as text), screenshots it at 1440×810, uploads it as `<Title> Preview`, and PUTs `ui_preview`. Use it when Fix A is impractical at scale: one live project had **50 of 79 sections** blank, backfilled in a single run.
+1. Reads the composition entry over the CMA and decodes its `ui` (`zlib:` + base64).
+2. Renders a schematic: containers in their real direction and gap, the outermost repeater as three items, media as a framed block, static text as text.
+3. Screenshots it at 1440×810 (Playwright or similar).
+4. Uploads the PNG as an asset titled `<Title> Preview` and PUTs its uid into `ui_preview`.
+
+Give it an entry-uid mode, a "backfill every section lacking `ui_preview`" mode, and a dry-run mode that renders without uploading. Use it when Fix A is impractical at scale: one live project had **50 of 79 sections** blank, backfilled in a single run.
 
 It sits between Fix B and Fix C: no hand-picked image, no per-section curl, and the result tracks the section's real structure. It is still a schematic, not a render. For a true screenshot of a bound section, Fix A remains better.
 

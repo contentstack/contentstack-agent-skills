@@ -4,7 +4,7 @@ name: compose-marketing-section
 
 ## When to use
 
-Given a design comp / description of a marketing section and a library of already-registered atomic + layout primitives (per [`docs/00-getting-started/composable-primitives.md`](../../docs/00-getting-started/composable-primitives.md)), pick the primitive tree that composes the section on Studio's canvas.
+Given a design comp / description of a marketing section and a library of already-registered atomic + layout primitives (see [`design-component-library`](design-component-library.md)), pick the primitive tree that composes the section on Studio's canvas.
 
 Use when the user says "how do I build a Hero from primitives", "compose a feature grid in Studio", "which primitives for this testimonial layout", "make me a pricing tile from the atoms", "translate this Figma section into a primitive tree". Do NOT use before the primitives are registered (run `design-component-library` first). Do NOT use for whole-page decomposition (use `decompose-design`). Do NOT use to write the registration itself (use `register-component`).
 
@@ -18,21 +18,21 @@ Use when the user says "how do I build a Hero from primitives", "compose a featu
 
 Once the 10-primitive library (4 atoms + 6 layouts) is registered, every marketing section is a composition, no code change per variant. This skill walks the user from "here's what I want to build" to a specific primitive tree they can drop into Studio's canvas.
 
-**This skill runs Q1** of the [four-question decision framework](../../docs/00-getting-started/composable-primitives.md#four-questions-to-answer-when-building-any-component): Can this be composed from the existing 10 primitives?
+**This skill runs Q1** of the [four-question decision framework](design-component-library.md): Can this be composed from the existing 10 primitives?
 
 - If **YES** (the common case): produce the composition tree. The user drops it on canvas.
 - If **NO** (rare, genuinely new shape): halt and route to `design-component-library`, which starts at Q2 to decide what new primitive(s) to register.
 
 Never invent a new primitive silently. Never compose from a mix of registered primitives + "and one more component we'll add later". That's Q1 = no, escalate.
 
-The four canonical recipes cover the common cases and should be the first thing consulted:
+Four canonical shapes cover the common cases and should be the first thing consulted:
 
-- [Hero from primitives](../../docs/40-recipes/hero-from-primitives.md): 5 variants (centered, split, full-bleed, thumbnail-top, two-CTA)
-- [Feature grid from primitives](../../docs/40-recipes/feature-grid-from-primitives.md): 3-column feature callouts
-- [Testimonial cards from primitives](../../docs/40-recipes/testimonial-cards-from-primitives.md): quote + avatar + author + role
-- [Pricing tiles from primitives](../../docs/40-recipes/pricing-tiles-from-primitives.md): 3-tier with highlighted middle
+- Hero from primitives: 5 variants (centered, split, full-bleed, thumbnail-top, two-CTA)
+- Feature grid from primitives: 3-column feature callouts
+- Testimonial cards from primitives: quote + avatar + author + role
+- Pricing tiles from primitives: 3-tier with highlighted middle
 
-If the user's request matches one of these shapes, hand them the recipe directly. Only compose from scratch when the request diverges.
+If the user's request matches one of these shapes, compose it from the matching shape directly. Only compose from scratch when the request diverges.
 
 ## Task
 
@@ -119,7 +119,7 @@ If the composition matches one of the four canonical recipes, close with:
 
 If it diverges, close with:
 
-> The composition is novel enough to warrant its own recipe entry. Once built and validated, propose adding it as a fifth recipe under `docs/40-recipes/`.
+> The composition is novel enough to warrant its own recipe. Once built and validated, record it alongside the four canonical shapes above so the next request can reuse it.
 
 ## Inputs needed from the user
 
@@ -152,12 +152,7 @@ If the user's request needs a primitive that isn't registered, stop and route th
 
 ## See also
 
-- [`docs/00-getting-started/composable-primitives.md`](../../docs/00-getting-started/composable-primitives.md): the foundational pattern doc with all 10 schemas.
-- [`docs/40-recipes/hero-from-primitives.md`](../../docs/40-recipes/hero-from-primitives.md): canonical Hero recipe (5 variants).
-- [`docs/40-recipes/feature-grid-from-primitives.md`](../../docs/40-recipes/feature-grid-from-primitives.md): canonical Feature Grid recipe.
-- [`docs/40-recipes/testimonial-cards-from-primitives.md`](../../docs/40-recipes/testimonial-cards-from-primitives.md): canonical Testimonial recipe.
-- [`docs/40-recipes/pricing-tiles-from-primitives.md`](../../docs/40-recipes/pricing-tiles-from-primitives.md): canonical Pricing recipe.
-- `design-component-library`: run first if the primitives aren't registered yet.
+- [`design-component-library`](design-component-library.md): the 10-primitive pattern. Run it first if the primitives aren't registered yet.
 - `build-section`: once the tree is composed, actually save the Section in Studio.
 - `use-repeater`: for the Repeater step on a 1:many Grid.
 - `use-condition-block`: for the highlighted-tier logic in Pricing.

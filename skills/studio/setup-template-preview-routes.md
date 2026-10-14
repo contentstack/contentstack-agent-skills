@@ -40,8 +40,6 @@ There are TWO Studio React components in play:
 - **`<StudioComponent />`**: the renderer for visitor routes (`/blog/:slug`, the catch-all, etc.). Reads a published composition spec from CDA via `sdk.fetchCompositionData({ url, searchQuery })` (or `useCompositionData`) and renders it. When Studio loads the same URL in its iframe, it switches modes internally to show the unsaved spec. Your code does nothing different.
 - **`<StudioCanvas />`**: the dedicated section-preview iframe target. Mount it once at `/canvas` (per `setup-section-preview`). Studio's Canvas URL config points here. You do NOT mount `<StudioCanvas />` on visitor routes.
 
-Reference doc: `docs/10-setup/studio-project/template-preview-routes.md`.
-
 ## Failure signatures: all mean "no `<StudioComponent>` at the template's URL"
 
 Before running the Task steps, know the failure modes. These three symptoms have ONE root cause: a Connected template's URL isn't served by a route mounting `<StudioComponent>`.
@@ -284,7 +282,6 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
 
    **Next.js App Router**: based on the detection above, create ONE catch-all file. Left = existing root page (use `[...slug]`). Right = greenfield (use `[[...slug]]`):
 
-   ![Next.js App Router catch-all layouts: existing root page uses [...slug]. Greenfield uses [[...slug]]](../../docs/assets/diagrams/template-route-layouts-nextjs.png)
 
    The catch-all itself must 404 unclaimed paths, but **only for real visitors**. See step 5a for the editor-mode gate. A bare `if (!specOptions?.spec) notFound();` 404s unsaved templates inside Studio's own iframe.
 
@@ -613,5 +610,3 @@ Analytics / commerce embeds that `throw` on failure show up as scary-but-harmles
 
 - `install-studio`: installs the SDKs this skill depends on.
 - `setup-section-preview`: adds the `/canvas` section-authoring route.
-- Docs: `docs/10-setup/studio-project/template-preview-routes.md`.
-- Reference: `docs/90-reference/composition-rendering-reference.md`: every prop + fetcher option `<StudioComponent />` accepts (the routes this skill wires consume the resolved `specOptions`).

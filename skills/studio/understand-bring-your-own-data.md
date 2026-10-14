@@ -16,8 +16,6 @@ Use before `render-with-own-data` or `wire-slot-data` when the user holds data o
 
 **Studio compositions normally bind to Contentstack content, but three render-time props let you hand a composition data you already hold**: and each one covers a different scope. Pick by asking what part of the tree needs the data.
 
-Reference: `docs/25-bring-your-own-data/overview.md`.
-
 ## The three surfaces
 
 | Prop | Scope of the data | How authors reach it | Skill |
@@ -81,7 +79,4 @@ So `data` adds a source authors bind to. `context` substitutes the template data
 
 ## See also
 
-- `docs/25-bring-your-own-data/overview.md`: the chapter overview
-- `docs/25-bring-your-own-data/studio-composition-props-reference.md`: `<StudioComposition />` prop table + `sdk.fetchComposition`
-- `docs/25-bring-your-own-data/slot-props-reference.md`: `<Slot>` prop table
 - `understand-canvas-vs-component`: the sibling distinction between the two mounted SDK components

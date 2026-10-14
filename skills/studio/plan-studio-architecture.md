@@ -18,7 +18,7 @@ Given requirements, classify Sections, Connected templates, the content model, a
 
 ## The four-question decision framework: applied to the plan's component inventory
 
-Every component in the emitted plan carries a Q1 to Q4 verdict from the [decision framework](../../docs/00-getting-started/composable-primitives.md#four-questions-to-answer-when-building-any-component). The plan produces the sequence: "here's what to register, in what order, with what shape". The framework's four questions decide the shape.
+Every component in the emitted plan carries a Q1 to Q4 verdict from the [decision framework](design-component-library.md). The plan produces the sequence: "here's what to register, in what order, with what shape". The framework's four questions decide the shape.
 
 - **Q1. Classify: Atom, Layout, or Compound?** For each component in the plan's inventory, classify what shape it is. Atom means a single content unit. Layout means a slot-carrying arrangement. Compound means refuse. Decompose into atoms + layouts, add each fragment to the inventory, and reclassify. The plan's component list has zero compounds.
 - **Q2. Does the registry already have it?** Check the existing project registry AND earlier steps of THIS plan's build order. If a primitive matching the classified shape exists, the plan marks it as reused. If not, it adds a new-registration step to the build order before any Section that depends on it.
@@ -330,7 +330,6 @@ If 2+ CTs have identical or near-identical sub-shapes, propose extracting them a
 **Say the reuse out loud in the plan**, per Section, before the user approves it. "Hero: `[reuse]` `sec_<field>_hero`, already on 2 Templates". A plan that lists twelve `[new]` Sections when four already exist reads as twelve units of work, and the user only discovers the duplication after it is built.
 
 Reuse is capped by the binding field: two Sections are the same Section only if their page content types name the field identically ([`decompose-blocks-page`](decompose-blocks-page.md) § Step 5). Alike-looking Sections on differently-named fields are `[new]`, and the plan should say why.
-
 
 List every Section from Step 2, ordered by **dependency**:
 
@@ -675,7 +674,7 @@ The skill succeeds when:
 
 ## See also
 
-- [`composable-primitives`](../../docs/00-getting-started/composable-primitives.md): foundational pattern doc. Before this skill's build order sequences the work, that doc decides what to register: atomic + layout primitives instead of monolithic Sections. Read alongside `from-designs-to-sections` when the plan will produce a fresh component library.
+- [`design-component-library`](design-component-library.md): foundational pattern doc. Before this skill's build order sequences the work, that doc decides what to register: atomic + layout primitives instead of monolithic Sections. Read alongside `from-designs-to-sections` when the plan will produce a fresh component library.
 - `start-here-zero-knowledge`: the conceptual prerequisite (run BEFORE this skill if the user is new)
 - `understand-templates`, `understand-sections`, `understand-section-slots`, `understand-linked-schemas`, `understand-auto-binding`: the concept ladder this skill assumes is internalised
 - `byoc-end-to-end`: the procedural macro that walks the plan in execution mode

@@ -40,7 +40,6 @@ So when the schema stops answering, the next move is a question, not a retry. **
 | [`understand-reference-depth`](understand-reference-depth.md) | What depth counts, and the two signals that it is finished |
 | [`resolve-reference-depth-pitfalls`](resolve-reference-depth-pitfalls.md) | `error_code 141`, and what goes wrong walking depth. **Read before reporting done.** |
 
-
 ## Task
 
 ### Step 0: Classify before digging. Only the first of these five states is a depth problem

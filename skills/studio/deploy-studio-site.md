@@ -16,7 +16,7 @@ Use when deploying a Studio site, setting up Launch, configuring production env 
 
 A Studio site ships in two independent layers, and both must be correct for the visitor URL to render the latest composition cleanly.
 
-- **Composition Deploy**: publishes the composition record through Contentstack's publishing workflow (from the canvas to the target environment). See `docs/30-composition/save-vs-deploy-a-composition.md`.
+- **Composition Deploy**: publishes the composition record through Contentstack's publishing workflow (from the canvas to the target environment).
 - **App host**: your React/Next app on Contentstack Launch that renders `<StudioComponent />` and reads from the Delivery SDK (via `sdk.fetchCompositionData` on the server when using SSR composition-by-URL). A Launch project holds environments; each Launch environment is one Git branch (or uploaded ZIP) with its own URL and variables, and is separate from the stack's environments.
 
 **Tools.** Drive Launch through the Contentstack MCP's `launch` group (`GROUPS` includes `launch`, plus `CONTENTSTACK_ORGANIZATION_UID` and `CONTENTSTACK_LAUNCH_PROJECT_ID`; see [`install-contentstack-mcp`](install-contentstack-mcp.md)). It uses the same OAuth session. The Launch CLI (`csdx plugins:install @contentstack/cli-launch`) accepts only `csdx login`, which the user must run.
@@ -33,19 +33,19 @@ Goal state: visitor hits the production URL, gets the latest deployed compositio
 
 2. **Create or reuse the Launch project** from a Git repository (GitHub, Bitbucket Cloud) or a ZIP upload, with the preset, build command and, for SSR, server command. The MCP will not start the `launch` group without a project ID (checked in 0.9.0), so create a **new** project in the Launch UI first (Git or ZIP upload), then set its uid as `CONTENTSTACK_LAUNCH_PROJECT_ID` and restart the MCP.
 
-3. **Set production env vars** on the Launch production environment (Environments, Settings, Env. Variables, or `update_an_environment`). Same names as `.env.local` per `docs/10-setup/app-prerequisites/install-the-delivery-sdk.md`. Pick the prefix matching the framework (`NEXT_PUBLIC_`, `VITE_`, `REACT_APP_`, `PUBLIC_`, or plain `process.env` for Remix):
+3. **Set production env vars** on the Launch production environment (Environments, Settings, Env. Variables, or `update_an_environment`). Same names as `.env.local` (see `install-studio`). Pick the prefix matching the framework (`NEXT_PUBLIC_`, `VITE_`, `REACT_APP_`, `PUBLIC_`, or plain `process.env` for Remix):
    - `<PREFIX>_CONTENTSTACK_API_KEY`: stack API key (`blt…`)
    - `<PREFIX>_CONTENTSTACK_DELIVERY_TOKEN`: `cs…`, scoped to the **production environment + branch**
    - `<PREFIX>_CONTENTSTACK_ENVIRONMENT`: `<prodEnvironment>` (e.g. `production`)
    - `<PREFIX>_CONTENTSTACK_DEFAULT_LOCALE`: e.g. `en-us`
    - `<PREFIX>_CONTENTSTACK_PREVIEW_TOKEN`: **omit on the production deploy**, set only on preview deploys
-   - SSR composition-by-URL ONLY (server-only, no `PUBLIC` prefix): `STUDIO_COMPOSITION_CT_UID`, `CONTENTSTACK_DELIVERY_TOKEN`, `CONTENTSTACK_ENVIRONMENT`, `CONTENTSTACK_BRANCH`. See `docs/10-setup/app-prerequisites/ssr-composition-query.md`.
+   - SSR composition-by-URL ONLY (server-only, no `PUBLIC` prefix): `STUDIO_COMPOSITION_CT_UID`, `CONTENTSTACK_DELIVERY_TOKEN`, `CONTENTSTACK_ENVIRONMENT`, `CONTENTSTACK_BRANCH`. See `configure-csr-vs-ssr`.
 
 4. **Two Launch environments**:
    - **Production**: auto-deploy on commits off, `environment=<prodEnvironment>`, no preview token, Live Preview `enable: false`. **Turn off Contentstack Authentication** (on by default): it puts a login screen in front of every visitor.
    - **Preview**: auto-deploy on, `environment=<previewEnvironment>`, preview token set, Live Preview `enable: true`. Point that stack environment's Base URL at this Launch URL so Studio's canvas and preview load the deployed app ([`configure-studio`](configure-studio.md)).
 
-5. **Gate Live Preview import and init** on the preview token. First run `grep -rn 'from "@contentstack/live-preview-utils"' src app lib`: every hit is a static import that shows the Edit button in production, however `init` is gated. Replace it with this (per `docs/10-setup/app-prerequisites/install-live-preview.md`):
+5. **Gate Live Preview import and init** on the preview token. First run `grep -rn 'from "@contentstack/live-preview-utils"' src app lib`: every hit is a static import that shows the Edit button in production, however `init` is gated. Replace it with this (see `install-live-preview`):
    ```ts
    const previewToken = process.env.NEXT_PUBLIC_CONTENTSTACK_PREVIEW_TOKEN;
 
@@ -61,7 +61,7 @@ Goal state: visitor hits the production URL, gets the latest deployed compositio
    ```
    Why: `live-preview-utils` (4.5.3) draws its Edit button on **import**, even when `init` never runs. Remove its re-export too.
 
-6. **Non-US regions.** Set the Live Preview `host` to the regional preview host (e.g. `eu-rest-preview.contentstack.com`) and the Delivery SDK `region` to match. Regional CDN hosts: `eu-cdn.contentstack.com`, `azure-na-cdn.contentstack.com`, `azure-eu-cdn.contentstack.com`, `gcp-na-cdn.contentstack.com`, `au-cdn.contentstack.com`. **Non-prod (the non-prod domain your team uses) has no `region` shortcut**: every host is `<env>-<service>.<non-prod-domain>` and must be set explicitly. The full table is [`install-studio`](install-studio.md) § Non-prod hosts. Establish which data center you're on first via [`analyze-project-fit`](analyze-project-fit.md) § 2b: Determine the data center. See `docs/10-setup/troubleshoot-common-studio-issues.md`.
+6. **Non-US regions.** Set the Live Preview `host` to the regional preview host (e.g. `eu-rest-preview.contentstack.com`) and the Delivery SDK `region` to match. Regional CDN hosts: `eu-cdn.contentstack.com`, `azure-na-cdn.contentstack.com`, `azure-eu-cdn.contentstack.com`, `gcp-na-cdn.contentstack.com`, `au-cdn.contentstack.com`. **Non-prod (the non-prod domain your team uses) has no `region` shortcut**: every host is `<env>-<service>.<non-prod-domain>` and must be set explicitly. The full table is [`install-studio`](install-studio.md) § Non-prod hosts. Establish which data center you're on first via [`analyze-project-fit`](analyze-project-fit.md) § 2b: Determine the data center.
 
 7. **Deploy**: push to the production environment's branch, or redeploy it (`create_deployment`; a ZIP project uploads first). Read the build log (`get_deployment_logs`) for the expected `<PREFIX>_*` injection. Launch applies variable changes only to new deployments, and `NEXT_PUBLIC_*` (and equivalents) are inlined at build time: redeploy after every variable change.
 
@@ -69,7 +69,7 @@ Goal state: visitor hits the production URL, gets the latest deployed compositio
 
 ### B. Deploy the composition
 
-9. **Save** in the canvas. Save persists the draft. Deploy publishes whatever was last saved. See `docs/30-composition/save-vs-deploy-a-composition.md`.
+9. **Save** in the canvas. Save persists the draft. Deploy publishes whatever was last saved.
 
 10. **Preview** in the canvas with Live Preview, switching the Preview Entry across a few real entries (for linked templates) to confirm bindings resolve. Repeater iteration bindings use `repeater.<field>`. Verify each iteration renders the expected entry data.
 
@@ -117,19 +117,13 @@ This skill succeeds only when ALL of the following are true. If any fails, do no
 | Page renders blank post-deploy | Connected entry not published to target env | Publish the entry to `<prodEnvironment>` |
 | Visitors see draft content after someone previewed | A server with a preview token keeps the last request's preview hash on its shared stack | No preview token on production. On a preview deployment, clear the hash per request: [`configure-csr-vs-ssr`](configure-csr-vs-ssr.md) |
 | Visitors see Live Preview edit buttons / overlays | `enable: true` unconditional in prod build, or `live-preview-utils` imported statically (it draws the button on import) | Import it only when the preview token exists (step 5) |
-| Preview environment doesn't update live | `onEntryChange` not wired to refetch, or preview token mismatch | See `docs/10-setup/verify-end-to-end.md`. Verify token matches the one in Contentstack |
+| Preview environment doesn't update live | `onEntryChange` not wired to refetch, or preview token mismatch | Run `verify-setup`. Verify token matches the one in Contentstack |
 | `region` / `host` mismatch error | Non-US stack with US defaults | Set Delivery SDK `region` and Live Preview `host` to the region |
 | Deploy "succeeded" but composition didn't change | Pending approval / scheduled publish | Check Contentstack publish queue |
 | Build fails, or a changed variable has no effect | Launch applies variables only to new deployments, and `<PREFIX>_*` are inlined at build time | Set vars on the Launch environment, then redeploy. No single quotes in values |
 | Delivery token returns 401 in production | Token scoped to wrong environment or branch | Generate a token scoped to the prod environment + branch. Rotate in the Launch environment's variables, then redeploy |
 | Search engines don't index the site | The default `*.contentstackapps.com` domain is served `noindex` | Add a custom domain to the production environment |
-| SSR composition-by-URL 500s | Missing server-only `STUDIO_COMPOSITION_CT_UID` / `CONTENTSTACK_BRANCH` | Add server-only vars per `docs/10-setup/app-prerequisites/ssr-composition-query.md` |
+| SSR composition-by-URL 500s | Missing server-only `STUDIO_COMPOSITION_CT_UID` / `CONTENTSTACK_BRANCH` | Add the server-only vars (see `configure-csr-vs-ssr`) |
 
 ## See also
 
-- `docs/30-composition/save-vs-deploy-a-composition.md`: Save vs Deploy semantics
-- `docs/10-setup/app-prerequisites/install-the-delivery-sdk.md`: env var names
-- `docs/10-setup/app-prerequisites/install-live-preview.md`: Live Preview init
-- `docs/10-setup/app-prerequisites/ssr-composition-query.md`: SSR composition-by-URL env vars + `sdk.fetchCompositionData`
-- `docs/10-setup/verify-end-to-end.md`: end-to-end smoke test
-- `docs/10-setup/troubleshoot-common-studio-issues.md`: regional host config

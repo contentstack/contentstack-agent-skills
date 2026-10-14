@@ -25,8 +25,6 @@ Section Slots are siblings of Exposed Section Props but solve a different proble
 
 The Section Slot tile lives in the palette under **Smart Containers** and is only visible when you are in section authoring mode (it is hidden inside page editing). Slots only become live drop targets when the section is dropped onto a template: inside the section's own canvas they render as inert labeled placeholders, by design.
 
-Reference: `docs/34-smart-containers/section-slots.md`.
-
 ## Task
 
 1. **Open the section in section authoring mode** in Studio. Confirm the Section Slot tile is visible in the palette under Smart Containers. If it is not, you are in page editing mode. Switch to the Section.
@@ -105,8 +103,5 @@ This skill succeeds only when ALL of the following are true. If any fails, do no
 
 ## See also
 
-- `docs/32-sections/expose-section-props.md`: value-level sibling of Section Slots
-- `docs/32-sections/binding-to-cms.md`: scope-root matching for nested sections
-- `docs/40-recipes/card-grid-with-slots.md`: full List + Slot recipe
 - `configure-slot-defaults`: give the slot a default section for its empty state, or restrict which sections may drop in
 - `wire-slot-data`, the code-side sibling: carry an owning component's data into its `slot` prop via `<Slot data={...}>`

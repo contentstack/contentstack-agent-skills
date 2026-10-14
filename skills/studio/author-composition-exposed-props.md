@@ -10,7 +10,7 @@ Part of the API-authoring set. Start at [`author-composition-via-api`](author-co
 
 ## Recipe: Exposed section props (per-instance override)
 
-Some sections need to expose a prop the **template** can override per drop instance, a Card Grid whose column count is set by the page, or a Hero whose tone changes per template. Verified end-to-end (Case 14 in `docs/api/sections.md`).
+Some sections need to expose a prop the **template** can override per drop instance, a Card Grid whose column count is set by the page, or a Hero whose tone changes per template. Verified end-to-end.
 
 **Two-sided shape**: section declares the exposure. Template supplies the per-instance value.
 

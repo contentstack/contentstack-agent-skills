@@ -177,7 +177,7 @@ Two numbers, and they must agree: every placed Section is both a `section-compos
 
 | Pitfall | Why it bites | Fix |
 | --- | --- | --- |
-| "Template did not load." | URL pattern doesn't match anything the host app's catch-all routes through Studio | Fix the pattern or wire the catch-all. See [template preview routes](../../docs/10-setup/studio-project/template-preview-routes.md). Per-template routes are NOT the fix. The catch-all covers every URL. |
+| "Template did not load." | URL pattern doesn't match anything the host app's catch-all routes through Studio | Fix the pattern or wire the catch-all. See [template preview routes](setup-template-preview-routes.md). Per-template routes are NOT the fix. The catch-all covers every URL. |
 | Bound value renders empty | Current preview entry lacks that field | Swap via `⇄`, don't re-edit the binding |
 | Registered component drops blank | Missing default data on the component | Developer needs to add Component Default Data. Not a Studio-side fix |
 | Section drops unbound | No `linked_schemas` match on the CT | Add a matching field, edit the section's `linked_schemas`, or bind manually from Settings |
@@ -189,19 +189,10 @@ Two numbers, and they must agree: every placed Section is both a `section-compos
 | Adding a Repeater for a non-list use case | Repeater iterates a multi-valued field. Single-hero + single-body needs zero iteration | Use Repeater ONLY when the field is genuinely a list (Modular Block list, multi-Group, multi-Reference). For one-of-each: drop directly. |
 | Leaving empty "Drop Here" zones at the bottom | Saved compositions render those zones as visible placeholders in screenshots and at runtime in builder mode | Before Save, switch to Layers and delete any orphan empty Box / Slot rows |
 
-
-
 ## Driving the canvas
 
 Moving a component on the Studio canvas through browser automation has a required event sequence, and the high-level drag helpers do not satisfy it. See [`drive-studio-canvas-ui`](drive-studio-canvas-ui.md) before attempting a drop.
 
 ## See also
 
-- `docs/31-templates/overview.md`: Templates tab, list columns, create modal
-- `docs/31-templates/connected-content-type.md`: URL derivation, preview entry, edit URL modal
-- `docs/31-templates/using-sections-and-components-in-a-template.md`: palette categories, auto-binding flow, Save vs Deploy
-- `docs/32-sections/binding-to-cms.md`: linked-schema matching rules
-- `docs/34-smart-containers/section-slots.md`: filling carved-out slots
-- `docs/32-sections/expose-section-props.md`: what becomes overridable per template instance
-- `docs/90-reference/url-variables-reference.md`: full URL variable list
 - Pair with `install-studio` (SDKs) and `setup-template-preview-routes` (host-app **catch-all route** mounting `<StudioComponent />`, one route handles every URL).

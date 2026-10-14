@@ -20,9 +20,7 @@ Freeform templates have no inherent connection to a content type, so by default 
 
 Pinned Entries is on every composition type: Freeform and Connected templates and Sections (checked 2026-10-07 in a project with Enable Freeform Feature on). A Connected template binds **its own** entry through `Linked Template Entry`; pin an entry only for data that is not the page's own, such as a shared site-settings entry. **For a header or footer**, pin the settings entry on the header or footer **Section itself** (open the Section, Data tab), not on each template: every placement is then filled with no per-placement setup ([`plan-studio-architecture`](plan-studio-architecture.md) § 0c).
 
-**A placed section is rooted, not bound field by field.** The pinned-entry root above is for components authored directly on the template. A *section* dropped on the template resolves through its own per-placement **Section Data** row (right panel → **Properties**): root the placement at the pinned entry via the **Entire Entry** row, or at a field inside it, and the section's internal bindings resolve against that document. The Section Data picker offers only targets whose structure matches what the section declared, so an incompatible entry simply doesn't appear. Reference: `docs/32-sections/binding-to-cms.md` § *Part 3 — Section Data*.
-
-Reference: `docs/33-freeform/pinned-entries.md`.
+**A placed section is rooted, not bound field by field.** The pinned-entry root above is for components authored directly on the template. A *section* dropped on the template resolves through its own per-placement **Section Data** row (right panel → **Properties**): root the placement at the pinned entry via the **Entire Entry** row, or at a field inside it, and the section's internal bindings resolve against that document. The Section Data picker offers only targets whose structure matches what the section declared, so an incompatible entry simply doesn't appear.
 
 Mental model:
 
@@ -87,7 +85,7 @@ if (miss) return notFound();
 return <StudioComponent specOptions={specOptions} />;
 ```
 
-The pinned entry data is embedded inside `specOptions.spec` — you do NOT pass it via the `data` prop. `data` is a separate `Record<string, any>` for [runtime Component Default Data](../../docs/20-bring-your-own-components/set-component-default-data.md#part-2-runtime-component-default-data-the-data-prop-on-ltstudiocomponent-gt) (external data outside Contentstack — live pricing, geo, etc.).
+The pinned entry data is embedded inside `specOptions.spec` — you do NOT pass it via the `data` prop. `data` is a separate `Record<string, any>` for [runtime Component Default Data](wire-external-data.md) (external data outside Contentstack — live pricing, geo, etc.).
 
 The Freeform composition URL only carries `{{composition_uid}}` plus `{{environment}}` and `{{branch}}` — it does **not** carry `{{entry.*}}` or `{{content_type_uid}}`. The pin is resolved server-side from the composition itself. (`{{locale}}` is accepted by the pattern engine but not recommended in URL patterns; carry locale via your routing layer + the SDK `locale` query option.)
 
@@ -105,7 +103,6 @@ The Freeform composition URL only carries `{{composition_uid}}` plus `{{environm
 
 ## See also
 
-- [`docs/33-freeform/pin-specific-entries-to-a-component.md`](../../docs/33-freeform/pin-specific-entries-to-a-component.md) — full reference.
 - Pair with [`build-freeform-template`](build-freeform-template.md) when introducing the template for the first time.
 - Pair with [`expose-section-props`](expose-section-props.md) when the same template also needs author-editable `template.*` props alongside pinned-entry bindings.
-- [`docs/32-sections/binding-to-cms.md`](../../docs/32-sections/binding-to-cms.md) § *Part 3 — Section Data* — rooting a placed section at a pinned entry, a field inside it, or a query.
+- [`understand-linked-schemas`](understand-linked-schemas.md) § *Part 3 — Section Data* — rooting a placed section at a pinned entry, a field inside it, or a query.

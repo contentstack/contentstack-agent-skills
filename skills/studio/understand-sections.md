@@ -128,7 +128,6 @@ Any Global Field / Modular Block / Group / Reference field on the CT is a strong
 
 ## See also
 
-- `docs/32-sections/overview.md`: long-form reference. This skill is the short on-ramp
 - `understand-canvas-url`: concept explainer for the Canvas URL field (sister skill)
 - `studio-tour`: broader Studio walkthrough for first-time users
 - `build-section`: actually create a Section after the concept is clear

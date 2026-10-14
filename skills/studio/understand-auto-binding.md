@@ -127,4 +127,3 @@ Drop-scope (page / Repeater / Slot) is what this skill covers: the UI-level "whe
 - `understand-sections`: what Sections are
 - `build-section` § How a Section gets its data: `selectedField` model + set-vs-unset rule
 - `author-composition-via-api` § Authoring a Section composition: wire shapes
-- `docs/32-sections/binding-to-cms.md`: long-form reference
