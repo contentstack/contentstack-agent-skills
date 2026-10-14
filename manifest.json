@@ -1,6 +1,6 @@
 {
   "exported_at": "2026-04-28T08:27:32.000Z",
-  "skill_count": 21,
+  "skill_count": 22,
   "skills": [
     {
       "slug": "brand-kit-assistant",
@@ -85,6 +85,11 @@
     {
       "slug": "dx-delivery-sdk",
       "title": "dx-delivery-sdk",
+      "product": "Developer Experience"
+    },
+    {
+      "slug": "dx-kickstart-next",
+      "title": "Contentstack Kickstart Next",
       "product": "Developer Experience"
     },
     {
