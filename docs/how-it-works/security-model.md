@@ -73,7 +73,7 @@ Most skills are **advisory and read-only**: they explain and generate code but n
 
 ### 3. Secrets
 
-No skill ever prints, echoes, infers, or stores secrets. If you paste a token, the skill acknowledges it at a high level and does not repeat it. Examples always use placeholders and environment variables. The Launch skills log only key names and counts, never values.
+No skill ever prints, echoes or infers secrets, or writes them into source, logs or files you haven't approved. The one documented exception is an action skill writing credentials into a project's gitignored local `.env` with your confirmation, as Migration Companion does for the migrated app. If you paste a token, the skill acknowledges it at a high level and does not repeat it. Examples always use placeholders and environment variables. The Launch skills log only key names and counts, never values.
 
 ### 4. Environment variables
 

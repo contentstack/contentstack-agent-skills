@@ -49,8 +49,9 @@ Maintaining a separate copy of every skill per tool would guarantee drift. Becau
 
 - Every skill's `name` matches its folder name and follows the naming rules (lowercase letters, digits, single hyphens, max 64 characters).
 - Every `description` exists, includes "Use when…", and stays within 1024 characters.
-- Relative links inside each `SKILL.md` resolve.
-- Every manifest parses and they all declare the same `version`.
+- Relative links in every markdown file under `skills/` resolve.
+- Frontmatter values in `skills/` and `docs/` that contain `: ` or ` #` are quoted.
+- Every manifest parses, and every `version` field they declare is the same. The Cursor and Codex marketplace files have no version field; they point at the plugin, which carries it.
 
 Run it locally with `node scripts/validate.mjs`. The GitHub Action in `.github/workflows/validate.yml` runs it on every pull request and on push to `main`.
 

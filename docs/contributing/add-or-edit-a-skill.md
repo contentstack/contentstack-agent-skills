@@ -46,8 +46,9 @@ Use lowercase letters, digits, and single hyphens, max 64 characters.
 
 - `name` is missing, doesn't match the folder, or breaks the naming rules.
 - `description` is missing, lacks "Use when…", or is over 1024 characters.
-- A relative link in a `SKILL.md` doesn't resolve.
-- The manifests don't all declare the same `version`.
+- A relative link in any markdown file under `skills/` doesn't resolve.
+- A frontmatter value in `skills/` or `docs/` contains `: ` or ` #` without quotes.
+- A manifest doesn't parse, or the `version` fields they declare don't match.
 
 ## CI will keep you honest
 
