@@ -10,7 +10,7 @@ Diagnose against this file. Use `frameworks.md` only for where `init()` is allow
 
 | Mode | `ssr` | How the hash travels | How updates arrive | Hard requirement |
 |---|---|---|---|---|
-| CSR + REST | `false` | postMessage; the SDK injects it into `stackSdk` | `onEntryChange` / `onLiveEdit` refetch, no reload | `stackSdk` is mandatory |
+| CSR + REST | `false` | postMessage; the SDK injects it into `stackSdk` | `onEntryChange` / `onLiveEdit` refetch, no reload | `stackSdk` for hash injection; without it, pass `ssr: false` and read `ContentstackLivePreview.hash` |
 | SSR + REST | `true` | `live_preview` query parameter on the request | full iframe reload, parent-driven; `onEntryChange` never fires on edits | a fresh Delivery SDK instance per request |
 | CSR + GraphQL | `false` | `ContentstackLivePreview.hash` | callback refetch | manual host swap plus headers |
 | SSR + GraphQL | `true` | `request.query.live_preview` | full iframe reload | manual host swap plus headers |
@@ -61,7 +61,7 @@ the hash arrives by postMessage instead and never needs the URL.
 Per [Set Up Live Preview for Static-Site Generator (SSG)](https://www.contentstack.com/docs/headless-cms/set-up-live-preview-for-static-site-generator-ssg):
 
 - Initialise Live Preview Utils with `ssr: false`
-- Pass `stackSdk`, which is mandatory in CSR mode
+- Pass `stackSdk`, so the hash is injected into the Delivery SDK (without it, `ssr` defaults to `true`, so `ssr: false` must be explicit)
 - Configure the Delivery SDK with
   `live_preview: { preview_token, enable: true, host: <region preview host> }`
 - Refresh through `onLiveEdit()`, so the browser refetches on each edit

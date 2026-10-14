@@ -136,9 +136,11 @@ Confirm only the sections that apply.
 
 ### Production
 
-- Do not initialize preview on the production build (`enable: false`), or add
+- Keep preview out of the production build (`PURGE_PREVIEW_SDK=true`, or a dynamic import that
+  runs only for preview requests), or add
   `editButton: { exclude: ["outsideLivePreviewPortal"], includeByQueryParameter: false }`, or the
-  Edit button renders for visitors.
+  Edit button renders for visitors. Importing the SDK creates the button element even when
+  `init()` never runs, so `enable: false` alone is not enough.
 
 ## Reply shape
 

@@ -43,7 +43,7 @@ setup, use `setup-docs.md` instead.
 - **fix**:
   1. Remove `X-Frame-Options` for the preview host and use CSP instead, allowing the Contentstack app origin for the stack's region: `Content-Security-Policy: frame-ancestors 'self' https://app.contentstack.com;` (for example `https://eu-app.contentstack.com` in EU). `https://*.contentstack.com` is the broader fallback. `X-Frame-Options` has no allowlist syntax; a bare `SAMEORIGIN` always wins.
   2. Apply the header on every route, not just the site root. A route that redirects to a different hostname than the configured Base URL will also fail.
-  3. If the deployment sits behind platform password protection, note that no header or query parameter can be injected into a browser-originated iframe request from Contentstack. Options: disable protection on the preview deployment, use a bypass token embedded in the Base URL (every stack user can read the Base URL, so scope the token to the preview deployment and rotate it), put a server-side proxy in front that injects the header, or use Live Preview → Open in New Tab (a plan-gated feature that renders outside the iframe).
+  3. If the deployment sits behind platform password protection, note that no header or query parameter can be injected into a browser-originated iframe request from Contentstack. Options: disable protection on the preview deployment, put a server-side proxy in front that injects the header, or use Live Preview → Open in New Tab (a plan-gated feature that renders outside the iframe). Do not put a bypass token in the Base URL: Live Preview appends the entry path into the last query value, so the token and the path both break. See `base-url-query-string-corrupts-preview-url`.
   4. Third-party SSO screens that themselves set `X-Frame-Options: DENY` cannot render in the iframe at all. Use Open in New Tab, which renders the preview outside the iframe so those screens can load.
   5. On the Live Preview Onboarding Check this shows as **Live Preview SDK Not Initialized**, not "Could Not Connect to Website". The reachability gate is a `no-cors` request, which succeeds on any HTTP response, so frame headers and auth screens pass it.
 - **verification**: `curl -I https://<preview-host>/<some-deep-route>` and confirm no `X-Frame-Options` and a `frame-ancestors` value that includes the Contentstack app origin. Reload Live Preview; the pane should render.
@@ -101,6 +101,19 @@ setup, use `setup-docs.md` instead.
 
 ---
 
+### base-url-query-string-corrupts-preview-url
+- **bucket**: integration
+- **symptom**: Live Preview opens the home page or the wrong page instead of the entry. The URL in the pane has the entry path glued onto the end of the last query parameter, for example `https://site.example/?token=abc/my-page` (or `abc%2Fmy-page` under SSR), instead of on the path. Most often seen when the Base URL carries a hosting-platform protection-bypass token. Visual Editor opens the same page correctly.
+- **frameworks**: framework-agnostic (stack configuration)
+- **rendering_modes**: any
+- **root_cause**: Live Preview builds the preview URL by joining the environment Base URL and the entry's `url` as strings, then parsing the result. A Base URL that ends in a query string therefore receives the path inside the last query value: the token is corrupted and the path stays `/`. Visual Editor parses the Base URL first and keeps its query string, which is why the two products disagree on the same entry.
+- **fix**:
+  1. Remove the query string from the Base URL. Keep one only when it ends in a parameter the app deliberately reads the path from (`?path=`).
+  2. For a protected deployment, do not use a bypass token in the Base URL. Remove protection on the preview deployment, front it with a proxy that adds the credential, or restrict an unprotected preview deployment another way (for example by IP).
+- **verification**: Open an entry in Live Preview. The pane URL carries the entry path on the path, not inside a query value, and the right page renders.
+
+---
+
 ### sdk-version-below-visual-editor-minimum-or-breaking-major-upgrade
 - **bucket**: integration
 - **symptom**: Visual Editor features silently do nothing on an otherwise working Live Preview setup; or a version bump breaks a previously working integration: `setConfigFromParams` is no longer callable, `ReferenceError: window is not defined` in server code, the Edit button suddenly renders in production, or `Live_Preview_SDK: To use edit tags, you must provide the stack API key`.
@@ -138,12 +151,12 @@ setup, use `setup-docs.md` instead.
 - **symptom**: The Live Preview "Edit" pencil button appears on the normal production or UAT site for ordinary visitors, or the `#cslp-tooltip` button element is injected into `document.body` on production even when not visible (usually caught in an accessibility audit). Sometimes intermittent, correlating with client-side route changes rather than fresh page loads.
 - **frameworks**: Next.js (App Router especially), React
 - **rendering_modes**: CSR, SSR
-- **root_cause**: With `editButton.enable: true` and no `exclude`, the SDK renders the button on any page where it is initialized, inside the iframe or not. It never checks the `live_preview` hash or any session signal. `inIframe()` only matters when `exclude` is set, and a `?cslp-buttons=` query parameter overrides `exclude` unless `includeByQueryParameter: false`. Teams that gate `init()` on a server-read hash also get bitten by App Router soft navigation, which does not re-run that server-side gate while the SDK's button instance persists across route changes.
+- **root_cause**: With `editButton.enable: true` and no `exclude` (the defaults), the SDK renders the button on any page that loads it, inside the iframe or not. It creates `#cslp-tooltip` when the module is **imported**, before `init()` runs, so a production build that imports the SDK and never calls `init()` still has the element; config passed to `init()` is applied only afterwards. It never checks the `live_preview` hash or any session signal. `inIframe()` only matters when `exclude` is set, and a `?cslp-buttons=` query parameter overrides `exclude` unless `includeByQueryParameter: false`. Teams that gate `init()` on a server-read hash also get bitten by App Router soft navigation, which does not re-run that server-side gate while the SDK's button instance persists across route changes.
 - **fix**:
   1. Add `editButton: { enable: true, exclude: ['outsideLivePreviewPortal'], includeByQueryParameter: false }`. Outside the iframe the button no longer renders, a query parameter cannot bring it back, and Live Preview inside the pane keeps working.
-  2. If Live Preview is not used on production at all, do not initialize it there: `enable: false` (with the default `cleanCslpOnProduction: true`, which then strips `data-cslp`), or the `PURGE_PREVIEW_SDK=true` build flag, which no-ops the SDK entirely.
+  2. If Live Preview is not used on production at all, keep the SDK out of the production bundle: build with `PURGE_PREVIEW_SDK=true` (or `REACT_APP_PURGE_PREVIEW_SDK=true`), which swaps in a no-op SDK and skips the import-time button, or load the SDK with a dynamic import that runs only for preview requests. The flag works only if the bundler exposes `process.env` to browser code. Skipping `init()` or passing `enable: false` is not enough on its own, because the element is created at import.
   3. Do not rely on a server-side hash check alone in an App Router app; soft navigation will not re-evaluate it.
-- **verification**: Load the production URL in a normal tab with DevTools open. `document.getElementById('cslp-tooltip')` should be absent, and no `data-cslp` attributes should be present if the SDK runs with `enable: false`.
+- **verification**: Load the production URL in a normal tab with DevTools open. `document.getElementById('cslp-tooltip')` returns `null`, and no `data-cslp` attributes are present if the SDK runs with `enable: false`.
 
 ---
 
@@ -370,7 +383,7 @@ setup, use `setup-docs.md` instead.
 - **root_cause**: Two halves of the same mistake. A prerendered page cannot read query parameters at request time, so the `live_preview` hash can never reach a build-time data fetch — static output is published-only content by definition. And in SSR mode the SDK reloads the page after every edit, which on a static site just re-serves the same prerendered HTML. SSG is supported, but only in CSR mode.
 - **fix**:
   1. Initialize with `ssr: false`. Edits then fire an `onEntryChange` callback instead of a page reload.
-  2. Pass `stackSdk` in the init config. It is mandatory in CSR mode, and it is also what the SDK uses to default `ssr`, so omitting it silently selects SSR behaviour.
+  2. Pass `stackSdk` in the init config so the SDK can inject the hash into the Delivery SDK. It is optional, but it is also what the SDK uses to default `ssr`: without it, and without an explicit `ssr: false`, the SDK silently selects SSR behaviour.
   3. Implement `onEntryChange`: subscribe on the client, refetch the entry, update the UI. No rebuild is needed.
   4. Remove any `Stack.livePreviewQuery()` call from middleware. It is SSR-only and must not run on a static route.
   5. If the site mixes static and server-rendered routes, make the mode conditional per route rather than per app.

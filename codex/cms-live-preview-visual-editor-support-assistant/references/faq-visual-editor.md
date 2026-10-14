@@ -9,7 +9,7 @@ If nothing on the canvas is editable at all, start with `edit-tags-not-generated
 
 ### cslp-not-rebased-to-referenced-entry
 - **bucket**: visual-editor
-- **symptom**: Edit tags on fields that come from a **referenced** entry do nothing when clicked. Tags on the page's own fields work. Console may show `{code: 'NO_REQUEST_LISTENER_FOUND', message: 'contentstack-adv-post-message: No request listener found for event "scroll"'}`, but that message is routine and appears on healthy setups too — treat it as incidental, not as the identifying evidence. Diagnose from the tags themselves.
+- **symptom**: Edit tags on fields that come from a **referenced** entry do nothing when clicked. Tags on the page's own fields work. Console may show `{code: 'NO_REQUEST_LISTENER_FOUND', message: 'contentstack-adv-post-message: No request listener found for event "scroll"'}`, but that message only says the Live Preview edit button was clicked where the parent has no `scroll` listener, and it appears on healthy setups too — treat it as incidental, not as the identifying evidence. Diagnose from the tags themselves.
 - **frameworks**: React, Next.js, framework-agnostic
 - **rendering_modes**: CSR, SSR
 - **root_cause**: `addEditableTags()` rebases a tag onto the referenced entry only when the resolved reference object carries both `uid` and `_content_type_uid`. Without them the tag stays anchored to the parent entry (`product.<parent_entry_uid>.<locale>.<reference_field>.<index>.<field>`), so there is no entry to navigate to. Common causes: references fetched separately and merged by hand (which drops those keys), or any GraphQL response, where those keys sit under `system` instead of at the top level. Hardcoding `data-cslp` by hand is a related failure — the referenced entry's uid and content type uid are not the ones being edited.
@@ -59,12 +59,13 @@ If nothing on the canvas is editable at all, start with `edit-tags-not-generated
 - **symptom**: A page or component with an empty modular-block / multiple field shows no "+ Add Component" affordance, so authors have to go to the form panel to add the first block.
 - **frameworks**: React, Next.js
 - **rendering_modes**: CSR, SSR
-- **root_cause**: The empty-block placeholder only renders when the wrapper carries **both** the `VB_EmptyBlockParentClass` class (exported by the SDK; its literal value is `visual-builder__empty-block-parent`) and a `data-cslp` pointing at the block field itself. Miss either and there is nothing for the canvas to attach the affordance to.
+- **root_cause**: The empty-block placeholder only renders when the wrapper carries **both** the `VB_EmptyBlockParentClass` class (exported by the SDK; its literal value is `visual-builder__empty-block-parent`) and a `data-cslp` pointing at the block field itself. Miss either and there is nothing for the canvas to attach the affordance to. Three more conditions: it renders only inside Visual Editor, not in Live Preview; Visual Editor must return a field schema for that content type and field path, so a `data-cslp` with a wrong path renders nothing; and it is drawn when the DOM changes after the editor handshake. The button label is "Add <field display name>", not a fixed string.
 - **fix**:
   1. Confirm the wrapper renders both the class and a `data-cslp` pointing at the block field (for example `<page_ct>.<entry_uid>.<locale>.components`), and that it is rendered conditionally when the array is empty.
   2. Confirm the wrapper is visible and has height. A zero-height container gives nothing to hover.
   3. For nested blocks, put the same class and `data-cslp` on the inner block container, not only at page level.
-  4. This is specifically about a **block or multiple field with zero items**, where the SDK draws the affordance for you. A scalar field that renders nothing when empty is a different problem — see `empty-fields-are-not-clickable-on-the-canvas`.
+  4. Check every empty-block wrapper on the page, not only the one that fails: an invalid `data-cslp` on one wrapper can stop the affordance rendering on the others.
+  5. This is specifically about a **block or multiple field with zero items**, where the SDK draws the affordance for you. A scalar field that renders nothing when empty is a different problem — see `empty-fields-are-not-clickable-on-the-canvas`.
 - **verification**: Open a page whose block field is empty. The "+ Add Component" placeholder appears on hover, and adding a block inserts it into both the canvas and the form.
 
 ---

@@ -115,8 +115,10 @@ ContentstackLivePreview.init({
 });
 ```
 
-`stackSdk` is mandatory in CSR mode. Omitting it also flips the automatic `ssr` default to `true`,
-which is a silent misconfiguration rather than an error.
+`stackSdk` is optional, but omitting it flips the automatic `ssr` default to `true`, which is a
+silent misconfiguration rather than an error. Without `stackSdk`, pass `ssr: false` explicitly and
+read `ContentstackLivePreview.hash` in your own fetch. In builder mode without `stackSdk`,
+`stackDetails.apiKey` and `stackDetails.environment` are required or `init()` throws.
 
 Refresh content through `onEntryChange`. If edits only appear after a manual reload, the callback
 was never registered, or it closed over a pathname captured at mount and is refetching the previous

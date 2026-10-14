@@ -18,7 +18,10 @@ problem.** Say so and move to the network tab.
 Two different postMessage errors from the same library, both routine:
 
 - `NO_REQUEST_LISTENER_FOUND` ("No request listener found for event …"): one side sent a request
-  the other side has no handler for, for example a `scroll` event during load.
+  the other side has no handler for. The common one is `scroll`: the Live Preview edit button sends
+  it on click, and Visual Editor (or the Live Preview panel before the init handshake) registers no
+  `scroll` listener. It shows as an uncaught promise rejection in the site's console. It says a
+  button was clicked, nothing about whether tags resolve.
 - `No ack listener found`: an acknowledgement arrived after its sender stopped waiting, typically
   during load or teardown.
 
