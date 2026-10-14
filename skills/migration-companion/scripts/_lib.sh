@@ -52,7 +52,9 @@ redact() {
     if (base ~ /^\.env/ || base ~ /\.env$/) { sub(/[=:].*/, "=<redacted>", text) }
     else {
       gsub(/(cs[a-f0-9]{12,}|blt[a-z0-9]{12,})/, "<redacted>", text)
-      gsub(/["\047`][^"\047`]{8,}["\047`]/, "\"<redacted>\"", text)   # same 8-char floor as the checks
+      # Lines that name a credential: mask every quoted value, whatever its length.
+      if (tolower(text) ~ /(token|secret|password|passwd|api_?key|apikey|credential|auth)/) gsub(/["\047`][^"\047`]*["\047`]/, "\"<redacted>\"", text)
+      else gsub(/["\047`][^"\047`]{6,}["\047`]/, "\"<redacted>\"", text)   # lowest floor any check uses
     }
     print file ":" line ":" text
   }'
