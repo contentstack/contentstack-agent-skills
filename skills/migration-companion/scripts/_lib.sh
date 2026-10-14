@@ -40,6 +40,22 @@ search() {
   fi
 }
 
+# redact — mask secret values in "file:line:match" output so reports and logs never carry them.
+# In .env-style files only the key is kept; elsewhere long quoted literals and Contentstack-shaped
+# tokens are masked. The file and line number stay, which is all a reviewer needs.
+redact() {
+  awk -F: '{
+    file=$1; n=split(file, parts, "/"); base=parts[n]
+    rest=substr($0, length($1)+2); line=substr(rest, 1, index(rest, ":")-1); text=substr(rest, index(rest, ":")+1)
+    if (base ~ /^\.env/) { sub(/[=:].*/, "=<redacted>", text) }
+    else {
+      gsub(/(cs[a-f0-9]{12,}|blt[a-z0-9]{12,})/, "<redacted>", text)
+      gsub(/["\047][A-Za-z0-9_\/+=.-]{16,}["\047]/, "\"<redacted>\"", text)
+    }
+    print file ":" line ":" text
+  }'
+}
+
 # files_with REGEX [GLOBS] -> unique file list
 files_with() { search "$1" "${2:-$CODE_EXT}" | cut -d: -f1 | sort -u; }
 
@@ -56,7 +72,7 @@ add_finding() { printf '  ▸ %s\n' "$1" >> "$_TMP"; FINDINGS=$((FINDINGS+1)); }
 # check "description" REGEX [GLOBS] — flag every match of a pattern that should NOT exist
 check() {
   local desc="$1" regex="$2" globs="${3:-$CODE_EXT}" out n
-  out="$(search "$regex" "$globs")"
+  out="$(search "$regex" "$globs" | redact)"
   if [ -n "$out" ]; then
     n="$(printf '%s\n' "$out" | grep -c .)"
     { printf '  ▸ %s  [%s hit(s)]\n' "$desc" "$n"; printf '%s\n' "$out" | sed 's/^/      /'; } >> "$_TMP"

@@ -17,12 +17,20 @@ if [ -f "$TARGET/.env" ]; then
   fi
 fi
 
-# A migration log written inside the repo must not be committed
-if [ -d "$TARGET/.migration" ]; then
-  if [ -f "$TARGET/.gitignore" ] && grep -Eq '^/?\.migration/?$' "$TARGET/.gitignore"; then :; else
-    add_finding ".migration/ log directory present but not git-ignored — add it to .gitignore"
+# A migration log written inside the repo must not be committed. Check every location log.sh can
+# use (MIG_LOG_DIR, then SESSION_DIR/migration-log, then <target>/.migration).
+target_abs="$(cd "$TARGET" && pwd -P)"
+for logdir in "${MIG_LOG_DIR:-}" "${SESSION_DIR:+$SESSION_DIR/migration-log}" "$TARGET/.migration"; do
+  [ -n "$logdir" ] && [ -d "$logdir" ] || continue
+  log_abs="$(cd "$logdir" && pwd -P)"
+  case "$log_abs/" in "$target_abs"/*) ;; *) continue ;; esac   # outside the repo: fine
+  if git -C "$target_abs" rev-parse --git-dir >/dev/null 2>&1; then
+    git -C "$target_abs" check-ignore -q "$log_abs" && continue
+  elif [ -f "$TARGET/.gitignore" ] && grep -Eq "^/?${log_abs#"$target_abs"/}/?$" "$TARGET/.gitignore"; then
+    continue
   fi
-fi
+  add_finding "migration log directory ${log_abs#"$target_abs"/}/ is inside the repo but not git-ignored — add it to .gitignore"
+done
 
 # Example env should advertise the new Contentstack vars
 examples=()
