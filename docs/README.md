@@ -59,6 +59,6 @@ Every skill is written once in the open [Agent Skills](https://agentskills.io) f
 ## Learn more about Contentstack
 
 - [contentstack.com/docs](https://www.contentstack.com/docs): full product documentation
-- [developers.contentstack.com](https://developers.contentstack.com), SDKs, CLIs, and API references
+- [developers.contentstack.com](https://developers.contentstack.com): SDKs, CLIs, and API references
 - [contentstack.com/academy](https://www.contentstack.com/academy): training and learning paths
 - [contentstack.com/explorer](https://www.contentstack.com/explorer): free sandbox accounts for testing

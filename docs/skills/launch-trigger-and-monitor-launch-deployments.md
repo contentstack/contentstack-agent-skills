@@ -9,7 +9,7 @@ description: Trigger a Contentstack Launch deployment, poll it to completion, an
 
 Triggers a Launch deployment for a specific environment, polls its status until completion, and, if it fails or is cancelled, fetches the deployment log and diagnoses likely causes with next-step recommendations. Built for CI/CD or operator workflows that need a deterministic deploy status check.
 
-> This skill has `disable-model-invocation: true`. It runs only when you explicitly invoke it.
+> This skill has `disable-model-invocation: true`, which Claude Code and Copilot honor: they run it only when you explicitly invoke it. Other tools may still match it automatically, so the skill also confirms the target project and environment before any external call.
 
 ## When it triggers
 

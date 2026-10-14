@@ -1,6 +1,6 @@
 ---
 title: Sync Launch env vars from .env.example
-description: "Compare a local .env.example with a Contentstack Launch environment and patch the environment to add any missing keys: without exposing secrets."
+description: "Compare a local .env.example with a Contentstack Launch environment and patch the environment to add any missing keys, without exposing secrets."
 ---
 
 # Sync Launch env vars from .env.example
@@ -9,7 +9,7 @@ description: "Compare a local .env.example with a Contentstack Launch environmen
 
 Fetches environment variables from a Contentstack Launch project, compares them with a local `.env.example` file, and patches the target environment to add any missing keys. Useful for auditing missing variables before a deployment and keeping a Launch environment aligned with what a frontend project expects.
 
-> This skill has `disable-model-invocation: true`. It runs only when you explicitly invoke it, not via automatic routing.
+> This skill has `disable-model-invocation: true`, which Claude Code and Copilot honor: they run it only when you explicitly invoke it. Other tools may still match it automatically, so the skill also confirms the target project and environment before any external call.
 
 ## When it triggers
 
@@ -22,7 +22,7 @@ When a Launch environment must match the keys defined in a local `.env.example`,
 3. Compare keys: identify only missing keys unless you explicitly ask to update existing values.
 4. Build a minimal patch payload with only the missing keys.
 5. `PATCH /projects/{project_uid}/environments/{environment_uid}`.
-6. Report missing keys, patched keys, and any errors: without exposing values.
+6. Report missing keys, patched keys, and any errors, without exposing values.
 
 ## Inputs
 

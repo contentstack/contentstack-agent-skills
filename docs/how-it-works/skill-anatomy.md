@@ -5,7 +5,7 @@ description: The structure every Contentstack skill follows, section by section.
 
 # Anatomy of a SKILL.md
 
-Every skill is a single `SKILL.md` file at `skills/<slug>/SKILL.md`. Skills share a consistent structure so agents can parse them reliably and authors can write them predictably.
+Every skill centers on a `SKILL.md` file at `skills/<slug>/SKILL.md`, optionally with `references/`, `scripts/` or, as in `studio`, sibling guide files next to it. Skills share a consistent structure so agents can parse them reliably and authors can write them predictably.
 
 ## Frontmatter
 
@@ -74,7 +74,7 @@ When a skill needs authoritative detail beyond the body, it ships `references/` 
 - Read: references/delivery-sdk-spec.md
 ```
 
-The agent reads these **on demand**, only when the task actually needs them: to keep context lean.
+The agent reads these **on demand**, only when the task actually needs them, to keep context lean.
 
 ## Examples (few-shot)
 

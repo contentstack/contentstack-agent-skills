@@ -24,7 +24,7 @@ This keeps context lean: you get every skill available without paying for every 
 3. It loads the best-fitting skill (or several, if the task spans them).
 4. It follows that skill's instructions, reading any `references/` the task needs.
 
-You don't have to name a skill. But you can force one if you want (*"use the Data Modeling skill…"*). In Claude Code, you can also invoke a skill directly as a slash command, for example `/cms-entries`.
+You don't have to name a skill. But you can force one if you want (*"use the Data Modeling skill…"*). In Claude Code, you can also invoke a skill directly as a slash command. Plugin installs namespace it, for example `/contentstack-skills:cms-entries` (or `/cms-entries` if installed with the `skills` CLI).
 
 ## What triggers each skill
 
@@ -39,7 +39,7 @@ Each description's "Use when…" clause lists the requests that should load it. 
 | Delivery SDK code, queries, Live Preview setup, SSR preview | [Delivery SDK](../skills/dx-delivery-sdk.md) |
 | Maintaining or extending the Next.js kickstart | [Contentstack Kickstart Next](../skills/dx-kickstart-next.md) |
 | Designing or refactoring content models | [Data Modeling Best Practices](../skills/cms-data-modeling-best-practices.md) |
-| Debugging Live Preview or Visual Builder | [Live Preview & Visual Editor Support](../skills/cms-live-preview-visual-editor-support-assistant.md) |
+| Setting up or debugging Live Preview, Visual Editor (Visual Builder) or Timeline | [Live Preview & Visual Editor Support](../skills/cms-live-preview-visual-editor-support-assistant.md) |
 | Fetching entries, CDA queries, pagination, bulk ops | [Entries](../skills/cms-entries.md) |
 | Uploading, transforming, delivering assets | [Assets](../skills/cms-assets.md) |
 | Classifying content, category hierarchies | [Taxonomy](../skills/cms-taxonomy.md) |
@@ -60,7 +60,7 @@ The exact wording lives in each skill's frontmatter. See the [skills reference](
 
 ## Skills that only run on request
 
-Skills with `disable-model-invocation: true` in their frontmatter are never picked automatically, because they perform external actions. Both Launch skills work this way: you invoke them by name (in Claude Code, as `/launch-trigger-and-monitor-launch-deployments` or `/launch-sync-environment-variables-from-env-example`).
+Skills with `disable-model-invocation: true` in their frontmatter perform external actions, so tools that honor the flag (Claude Code and Copilot) never pick them automatically. Both Launch skills work this way: you invoke them by name (in Claude Code, as `/contentstack-skills:launch-trigger-and-monitor-launch-deployments` or `/contentstack-skills:launch-sync-environment-variables-from-env-example`, or without the `contentstack-skills:` prefix if installed with the `skills` CLI). Other tools may still match them automatically, so both Launch skills also confirm the target project and environment before any external call.
 
 ## When multiple skills fit
 

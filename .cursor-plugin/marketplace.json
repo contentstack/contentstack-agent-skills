@@ -5,7 +5,7 @@
     {
       "name": "contentstack-skills",
       "source": "./",
-      "description": "Contentstack agent skills for CMS modeling, Delivery SDK, Live Preview, Brand Kit, Developer Hub apps, Launch, and migrations."
+      "description": "Contentstack agent skills for CMS modeling, Delivery SDK, Live Preview, Studio, Brand Kit, Developer Hub apps, Launch, and migrations."
     }
   ]
 }

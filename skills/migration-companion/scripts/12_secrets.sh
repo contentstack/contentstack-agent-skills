@@ -17,9 +17,20 @@ if [ -f "$TARGET/.env" ]; then
   fi
 fi
 
+# A migration log written inside the repo must not be committed
+if [ -d "$TARGET/.migration" ]; then
+  if [ -f "$TARGET/.gitignore" ] && grep -Eq '^/?\.migration/?$' "$TARGET/.gitignore"; then :; else
+    add_finding ".migration/ log directory present but not git-ignored — add it to .gitignore"
+  fi
+fi
+
 # Example env should advertise the new Contentstack vars
-if ls "$TARGET"/.env.example "$TARGET"/.env.sample "$TARGET"/.env.local.example >/dev/null 2>&1; then
-  if ! grep -Eqr 'CS_(API_KEY|DELIVERY_TOKEN|ENVIRONMENT)|CONTENTSTACK_' "$TARGET"/.env.* 2>/dev/null; then
+examples=()
+for f in "$TARGET"/.env.example "$TARGET"/.env.sample "$TARGET"/.env.local.example; do
+  [ -f "$f" ] && examples+=("$f")
+done
+if [ "${#examples[@]}" -gt 0 ]; then
+  if ! grep -Eq 'CS_(API_KEY|DELIVERY_TOKEN|ENVIRONMENT)|CONTENTSTACK_' "${examples[@]}" 2>/dev/null; then
     add_finding "example env file exists but lists no Contentstack (CS_*/CONTENTSTACK_*) variables"
   fi
 fi

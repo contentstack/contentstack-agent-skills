@@ -62,7 +62,12 @@ export function LivePreviewInit() {
 export default async function Page({ searchParams }) {
   const params = await searchParams; // a Promise since Next.js 15
   const stack = createStack();       // new Delivery SDK instance per request
-  stack.livePreviewQuery(params);    // reads live_preview, content_type_uid, entry_uid, preview_timestamp
+  stack.livePreviewQuery({           // call on every request, even with no hash
+    live_preview: params.live_preview,
+    contentTypeUid: params.content_type_uid,
+    entryUid: params.entry_uid,
+    preview_timestamp: params.preview_timestamp,
+  });
   // fetch through `stack` ...
 }
 ```

@@ -17,7 +17,7 @@ The same skills install into every tool below. Each one reads the [Agent Skills]
 | **Gemini CLI**               | The extension from the GitHub repository                 | [Install for Gemini](../get-started/install-gemini.md)                |
 | **`skills` CLI**             | One or more skills you name, into any supported agent    | [Use the skills CLI](../get-started/skills-cli.md)                    |
 
-Every full install gives you every skill with their `references/` and `scripts/`.
+Every full install gives you every skill with its `references/`, `scripts/` and any sibling guide files (such as `studio`'s specialist guides).
 
 ## How to choose
 
@@ -35,6 +35,9 @@ This works the same whether you installed the whole bundle or a single skill wit
 
 - An AI coding assistant from the list above.
 - For the Launch skills: Launch API access for the target project and environment.
+- For Migration Companion: Node 20+, Python 3, the Contentstack CLI (`csdx`), the Contentful CLI, and a shell.
+- For Studio: a Contentstack account with Studio enabled, plus OAuth or the Contentstack MCP.
+- For Brand Kit API tasks: Brand Kit API credentials and the account's region.
 
 ## Keeping skills current
 

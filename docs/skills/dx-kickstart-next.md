@@ -5,7 +5,7 @@ description: Maintain Contentstack's Next.js kickstart with guidance for App Rou
 
 # Contentstack Kickstart Next
 
-**Slug:** `dx-kickstart-next` · **Product:** Developer Experience · **Type:** Builder and review guidance · **Ships references**
+**Slug:** `dx-kickstart-next` · **Product:** Developer Experience · **Type:** Advisory (gated repo and stack changes) · **Ships references**
 
 Helps agents build, review, debug, and extend Contentstack's `kickstart-next` repository or a close fork. It routes work into focused reference files for Next.js behavior, Contentstack delivery and preview setup, the seeded content model, local workflow, and PR review checks.
 

@@ -1,7 +1,7 @@
 # Migration evals — Contentful → Contentstack
 
 Independent, parallel-runnable checks that confirm a migration was done correctly. Each script
-targets one class of mistake from the migration mapping (`reference/CONTENTFUL_TO_CONTENTSTACK_MIGRATION_CONTEXT.md`)
+targets one class of mistake from the migration mapping ([`../references/CONTENTFUL_TO_CONTENTSTACK_MIGRATION_CONTEXT.md`](../references/CONTENTFUL_TO_CONTENTSTACK_MIGRATION_CONTEXT.md))
 and is **runnable on its own**, so an AI can fan them out (one agent per eval) or use the runner.
 
 ## Run
@@ -38,7 +38,7 @@ Uses `ripgrep` if present, else falls back to `grep`.
 | 09 | `graphql` | review* | Contentful GraphQL endpoint/auth/`xxxCollection`; missing Contentstack endpoint/`access_token` (§17) |
 | 10 | `live-preview` | review* | Leftover `@contentful/live-preview`; missing `live_preview`/`onEntryChange`/edit tags (§18) |
 | 11 | `build` | **HARD** | Typecheck / lint / build failures (authoritative) (§15.13) |
-| 12 | `secrets` | **HARD** | Hardcoded tokens/keys; un-ignored `.env`; example env not updated (§15.2) |
+| 12 | `secrets` | **HARD** | Hardcoded tokens/keys; un-ignored `.env` or `.migration/`; example env not updated (§15.2) |
 | 13 | `todos` | report | Lists `TODO(migration)` and guessed UIDs for mandatory human review |
 
 \* evals 09/10 return **N/A** (exit 3) when the app doesn't use that approach.
@@ -47,11 +47,15 @@ Uses `ripgrep` if present, else falls back to `grep`.
 
 `log.sh` is **not** a pass/fail eval (the runner ignores it). It is an append-only audit log of the
 whole migration — user inputs, AI actions & communications, decisions, eval results, commands, and
-**every exception** — written to `<target>/.migration/` as both `session.log` (human-readable) and
-`session.jsonl` (machine-readable), with full per-command output under `commands/`.
+**every exception** — written as both `session.log` (human-readable) and `session.jsonl`
+(machine-readable), with full per-command output under `commands/`. The directory is
+`$MIG_LOG_DIR` if set, else `$SESSION_DIR/migration-log` if `SESSION_DIR` is set (recommended:
+keeps the log out of the user's repo), else `<target>/.migration/` — which must then be
+git-ignored (eval 12 flags it otherwise).
 
 ```bash
-L=<skill-dir>/evals/log.sh
+export SESSION_DIR=<session-dir>   # keeps the log outside the target repo
+L=<skill-dir>/scripts/log.sh
 
 bash "$L" <target> user-input    "User asked: migrate Next.js app, GraphQL + live preview"
 bash "$L" <target> decision      "Detected TS/Next.js/GraphQL(urql)+contentful live-preview"
@@ -62,7 +66,7 @@ bash "$L" <target> exception     "coverImage UID unknown -> guessed cover_image 
 # Run a command through the logger: captures stdout+stderr, preserves exit code,
 # and auto-records a FAILED command as an exception:
 bash "$L" <target> run "install" -- npm ci
-bash "$L" <target> run "typecheck" -- npx tsc --noEmit
+bash "$L" <target> run "typecheck" -- npx --no-install tsc --noEmit
 
 bash "$L" <target> summary   # counts by type + exception list + recent entries
 bash "$L" <target> path      # print the log directory

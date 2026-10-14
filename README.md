@@ -21,7 +21,7 @@ Install with whichever tool you use. Each method gives you all the skills, and t
 
 ### claude.ai and Claude Cowork
 
-Go to **Customize → Plugins → Add marketplace** and enter `contentstack/contentstack-agent-skills`. The skills sync to claude.ai, Cowork and Claude Code, and update when this repo changes.
+Go to **Customize → Plugins → Add marketplace** and enter `contentstack/contentstack-agent-skills`. The skills sync to claude.ai, Cowork and Claude Code, and update when a new version is released.
 
 ### Cursor
 
@@ -86,7 +86,7 @@ Use `--list` to see every skill, or leave out `--skill` to install them all. The
 | `launch-sync-environment-variables-from-env-example` | Sync Launch environment variables from .env.example | Launch | Comparing a local `.env.example` with Launch environment variables and patching missing keys without printing secrets. |
 | `launch-trigger-and-monitor-launch-deployments` | Trigger and Monitor Launch Deployments | Launch | Triggering Launch deployments, polling deployment status, retrieving failure logs, and summarizing likely causes and next steps. |
 | `migration-companion` | Contentstack Migration Companion | Developer Experience | Guided Contentful-to-Contentstack migration workflow covering prerequisites, content migration, code migration, bundled validation scripts, and completion reporting. |
-| `studio` | Studio | Studio | Contentstack Studio end to end: SDK install, project provisioning, component registration, sections and templates, data binding, canvas and preview routes, verification, and troubleshooting. A router skill that loads one of 109 bundled specialist files per task. |
+| `studio` | Studio (preview) | Studio | Contentstack Studio end to end: SDK install, project provisioning, component registration, sections and templates, data binding, canvas and preview routes, verification, and troubleshooting. A router skill that loads one of 109 bundled specialist files per task. |
 
 ## How it works
 
@@ -99,7 +99,7 @@ skills/<slug>/SKILL.md            Source of truth: one folder per skill
 .claude-plugin/                   Claude Code / claude.ai / Copilot CLI plugin and marketplace
 .cursor-plugin/                   Cursor plugin and marketplace
 .agents/plugins/marketplace.json  Codex marketplace
-plugin.json                       Agent Plugins manifest (Codex, Cursor, VS Code)
+plugin.json                       Agent Plugins manifest (Codex, VS Code)
 gemini-extension.json             Gemini CLI extension
 docs/                             Documentation: install, architecture, contributing, skill reference
 scripts/validate.mjs              Validates skills and manifests (runs in CI)
@@ -108,7 +108,7 @@ scripts/validate.mjs              Validates skills and manifests (runs in CI)
 ## Contributing
 
 1. Add or edit `skills/<slug>/SKILL.md`. The `name` must match the folder, and the `description` must say what the skill does and include "Use when…" (1024 characters max).
-2. Add a row to the table above.
+2. Add a row to the table above, and add a `docs/skills/<slug>.md` page linked from `docs/skills/index.md`.
 3. Run `node scripts/validate.mjs`.
 4. For a release, bump `version` in every manifest. The validator fails if they disagree. Claude Code only updates installed plugins when the version changes. Add a `CHANGELOG.md` entry.
 

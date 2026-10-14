@@ -1,6 +1,6 @@
 # Step 5 — Welcome message (render verbatim)
 
-> **When to read:** When Step 4 is complete. Contains the exact welcome message to display to the user. This file is part of the [migration-companion skill](../SKILL.md); `{SKILL_DIR}` / `$SKILL_DIR` refer to that skill's install directory.
+> **When to read:** When Step 4 is complete. Contains the exact welcome message to display to the user. This file is part of the [migration-companion skill](../SKILL.md); `<SKILL_DIR>` refers to that skill's install directory.
 
 The migration is complete. Display the following message to the user — render it exactly as shown, preserving the section headings, icons, and line breaks:
 
@@ -37,12 +37,12 @@ Using the exact paths captured during this session, fill in and display this tab
 
 | Artifact | Location |
 |---|---|
-| 🗂️ **Contentful export** | The `export.json` path in `$SESSION_DIR` (from Step 3) |
-| 📦 **Contentstack import bundle** | `$SESSION_DIR/bundle/` (from Step 3) |
-| 🔑 **Stack credentials** | `$SESSION_DIR/bundle/metadata.json` (from Step 3) |
-| 📋 **Import logs** | The log directory printed by `migrate:create` (Step 3) |
+| 🗂️ **Contentful export** | `<EXPORT_JSON>` (from Step 3) |
+| 📦 **Contentstack import bundle** | `<BUNDLE_DIR>` (from Step 3) |
+| 🔑 **Stack credentials** | `<METADATA_PATH>` (from Step 3) |
+| 📋 **Import logs** | `<LOG_DIR>` (from Step 3) |
 | 💻 **Migrated website code** | The `repoPath` the user provided in Step 4 |
-| 🔍 **Code migration log** | `<repoPath>/.migration/session.log` |
+| 🔍 **Code migration log** | `session.log` in the directory printed by `log.sh <target> path` (Step 4) |
 
 Do not use default or guessed paths — substitute only the real paths you captured from each step's command output.
 
@@ -59,9 +59,9 @@ Here's what you've unlocked:
 | ⚡ **Composable architecture** | Mix and match best-of-breed tools — your stack, your way |
 | 🌍 **Multi-region delivery** | Content served fast, anywhere on the globe |
 | 🔄 **Omnichannel publishing** | Web, mobile, IoT, voice — one content hub for all |
-| 🛡️ **Enterprise-grade security** | SOC 2 Type II, GDPR, HIPAA-ready |
+| 🛡️ **Enterprise-grade security** | Security and compliance details at the [Contentstack Trust Center](https://www.contentstack.com/trust) |
 | 🤝 **Dedicated support** | Real humans, not just docs — onboarding, migrations, and beyond |
-| 🧩 **Marketplace & integrations** | 100+ pre-built connectors — plug in what you already use |
+| 🧩 **Marketplace & integrations** | Pre-built apps and connectors — plug in what you already use |
 
 ---
 
@@ -75,7 +75,7 @@ Here's what you've unlocked:
 
 ---
 
-> 💡 **Tip:** Bookmark the [Contentstack Developer Hub](https://www.contentstack.com/developers) — it has SDK references, starter apps, and video tutorials to help you get the most out of your new platform.
+> 💡 **Tip:** Bookmark the [Contentstack Developer Hub](https://developers.contentstack.com) — it has SDK references, starter apps, and video tutorials to help you get the most out of your new platform.
 
 ---
 

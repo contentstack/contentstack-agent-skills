@@ -41,7 +41,7 @@ setup, use `setup-docs.md` instead.
 - **rendering_modes**: any
 - **root_cause**: Contentstack renders the site inside an iframe on the app origin. Any `X-Frame-Options: SAMEORIGIN|DENY` or a CSP `frame-ancestors` directive that does not include the Contentstack app origin makes the browser refuse the frame before the page can run. Platform-level deployment protection (for example a hosting provider's password protection) adds `X-Frame-Options: DENY` to the password screen itself, so even the auth prompt cannot render.
 - **fix**:
-  1. Remove `X-Frame-Options` for the preview host and use CSP instead, allowing the Contentstack app origin for the stack's region: `Content-Security-Policy: frame-ancestors 'self' https://app.contentstack.com;` (for example `https://eu-app.contentstack.com` in EU). `https://*.contentstack.com` is the broader fallback. `X-Frame-Options` has no allowlist syntax; a bare `SAMEORIGIN` always wins.
+  1. Remove `X-Frame-Options` for the preview host and use CSP instead, allowing the Contentstack app origin for the stack's region: `Content-Security-Policy: frame-ancestors 'self' https://app.contentstack.com;` (for example `https://eu-app.contentstack.com` in EU). List the exact app host for each region the stack uses; avoid `https://*.contentstack.com`, which lets any Contentstack subdomain frame the site. `X-Frame-Options` has no allowlist syntax; a bare `SAMEORIGIN` always wins.
   2. Apply the header on every route, not just the site root. A route that redirects to a different hostname than the configured Base URL will also fail.
   3. If the deployment sits behind platform password protection, note that no header or query parameter can be injected into a browser-originated iframe request from Contentstack. Options: disable protection on the preview deployment, put a server-side proxy in front that injects the header, or use Live Preview → Open in New Tab (a plan-gated feature that renders outside the iframe). Do not put a bypass token in the Base URL: Live Preview appends the entry path into the last query value, so the token and the path both break. See `base-url-query-string-corrupts-preview-url`.
   4. Third-party SSO screens that themselves set `X-Frame-Options: DENY` cannot render in the iframe at all. Use Open in New Tab, which renders the preview outside the iframe so those screens can load.
@@ -165,12 +165,12 @@ setup, use `setup-docs.md` instead.
 - **symptom**: `Access to fetch at 'https://<region>-rest-preview.contentstack.com/v3/...' from origin '<site origin>' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource`, frequently alongside a `401 (Unauthorized)` on the same request. Works on localhost, fails on the deployed dev/staging host.
 - **frameworks**: Gatsby, Angular, Next.js, React
 - **rendering_modes**: CSR mainly
-- **root_cause**: Two distinct problems that surface as one console message. (1) The site's own Content Security Policy (`connect-src` / `default-src`) does not allow calls to Contentstack hosts, which most frameworks restrict by default in production but not in local dev. (2) The preview request is genuinely rejected (bad or wrong-type token), and the error response carries no CORS headers, so the browser reports it as a CORS failure instead of a 401. There is no per-stack "CORS allowlist" on the Contentstack side to add origins to.
+- **root_cause**: The preview request is genuinely rejected (bad or wrong-type token, or a host for the wrong region), and the error response carries no CORS headers, so the browser reports it as a CORS failure instead of a 401. A block by the site's own Content Security Policy looks different: the console shows a separate `Refused to connect to '<url>' because it violates the following Content Security Policy directive` error, not a CORS message. There is no per-stack "CORS allowlist" on the Contentstack side to add origins to.
 - **fix**:
-  1. Allow every Contentstack host the page calls in the site's `connect-src`: the region's delivery, preview, GraphQL and asset hosts as well as the app host. Listing only the app and REST preview hosts usually misses one. `https://*.contentstack.com https://*.contentstack.io` is the simple form when listing hosts individually keeps failing.
-  2. Fix the 401 separately: confirm you are sending a valid **Preview Token** (not a Delivery Token, not a Management Token) in the `preview_token` header, and regenerate it if in doubt. Resolve the CSP first, or the server error stays masked.
-  3. Recheck env vars after a stack migration or API key change — a stale API key produces the same 401-behind-CORS shape.
-- **verification**: `curl` the same preview URL with the same headers from a terminal. A 200 proves the token is valid and the remaining problem is browser-side CSP. In the browser, the request should complete with `Access-Control-Allow-Origin` present.
+  1. Fix the token and host first: confirm you are sending a valid **Preview Token** (not a Delivery Token, not a Management Token) in the `preview_token` header, that the preview host matches the stack's region, and regenerate the token if in doubt.
+  2. Recheck env vars after a stack migration or API key change — a stale API key produces the same 401-behind-CORS shape.
+  3. Only if the console also shows a `Refused to connect … Content Security Policy` error: allow every Contentstack host the page calls in the site's `connect-src`: the region's delivery, preview, GraphQL and asset hosts as well as the app host. Listing only the app and REST preview hosts usually misses one.
+- **verification**: `curl` the same preview URL from a terminal, passing credentials from environment variables rather than inline, for example `curl -s -o /dev/null -w '%{http_code}\n' -H "api_key: $CONTENTSTACK_API_KEY" -H "preview_token: $CONTENTSTACK_PREVIEW_TOKEN" "<preview-url>"`. A 200 proves the token and host are valid and the remaining problem is browser-side. In the browser, the request should complete with `Access-Control-Allow-Origin` present.
 
 ---
 
@@ -182,7 +182,7 @@ setup, use `setup-docs.md` instead.
 - **root_cause**: In SSR the SDK does not fetch content. It puts `?live_preview=<hash>&content_type_uid=...&entry_uid=...` on the URL and reloads, and preview state lives **on the Stack instance**. Failure (A) is having two instances: a long-lived "default" Stack for page queries plus a second Stack passed only to `init()`, so the hash never lands on the instance that queries. Failure (B) is having one module-level instance shared across requests: once any request puts it into preview mode, unrelated requests inherit it, and ordinary delivery traffic starts hitting the preview service with a hash that has expired (hashes are session-scoped and time-limited; the preview session issues a fresh one, so a stored or hardcoded hash eventually fails with the tracker-invalid text above) or belongs to another branch. Under concurrency requests can also overwrite each other's config mid-flight.
 - **fix**:
   1. Create a fresh Delivery SDK instance **per request**. Do not share a module-level Stack, and pass the instance down through request-scoped context rather than importing a singleton. This one change fixes both failures.
-  2. Read the hash off the incoming request each time and apply it to that instance: `stack.livePreviewQuery({ live_preview: hash, contentTypeUid, entryUid })`.
+  2. Read the hash off the incoming request each time and apply it to that instance: `stack.livePreviewQuery({ live_preview: hash, contentTypeUid, entryUid, preview_timestamp })`.
   3. Call `livePreviewQuery(...)` **unconditionally** per request, with empty values when there is no hash. Calling it only when a hash exists leaves the previous request's hash in place.
   4. Run every query that should show drafts on that instance. A query on an un-hashed instance returns published content.
   5. Drop any separate "live preview only" Stack. `init()` does not need a Stack in SSR.
@@ -226,7 +226,7 @@ setup, use `setup-docs.md` instead.
   1. Generate a Preview Token on the Delivery Token you already use.
   2. Replace `live_preview.management_token` with `live_preview.preview_token` and point `live_preview.host` at the region's `*-rest-preview.contentstack.com`.
   3. Update any framework source plugin to a version whose build output actually reads `preview_token` (some releases had source and build output disagreeing).
-  4. Remove the Management Token from client-side code entirely; depending on its scope it can grant write access to the stack. The Stack API Key, Delivery Token and Preview Token are read-only and acceptable client-side, but still treat them as credentials: do not paste them into tickets or logs.
+  4. Remove the Management Token from client-side code entirely; depending on its scope it can grant write access to the stack. The Stack API Key and Delivery Token are safe in the browser. The Preview Token reads unpublished content: expose it client-side only on preview deployments (CSR preview needs it), never in production builds. Still treat all of them as credentials: do not paste them into tickets or logs.
 - **verification**: No Management Token appears in any client bundle or preview request; the "Preview Service Not Enabled" card is gone and the Onboarding Check reaches Setup Complete.
 
 ---
@@ -292,7 +292,7 @@ setup, use `setup-docs.md` instead.
        editInVisualBuilderButton: { enable: false },
      });
      ```
-  2. Better for production builds: do not initialize the SDK there at all (`enable: false`), or use `PURGE_PREVIEW_SDK=true`.
+  2. Better for production builds: keep the SDK out of the production bundle with `PURGE_PREVIEW_SDK=true` or a dynamic import that runs only for preview requests. `enable: false` alone is not enough, because the SDK creates its button element at import (see `edit-button-rendered-outside-a-live-preview-session`).
 - **verification**: Load the production URL; no floating Start Editing button. Load the preview environment; the button is present when you want it.
 
 ---

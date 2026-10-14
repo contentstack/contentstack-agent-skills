@@ -14,7 +14,7 @@ already good.
 - **rendering_modes**: CSR | SSR
 - **root_cause**: Timeline adds `preview_timestamp` to the iframe URL alongside the `live_preview` hash, and the site must forward **both** to the preview service. Common failures: (a) the app only forwards the hash; (b) the app calls `stack.livePreviewQuery()` manually on the client and passes the hash without `preview_timestamp`, overwriting what the SDK had; (c) client-side internal navigation rewrites the iframe URL and drops the query params, so the next render has no timestamp (the double reload is Timeline re-injecting it); (d) a `live_preview` hash is tied to the preview context that issued it, so a hash captured in Visual Editor does not work in Timeline and vice versa.
 - **fix**:
-  1. On the server, read `preview_timestamp` from the request URL on every request and pass it with the hash: `stack.livePreviewQuery({ live_preview: hash, preview_timestamp: ts, content_type_uid, entry_uid })`.
+  1. On the server, read `preview_timestamp` from the request URL on every request and pass it with the hash: `stack.livePreviewQuery({ live_preview: hash, contentTypeUid, entryUid, preview_timestamp })`.
   2. On the client, prefer letting the SDK read the params from `document.location` — do not call `livePreviewQuery()` yourself. If you must, always include `preview_timestamp` next to the hash.
   3. Preserve `live_preview` and `preview_timestamp` across client-side route changes, or force a full navigation inside preview. Use Timeline's URL navigation box rather than in-page link clicks when demoing.
   4. Do not reuse a hash across contexts. For Timeline requests use the `live_preview` hash Timeline puts on the iframe URL; for Visual Editor requests use the one Visual Editor puts there.
@@ -24,7 +24,7 @@ already good.
 ---
 
 ### timeline-compare-highlights-no-differences
-- **bucket**: visual-editor
+- **bucket**: timeline
 - **symptom**: Timeline **Compare Website** renders both versions but highlights no differences between them.
 - **frameworks**: framework-agnostic
 - **rendering_modes**: any

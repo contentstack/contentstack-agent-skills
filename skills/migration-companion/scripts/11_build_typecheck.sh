@@ -29,7 +29,7 @@ ran_any=0
 if [ -f "$TARGET/tsconfig.json" ]; then
   ran_any=1
   if has_script "typecheck"; then run "typecheck" $PM run typecheck
-  elif command -v npx >/dev/null 2>&1; then run "tsc --noEmit" npx -y tsc --noEmit
+  elif command -v npx >/dev/null 2>&1; then run "tsc --noEmit" npx --no-install tsc --noEmit
   fi
 fi
 

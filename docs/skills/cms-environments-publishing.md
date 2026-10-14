@@ -17,7 +17,7 @@ When you ask about environment setup, publishing behavior, delivery or preview t
 
 - **Environment design**: treat environments as deployment targets (development, staging, production). Default max 5 per stack. Environments are global modules, shared across branches.
 - **Publishing fundamentals**: content is a draft until published to an environment; publishing can target multiple environments and locales. Use `api_version: 3.2` for nested reference publishing so the full reference tree resolves automatically. Always publish entries with their references.
-- **Token types**: *Delivery Token:* published content via the CDA, environment-scoped, client-safe. *Preview Token:* unpublished draft content for Live Preview. *Management Token:* stack-level read/write, server-side only.
+- **Token types**: *Delivery Token:* published content via the CDA, environment-scoped, client-safe. *Preview Token:* unpublished content for Live Preview; client-side only on preview deployments, never in production builds. *Management Token:* stack-level read/write, server-side only, never in the browser.
 - **SDK initialization**: stack API key + delivery token + environment, optionally branch/alias. CDA base URLs are region-specific (`cdn.contentstack.io` for AWS NA, `eu-cdn.contentstack.com` for AWS EU, `au-cdn.contentstack.com` for AWS AU).
 - **Sync API**: recommended for static sites, offline apps, or local caches. First request returns all published content plus a `sync_token`; later requests return only changes. Prefer it over polling.
 - **Publish queue**: tracks publish/unpublish status; each branch has its own queue; scheduled publishes can be cancelled before execution.

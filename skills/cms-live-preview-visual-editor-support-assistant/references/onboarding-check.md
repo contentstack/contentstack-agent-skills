@@ -26,7 +26,7 @@ One card, showing the gate under test while checking and the first failure when 
 | 2 | Verifying Live Preview SDK | **Live Preview SDK Not Initialized** | No init handshake arrived within about 12 seconds. Either the frame rendered nothing (`X-Frame-Options`, CSP `frame-ancestors`, a password, auth or SSO screen) or the page loaded and `init()` never ran on the client: server-only placement, `enable` not truthy in the deployed build, the init module tree-shaken out, or init running late. |
 | 3 | Verifying Live Preview SDK | **Outdated Live Preview SDK Version** | The handshake reported a version below 1.4.0, or an unparseable one. Upgrade Live Preview Utils. |
 | 4 | Verifying Preview Service | **Preview Service Not Enabled** | Site and SDK are fine, but content is not coming from the Preview Service. The fetch layer never switched host and headers. The most common failure. |
-| 5 | — | **Default Environment Not Set** | Integration fine. The stack has no default preview environment. |
+| 5 | — | **Default Environment Not Set** | Integration fine. The stack has no default preview environment. If no environment is remembered locally for the locale either, the check does not appear at all (see "When the check does not appear"). |
 | — | — | **Setup Complete** | All gates passed. |
 
 To tell the two gate-2 causes apart, look at the pane: blank or a browser error page means frame

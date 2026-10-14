@@ -103,7 +103,7 @@ the fixes here will help.
 - **symptom**: Live Preview works for top-level fields but an edit to an entry that is referenced inside another entry does not update. Setup status reports "Preview Service Not Enabled" even though Live Preview is on for the stack. Migrating to preview tokens returns `401 Unauthorized` on the first attempt.
 - **frameworks**: framework-agnostic
 - **rendering_modes**: any
-- **root_cause**: The older Live Preview implementation authenticated with a read-only Management Token against the CMA host. On that path the reference-resolution optimizations of the Preview service are not available, so edits inside references do not propagate. "Preview Service Not Enabled" is exactly this: the site is still fetching draft data over CMA rather than the Preview service.
+- **root_cause**: The older Live Preview implementation authenticated with a read-only Management Token against the CMA host. On that path the reference-resolution optimizations of the Preview service are not available, so edits inside references do not propagate. "Preview Service Not Enabled" is one sign of this: the site is still fetching draft data over CMA rather than the Preview service (the other common cause is fetching from the delivery CDN).
 - **fix**:
   1. Migrate to the Preview Service: generate a Preview Token tied to your Delivery Token and replace `management_token` with `preview_token` in `live_preview`, and point `host` at the region's preview host.
   2. Remove the CMA host override and any `setHost` calls left over from the old setup.

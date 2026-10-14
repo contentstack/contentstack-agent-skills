@@ -1,6 +1,6 @@
 ---
 name: dx-kickstart-next
-description: "Guidance for building, reviewing, debugging, or extending Contentstack's kickstart-next repository. Use when working on the Next.js kickstart app, Contentstack Delivery SDK setup, Live Preview or Visual Builder behavior, seeded stack alignment, environment variables, endpoint or image host configuration, App Router structure, package scripts, local setup, CI expectations, tests, lint/build validation, or PR review checklists."
+description: "Guidance for building, reviewing, debugging, or extending Contentstack's kickstart-next repository. Use when working in contentstack/kickstart-next or a close fork: the Next.js kickstart app, its Contentstack Delivery SDK setup, Live Preview or Visual Builder behavior, seeded stack alignment, environment variables, endpoint or image host configuration, App Router structure, package scripts, local setup, CI expectations, tests, lint/build validation, or PR review checklists. For general Delivery SDK or Live Preview questions outside this repo, use dx-delivery-sdk or cms-live-preview-visual-editor-support-assistant."
 ---
 
 # Contentstack kickstart-next
@@ -20,7 +20,6 @@ Use this skill when working in `contentstack/kickstart-next` or a close fork. In
 - Keep guidance grounded in the current checkout. Inspect files before assuming scripts, tests, CI, content types, env vars, or framework conventions exist.
 - Treat kickstarts as user-facing examples: prefer clarity, minimal moving parts, safe defaults, and copyable setup steps over clever abstractions.
 - Preserve Live Preview behavior when changing data fetching, route rendering, components, content types, field UIDs, or Visual Builder bindings.
-- Never commit real Contentstack credentials. Use placeholders in docs and `.env.example`; real values belong in a local gitignored `.env`.
 - When adding or renaming env vars, update `.env.example` and user-facing docs together.
 - When adding remote image sources, update the framework-specific image allowlist or documented env override.
 - When modifying JavaScript or TypeScript files, run `npm run build`; also run `npm run lint` and any `typecheck` script if they exist.
@@ -38,7 +37,7 @@ Use this skill when working in `contentstack/kickstart-next` or a close fork. In
 ### Defaults
 
 - Never commit real Contentstack credentials. `.env.example` and docs use placeholders; real values live in a gitignored `.env`.
-- Delivery and preview tokens are read-only and may reach the browser; management tokens never do.
+- Delivery tokens are safe in the browser. Preview tokens read unpublished content: expose them client-side only on preview deployments (CSR preview needs them), never in production builds. Management tokens never reach the browser.
 - Never recommend enabling Live Preview in production builds.
 
 ### Destructive Actions

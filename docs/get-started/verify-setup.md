@@ -28,7 +28,7 @@ Ask a question that clearly maps to one skill:
 
 > What's the difference between a delivery token and a preview token?
 
-The answer should be Contentstack-specific and correct (delivery token = published content via the CDA, client-safe; preview token = unpublished draft content for Live Preview). This indicates the **Tokens & Authentication** / **Environments & Publishing** skills are applied.
+The answer should be Contentstack-specific and correct (delivery token = published content via the CDA, client-safe; preview token = unpublished content, exposed client-side only on preview deployments and never in production builds). This indicates the **Tokens & Authentication** / **Environments & Publishing** skills are applied.
 
 ## 3. Confirm the safety rules apply
 
@@ -40,7 +40,7 @@ A working setup should **decline to hardcode** and use environment variables ins
 
 ## 4. Confirm a reference-backed skill
 
-For skills that ship references (Delivery SDK, Brand Kit, Developer Hub, Migration Companion), ask something specific enough to require the reference:
+For skills that ship references (Delivery SDK, Kickstart Next, Live Preview & Visual Editor Support, Brand Kit, Developer Hub, Migration Companion; Studio ships sibling guides next to its `SKILL.md`), ask something specific enough to require the reference:
 
 > Using the Delivery SDK, show the correct chain order for includeReference, where, and find.
 

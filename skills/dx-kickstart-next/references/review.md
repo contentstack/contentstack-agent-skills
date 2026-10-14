@@ -41,5 +41,5 @@ Use this for PR reviews, pre-PR checks, risk assessment, or summarizing changes 
 - Run any `typecheck` or `test` scripts only if present.
 - Verify `.env.example` and docs for env changes.
 - Scan the diff for secrets.
-- Read `references/content-model.md` for schema-impacting changes.
+- Read [content-model.md](content-model.md) for schema-impacting changes.
 - Check preview behavior if data fetching, CSLP `$` attributes, components, content model fields, or Live Preview initialization changed.

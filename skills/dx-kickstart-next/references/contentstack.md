@@ -29,7 +29,7 @@ Use this when changing how `kickstart-next` talks to Contentstack, handles previ
 ## Environment variables
 
 - Required for normal operation: `NEXT_PUBLIC_CONTENTSTACK_API_KEY`, `NEXT_PUBLIC_CONTENTSTACK_DELIVERY_TOKEN`, `NEXT_PUBLIC_CONTENTSTACK_ENVIRONMENT`, `NEXT_PUBLIC_CONTENTSTACK_REGION`.
-- Required for preview mode: `NEXT_PUBLIC_CONTENTSTACK_PREVIEW=true` and `NEXT_PUBLIC_CONTENTSTACK_PREVIEW_TOKEN`.
+- Required for preview mode: `NEXT_PUBLIC_CONTENTSTACK_PREVIEW=true` and `NEXT_PUBLIC_CONTENTSTACK_PREVIEW_TOKEN`. The `NEXT_PUBLIC_` prefix ships the preview token to the browser, so set it only on preview deployments, never in production builds.
 - Advanced/dedicated-environment overrides: `NEXT_PUBLIC_CONTENTSTACK_CONTENT_DELIVERY`, `NEXT_PUBLIC_CONTENTSTACK_PREVIEW_HOST`, `NEXT_PUBLIC_CONTENTSTACK_CONTENT_APPLICATION`, `NEXT_PUBLIC_CONTENTSTACK_IMAGE_HOSTNAME`.
 - Keep real tokens out of committed files. Use placeholder values in `.env.example`, README snippets, and docs.
 

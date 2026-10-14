@@ -7,7 +7,7 @@ This repository bundles [Contentstack](https://www.contentstack.com) agent skill
 - `name` must equal the folder name (lowercase, hyphens, max 64 chars).
 - `description` says what the skill does and includes "Use when …" triggers, max 1024 chars. This is the only text agents see before loading a skill, so put routing cues here.
 - Keep `SKILL.md` focused; move long material into `references/` and link it with a relative path.
-- When adding a skill, add its row to the table in `README.md`.
+- When adding a skill, add its row to the table in `README.md`, and add a `docs/skills/<slug>.md` page linked from `docs/skills/index.md`.
 - Run `node scripts/validate.mjs` before committing. CI runs it on every PR.
 
 ## Releasing

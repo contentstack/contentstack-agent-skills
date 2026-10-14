@@ -5,7 +5,7 @@ description: "Turn Contentstack Developer Hub and Marketplace app ideas into con
 
 # Developer Hub App Architect
 
-**Slug:** `developer-hub-app-architect` · **Product:** Developer Hub · **Type:** Advisor + Builder · **Ships references**
+**Slug:** `developer-hub-app-architect` · **Product:** Developer Hub · **Type:** Advisory (read-only) · **Ships references**
 
 Turns Developer Hub and Marketplace app ideas into concrete implementations: it chooses the right UI location, maps the architecture, generates boilerplate-aligned React/TypeScript code, and troubleshoots setup, SDK, manifest, proxy, and publishing issues.
 

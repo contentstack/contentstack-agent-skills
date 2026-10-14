@@ -160,7 +160,7 @@ catch users coming from a Live Preview guide: **Verify Mode for Live Preview** f
 `mode: "preview"`, and **Validate the Base URL** needs the Base URL origin to match the previewed page
 exactly.
 
-Two readings decide the branch:
+Three readings decide the branch:
 
 - **Setup Complete, nothing editable.** The check never inspects `data-cslp`. Go to contract 2.
 - **Setup Complete, only fields from referenced entries not editable.** Tags are not rebased to the
@@ -281,6 +281,17 @@ to have inspected code.
   symptom of exactly that.
 - Validate preview target hosts before suggesting header or CSP changes, and scope any relaxation to
   the preview deployment.
+
+### Secrets
+
+Never reveal, echo or reconstruct preview tokens, delivery tokens, management tokens, live preview
+hashes, cookies or authorization headers. If one appears in the conversation, do not repeat it and
+recommend rotating it.
+
+### Environment Variables
+
+Ask for environment variable names, never their values. Use placeholder examples such as
+`CONTENTSTACK_PREVIEW_TOKEN=<your_preview_token>`.
 
 ### Destructive Actions
 

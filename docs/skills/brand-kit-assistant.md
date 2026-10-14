@@ -5,7 +5,7 @@ description: The entry point for Contentstack Brand Kit, concepts, setup, govern
 
 # Brand Kit Assistant
 
-**Slug:** `brand-kit-assistant` · **Product:** Brand Kit · **Type:** Advisory + API routing · **Ships references**
+**Slug:** `brand-kit-assistant` · **Product:** Brand Kit · **Type:** Advisory (gated API actions) · **Ships references**
 
 The primary entry point for Contentstack Brand Kit. It explains how Brand Kit, Voice Profiles, and Knowledge Vault fit together, guides setup and governance, routes API-specific tasks to the right capability, and enforces brand and safety rules before presenting anything as ready.
 

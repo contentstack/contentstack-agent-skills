@@ -30,7 +30,7 @@ search() {
   if [ "$HAVE_RG" -eq 1 ]; then
     local exargs=(); local d
     for d in $EXCLUDE_DIRS; do exargs+=(-g "!$d/**"); done
-    rg --no-heading --line-number --color never "${exargs[@]}" -g "*.{$globs}" -e "$regex" "$TARGET" 2>/dev/null
+    rg --hidden --no-heading --line-number --color never "${exargs[@]}" -g "*.{$globs}" -e "$regex" "$TARGET" 2>/dev/null
   else
     local inc=() exc=() e d
     IFS=',' read -ra _exts <<< "$globs"

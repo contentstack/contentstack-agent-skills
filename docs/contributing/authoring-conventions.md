@@ -59,4 +59,4 @@ Skills favor direct, actionable guidance over background theory. Lead with the r
 
 ## Validate before you push
 
-Run `node scripts/validate.mjs`. It checks names, descriptions, relative links, and manifest versions. See [Add or edit a skill](add-or-edit-a-skill.md).
+Run `node scripts/validate.mjs`. It checks skill names, descriptions (including "Use when"), the `## Security` section and its four subsections, relative links under `skills/`, quoted frontmatter values in `skills/` and `docs/`, and that manifests parse with matching versions. CI runs it on pull requests to any branch, on pushes to `main` and `next`, and manually. See [Add or edit a skill](add-or-edit-a-skill.md) for the full list.

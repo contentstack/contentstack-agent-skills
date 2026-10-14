@@ -7,7 +7,7 @@ description: Design roles, permissions, teams, and token access in Contentstack 
 
 **Slug:** `cms-roles-permissions` · **Product:** CMS · **Type:** Advisory (read-only)
 
-Advises on designing roles, permissions, teams, and token access: built-in roles, custom roles, permission merging, team-based access, and token capabilities: with least-privilege guidance.
+Advises on designing roles, permissions, teams, and token access: built-in roles, custom roles, permission merging, team-based access, and token capabilities, with least-privilege guidance.
 
 ## When it triggers
 

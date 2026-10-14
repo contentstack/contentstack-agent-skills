@@ -1,6 +1,6 @@
 # Step 2 — Install the migrate CLI plugin (detailed procedure)
 
-> **When to read:** Before running Step 2. Contains the install/update block and how to interpret each result marker. This file is part of the [migration-companion skill](../SKILL.md); `{SKILL_DIR}` / `$SKILL_DIR` refer to that skill's install directory.
+> **When to read:** Before running Step 2. Contains the install/update block and how to interpret each result marker. This file is part of the [migration-companion skill](../SKILL.md); `<SKILL_DIR>` refers to that skill's install directory.
 
 The `csdx migrate:*` commands come from `@contentstack/cli-external-migrate`. Run this block to
 install or update it automatically — it is intentionally silent unless something changes or fails:
@@ -36,7 +36,7 @@ fi
 
 Interpret the last line:
 
-- **`PLUGIN_UP_TO_DATE:<version>`** → already on the latest version; proceed to the Eval. (Stay
+- **`PLUGIN_UP_TO_DATE:<version>`** → already on the latest version; proceed to the Step 2 Eval in [SKILL.md](../SKILL.md). (Stay
   silent — don't report "already up to date" to the user.)
 - **`PLUGIN_INSTALLED:<version>`** → freshly installed. Briefly tell the user, then proceed.
 - **`PLUGIN_UPDATED:<old>→<new>`** → installed the latest version over the old one. Briefly tell
@@ -53,8 +53,8 @@ Interpret the last line:
 
   Fill in `<NODE_BIN_DIR>` with the recorded value before showing this message.
 
-  After the user clicks Continue, skip straight to the **Eval** below to verify the plugin is
-  working before proceeding.
+  After the user clicks Continue, skip straight to the Step 2 **Eval** in [SKILL.md](../SKILL.md)
+  to verify the plugin is working before proceeding.
 
 - **`PLUGIN_NPM_UNAVAILABLE`** → `npm view` returned nothing (network issue or package not yet
   published). Show the user this message and wait:
@@ -68,5 +68,5 @@ Interpret the last line:
 
   Fill in `<NODE_BIN_DIR>` with the recorded value before showing this message.
 
-  After the user clicks Continue, proceed to the **Eval** below.
+  After the user clicks Continue, proceed to the Step 2 **Eval** in [SKILL.md](../SKILL.md).
 

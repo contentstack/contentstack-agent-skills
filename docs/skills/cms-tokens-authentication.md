@@ -1,6 +1,6 @@
 ---
 title: Tokens & Authentication
-description: "Choose the right Contentstack authentication method and token type for frontend, backend, automation, and third-party apps: with security, rate-limit, and SSO guidance."
+description: "Choose the right Contentstack authentication method and token type for frontend, backend, automation, and third-party apps, with security, rate-limit, and SSO guidance."
 ---
 
 # Tokens & Authentication
@@ -20,7 +20,7 @@ When you ask about authentication, token types, API keys, rate limits, SSO integ
 | Use case | Token |
 | --- | --- |
 | Frontend reads of published content | Delivery token |
-| Live Preview of draft content | Preview token |
+| Live Preview of draft content | Preview token (client-side only on preview deployments, never in production builds) |
 | Backend automation, CI/CD, migration scripts | Management token |
 | Interactive user sessions | Authtoken (only when appropriate) |
 | Third-party apps | OAuth with scoped access |

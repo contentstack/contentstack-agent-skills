@@ -1,33 +1,22 @@
 # Step 3 — Content Migration (detailed procedure)
 
-> **When to read:** Before running Step 3. Contains sub-steps 3.0–3.4 (token retrieval, confirmation, the migrate:create command and expected output, log parsing, progress summary) and token-expiry recovery. This file is part of the [migration-companion skill](../SKILL.md); `{SKILL_DIR}` / `$SKILL_DIR` refer to that skill's install directory.
+> **When to read:** Before running Step 3. Contains sub-steps 3.0–3.4 (token presence check, confirmation, the migrate:create command and expected output, log parsing, progress summary) and token-expiry recovery. This file is part of the [migration-companion skill](../SKILL.md); `<SKILL_DIR>` refers to that skill's install directory.
 
-### 3.0 — Retrieve the stored Management Token
+### 3.0 — Check that the Management Token is stored
 
-The Contentful CLI stores the token from the login in `~/.contentfulrc.json`. Read it now
-so `migrate:create` can use it without prompting:
+The Contentful CLI stores the token from the login in `~/.contentfulrc.json`. Check that it is
+there without printing it:
 
 ```bash
-$PYTHON_CMD -c "
-import json, sys, pathlib
-for p in ['~/.contentfulrc.json', '~/.config/contentful/config.json']:
-    f = pathlib.Path(p).expanduser()
-    if f.exists():
-        d = json.loads(f.read_text())
-        tok = d.get('managementToken') or d.get('cmaToken') or d.get('management_token')
-        if tok:
-            print(tok)
-            sys.exit(0)
-print('NOT_FOUND', file=sys.stderr)
-sys.exit(1)
-"
+<PYTHON_CMD> "<SKILL_DIR>/scripts/read_cf_token.py" --check
 ```
 
-Capture the printed value as `CONTENTFUL_MANAGEMENT_TOKEN`. **Do not display it to the user
-or write it to any file.**
+The script prints only `FOUND` or `NOT_FOUND`. The token itself is never printed, captured, or
+pasted into a later command: 3.2 resolves it inside the same shell command that runs `csdx`.
+**Do not display it to the user or write it to any file.**
 
-If the token is NOT found (exits 1), tell the user the token could not be resolved. Ask them
-to run `contentful login` again, then retry.
+If the result is `NOT_FOUND` (exit 1), stop here, before any stack is created: tell the user the
+token could not be resolved, ask them to run `contentful login` again, then retry 3.0.
 
 ### 3.1 — Confirm before running
 
@@ -40,33 +29,40 @@ Tell the user:
 
 ### 3.2 — Run migrate:create (output captured to log file)
 
-Run from `$SESSION_DIR` so that the import `logs/` directory and `_backup_*/` are written
+Run from `<SESSION_DIR>` so that the import `logs/` directory and `_backup_*/` are written
 there, keeping the user's project directory clean. Pipe through `tee` so output streams live
 and is also saved for parsing:
 
 ```bash
-cd "$SESSION_DIR" && \
-csdx migrate:create --source contentful \
-  --space-id "$SPACE_ID" \
+set -o pipefail
+cd "<SESSION_DIR>" && \
+CONTENTFUL_MANAGEMENT_TOKEN="$(<PYTHON_CMD> "<SKILL_DIR>/scripts/read_cf_token.py")" && \
+[ -n "$CONTENTFUL_MANAGEMENT_TOKEN" ] && \
+PATH="<NODE_BIN_DIR>:$PATH" csdx migrate:create --source contentful \
+  --space-id "<SPACE_ID>" \
   --source-token "$CONTENTFUL_MANAGEMENT_TOKEN" \
-  --org "$ORG_UID" \
+  --org "<ORG_UID>" \
   --download-assets \
-  --output "$SESSION_DIR" \
-  --workspace "$SESSION_DIR" \
+  --output "<SESSION_DIR>" \
+  --workspace "<SESSION_DIR>" \
   -y \
-  2>&1 | tee "$SESSION_DIR/migrate-create.log"
+  2>&1 | tee "<SESSION_DIR>/migrate-create.log"
 ```
+
+`CONTENTFUL_MANAGEMENT_TOKEN` exists only inside this one command; if the lookup fails, `csdx`
+never runs and no stack is created. `set -o pipefail` makes the command's exit status reflect a
+`csdx` failure rather than `tee`'s.
 
 Flag notes:
 
-- `--space-id` / `--source-token` — Contentful source (token resolved in 3.0)
-- `--org` — the org UID captured in Step 1; a new stack is created here
+- `--space-id` / `--source-token` — Contentful source (token resolved inside the command, checked in 3.0)
+- `--org` — the `ORG_UID` recorded in Step 1 (from `cs_login.org_uid`); a new stack is created here
 - `--source contentful` — declares Contentful as the migration source
 - `--download-assets` — include asset binaries in the migration
-- `--output "$SESSION_DIR"` — bundle written to `$SESSION_DIR/bundle/`
-- `--workspace "$SESSION_DIR"` — export JSON saved to `$SESSION_DIR/export.json`
+- `--output "<SESSION_DIR>"` — bundle written to `<SESSION_DIR>/bundle/`
+- `--workspace "<SESSION_DIR>"` — export JSON saved to `<SESSION_DIR>/export.json`
 - `-y` — skip internal confirmation prompts (we already confirmed above)
-- `cd "$SESSION_DIR"` — ensures `logs/` and `_backup_*/` land in the session dir, not CWD
+- `cd "<SESSION_DIR>"` — ensures `logs/` and `_backup_*/` land in the session dir, not CWD
 
 The command runs three phases and prints this progression:
 
@@ -120,7 +116,7 @@ SUCCESS: The log has been stored at: <SESSION_DIR>/logs
 Once the command returns, parse the captured log with exact patterns matching the real output:
 
 ```bash
-$PYTHON_CMD - <<'PYEOF'
+SESSION_DIR="<SESSION_DIR>" <PYTHON_CMD> - <<'PYEOF'
 import re, pathlib, os
 
 raw = pathlib.Path(os.environ["SESSION_DIR"] + "/migrate-create.log").read_text()
@@ -160,13 +156,10 @@ Capture each printed `KEY=value` as a session variable:
 | `LOG_DIR`       | `SUCCESS: The log has been stored at: <path>`             | Step 3 Eval in SKILL.md |
 | `METADATA_PATH` | `✓ Bundle metadata written: <path>`                       | Step 4 credentials |
 
-Also set the mapper path (always `$BUNDLE_DIR/mapper.json`):
+Also record the mapper path as the literal `MAPPER_PATH` = `<BUNDLE_DIR>/mapper.json` (always
+inside the bundle directory).
 
-```bash
-MAPPER_PATH="$BUNDLE_DIR/mapper.json"
-```
-
-If any value is `UNKNOWN`, check `$SESSION_DIR/migrate-create.log` directly for the line and
+If any value is `UNKNOWN`, check `<SESSION_DIR>/migrate-create.log` directly for the line and
 set it manually before continuing.
 
 ### 3.4 — Show the user a progress summary
@@ -175,15 +168,15 @@ Show the entity-count table and the final stack summary, both taken from the cap
 
 ```bash
 # Entity count table from Phase 1 (export)
-grep -A 18 'Exported entities' "$SESSION_DIR/migrate-create.log" | head -20
+grep -A 18 'Exported entities' "<SESSION_DIR>/migrate-create.log" | head -20
 
 # Final stack summary box from Phase 3 (last occurrence)
-grep -A 4 'Stack name' "$SESSION_DIR/migrate-create.log" | tail -6
+grep -A 4 'Stack name' "<SESSION_DIR>/migrate-create.log" | tail -6
 ```
 
 Report in plain prose:
 
-> "Content migration complete — stack **`$STACK_NAME`** (`$STACK_KEY`, `$REGION`) is ready."
+> "Content migration complete — stack **`<STACK_NAME>`** (`<STACK_KEY>`, `<REGION>`) is ready."
 
 ### Handle token expiry mid-run
 
@@ -194,11 +187,15 @@ stack creation failed.
   CMA:  401 The provided access token is invalid or expired or revoked
 ```
 
-Re-authenticate and re-run from step 3.1:
+Re-authenticate, then go back to step 3.1:
 
 ```bash
-csdx auth:login --oauth
+PATH="<NODE_BIN_DIR>:$PATH" csdx auth:login --oauth
 ```
 
-The command is safe to re-run — it creates a fresh stack each time.
+Re-running `migrate:create` creates **another** new stack; it does not resume or replace the
+first one. A failed run may already have left a partial stack behind. Before re-running, tell
+the user that stack's name and key (from the log, if it got that far) so they can delete it in
+the Contentstack UI if they want to — do not delete it yourself — and get their confirmation
+again at 3.1.
 

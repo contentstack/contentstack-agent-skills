@@ -15,7 +15,7 @@ When you ask for Delivery SDK code, query examples, helper functions, SDK setup,
 
 ## What it covers
 
-- **Stack setup**: `contentstack.stack({...})` with env-based credentials and region.
+- **Stack setup**: `contentstack.stack({...})` with env-based credentials and region, using `@timbenniks/contentstack-endpoints` with `getContentstackEndpoints(region, true)` for region-specific preview hosts when needed.
 - **Single entry vs collections**: `.contentType(uid).entry(uid).fetch()` for one; `.entry().query().find()` for many.
 - **References**: `includeReference([...])` belongs _before_ `.query()`.
 - **Filtering**: use `QueryOperation` names exactly (e.g. `QueryOperation.EQUALS`, `NOT_EQUALS`).
@@ -48,7 +48,7 @@ Ships the **Delivery SDK Spec** (`references/delivery-sdk-spec.md`), sourced fro
 
 ## Safety notes
 
-Prefers TypeScript and current `@contentstack/delivery-sdk` APIs. Never hardcodes credentials; uses `process.env` placeholders. For SSR Live Preview, never reuses a stack across requests. Uses `@timbenniks/contentstack-endpoints` with `getContentstackEndpoints(region, true)` for region-specific preview hosts when needed.
+Prefers TypeScript and current `@contentstack/delivery-sdk` APIs. Never hardcodes credentials; uses `process.env` placeholders. For SSR Live Preview, never reuses a stack across requests.
 
 ## Related
 

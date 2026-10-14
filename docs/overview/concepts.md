@@ -25,7 +25,7 @@ See [How skill selection works](../how-it-works/router.md) for details.
 
 ## References
 
-Some skills ship extra **reference material** in a `references/` folder next to the skill, for example the Delivery SDK spec or the Brand Kit API reference. The agent reads these on demand only when the task needs them, rather than loading everything up front. Reference-backed skills include `dx-delivery-sdk`, `brand-kit-assistant`, `developer-hub-app-architect`, and `migration-companion`.
+Some skills ship extra **reference material** in a `references/` folder next to the skill, for example the Delivery SDK spec or the Brand Kit API reference. The agent reads these on demand only when the task needs them, rather than loading everything up front. Reference-backed skills include `dx-delivery-sdk`, `dx-kickstart-next`, `cms-live-preview-visual-editor-support-assistant`, `brand-kit-assistant`, `developer-hub-app-architect`, and `migration-companion`. `studio` instead ships its specialist guides as sibling files next to `SKILL.md`.
 
 ## Bundled scripts
 
@@ -37,7 +37,7 @@ A few skills ship executable **scripts** in a `scripts/` folder. The Migration C
 
 ## Plugin manifests
 
-Each tool discovers the bundle through its own small manifest at the repository root: `.claude-plugin/` (Claude Code, claude.ai, Copilot CLI), `plugin.json` (Codex, Cursor, VS Code), `.agents/plugins/marketplace.json` (Codex), `.cursor-plugin/` (Cursor), and `gemini-extension.json` (Gemini CLI). They all point at the same `skills/` folder and share one version number. See [Architecture](../how-it-works/architecture.md).
+Each tool discovers the bundle through its own small manifest at the repository root: `.claude-plugin/` (Claude Code, claude.ai, Copilot CLI), `plugin.json` (Codex, VS Code), `.agents/plugins/marketplace.json` (Codex), `.cursor-plugin/` (Cursor), and `gemini-extension.json` (Gemini CLI). They all point at the same `skills/` folder, and every manifest that declares a version shares the same one. See [Architecture](../how-it-works/architecture.md).
 
 ## Product
 
@@ -46,6 +46,6 @@ Each skill is tagged with a **product** area: `CMS`, `Developer Experience`, `St
 ## Advisory vs action skills
 
 - **Advisory skills** (the majority) are read-only. They explain, design, review, and generate code but never mutate your Contentstack stack. Examples: Entries, Data Modeling, Webhooks.
-- **Action skills** can perform external operations and therefore gate them behind confirmation. Examples: the Launch deployment skills (trigger a deploy, patch environment variables) and the Migration Companion (creates a stack, edits your repo).
+- **Action skills** can perform external operations and therefore gate them behind confirmation. Examples: the Launch deployment skills (trigger a deploy, patch environment variables) the Migration Companion (creates a stack, edits your repo), and Studio (provisions projects, creates content types and entries).
 
 The distinction matters for trust. See the [Security & safety model](../how-it-works/security-model.md).

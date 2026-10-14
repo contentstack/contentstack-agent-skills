@@ -36,7 +36,7 @@ Use this for setup, seeding, environment variables, validation commands, CI expe
 ## CI expectations
 
 - Verify `.github/workflows` before making CI claims.
-- Upstream workflows focus on security/policy checks such as Snyk/SCA, security policy/license checks, and issue-to-Jira integration.
+- Upstream workflows focus on security/policy checks such as Snyk/SCA and security policy/license checks.
 - Do not assume GitHub Actions runs `npm run build`, `npm run lint`, unit tests, or E2E tests unless a workflow in the checkout proves it.
 
 ## Ownership and dependencies

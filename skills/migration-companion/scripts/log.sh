@@ -14,7 +14,8 @@
 # <type> convention (free-form, but prefer one of):
 #   user-input | ai-action | communication | decision | exception | command | eval | note
 #
-# Output (under <target>/.migration, override with MIG_LOG_DIR):
+# Output directory: $MIG_LOG_DIR if set, else $SESSION_DIR/migration-log when SESSION_DIR is set,
+# else <target>/.migration (inside the user's repo: keep it out of git):
 #   session.log            pretty, appended
 #   session.jsonl          one JSON object per line
 #   commands/NNNN-<label>.out   full stdout+stderr of each captured command
@@ -29,7 +30,9 @@ TARGET="${1:-.}"; shift || true
 TARGET="${TARGET%/}"
 ACTION="${1:-note}"; shift || true
 
-LOGDIR="${MIG_LOG_DIR:-$TARGET/.migration}"
+if [ -n "${MIG_LOG_DIR:-}" ]; then LOGDIR="$MIG_LOG_DIR"
+elif [ -n "${SESSION_DIR:-}" ]; then LOGDIR="$SESSION_DIR/migration-log"
+else LOGDIR="$TARGET/.migration"; fi
 if ! mkdir -p "$LOGDIR/commands" 2>/dev/null; then
   echo "log: cannot create log dir: $LOGDIR" >&2; exit 2
 fi
@@ -80,7 +83,7 @@ case "$ACTION" in
     echo "Migration session log: $LOGDIR"
     echo "Entries by type:"
     sed -E 's/.*"type":"([^"]*)".*/\1/' "$JSONL" | sort | uniq -c | sort -rn | sed 's/^/  /'
-    exc="$(grep -c '"type":"exception"' "$JSONL" 2>/dev/null || echo 0)"
+    exc="$(grep -c '"type":"exception"' "$JSONL" 2>/dev/null)"; exc="${exc:-0}"
     echo "Exceptions logged: $exc"
     if [ "$exc" != "0" ]; then echo "--- exceptions ---"; grep '"type":"exception"' "$JSONL" | sed -E 's/.*"message":"([^"]*)".*/  • \1/'; fi
     echo "--- last 20 entries ---"

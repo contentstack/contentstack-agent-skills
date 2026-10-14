@@ -35,11 +35,11 @@ It should list skills from the bundle. You can also run `/plugin` to confirm `co
 
 ## Use it
 
-Just ask Contentstack questions in natural language: no need to name a skill:
+Just ask Contentstack questions in natural language, no need to name a skill:
 
 > Write a TypeScript Delivery SDK helper that fetches an entry by URL with pagination and typing.
 
-Claude loads the **Delivery SDK** skill and follows its rules. To force a specific skill, name it directly (for example, *"use the Data Modeling skill to review this schema"*). Skills that only run on request, like the Launch action skills, are invoked as slash commands, for example `/launch-trigger-and-monitor-launch-deployments`.
+Claude loads the **Delivery SDK** skill and follows its rules. To force a specific skill, name it directly (for example, *"use the Data Modeling skill to review this schema"*). Skills that only run on request, like the Launch action skills, are invoked as slash commands. Plugin installs namespace them, for example `/contentstack-skills:launch-trigger-and-monitor-launch-deployments` or `/contentstack-skills:cms-entries` (or `/cms-entries` if installed with the `skills` CLI).
 
 ## Update
 

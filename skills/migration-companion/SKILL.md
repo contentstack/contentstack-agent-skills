@@ -1,6 +1,6 @@
 ---
 name: migration-companion
-description: 'Migration companion for moving to Contentstack from another CMS. Guides content and application migration through a structured, step-by-step workflow. Currently supports migrations from Contentful, with additional source platforms planned. Use when users want to migrate, move, switch, port, or re-platform to Contentstack, including content models, content, assets, locales, application integrations, or website code. Trigger on requests such as "migrate to Contentstack", "move to Contentstack", "switch to Contentstack", "migrate from Contentful", "move my Contentful space", "port my CMS", or similar migration-related requests. The skill validates prerequisites, guides the migration process, provides progress checkpoints, and delivers a completion summary. Prefer this skill whenever a Contentstack migration is requested.'
+description: 'Migration companion for moving to Contentstack from another CMS. Guides content and application migration through a structured, step-by-step workflow. Currently supports migrations from Contentful, with additional source platforms planned. Use when users want to migrate, move, switch, port, or re-platform to Contentstack, including content models, content, assets, locales, application integrations, or website code. Trigger on requests such as "migrate to Contentstack", "move to Contentstack", "switch to Contentstack", "migrate from Contentful", "move my Contentful space", "port my CMS", or similar migration-related requests. The skill validates prerequisites, guides the migration process, provides progress checkpoints, and delivers a completion summary. Prefer this skill whenever a migration from another CMS into Contentstack is requested; for upgrading Contentstack SDK code from JavaScript to TypeScript, use dx-migrate-js-to-ts-sdk.'
 ---
 
 # Contentstack Migration Companion
@@ -21,15 +21,15 @@ Follow these throughout — they matter more than any single command:
 - **Work in a unique session workspace.** At the very start of Step 1, create a
   session-scoped directory by running:
   ```bash
-  mkdir -p /tmp/migrate-to-cs && SESSION_DIR=$(mktemp -d "/tmp/migrate-to-cs/$(date +%Y%m%d-%H%M%S)-XXXXXX") && echo "SESSION_DIR=$SESSION_DIR"
+  SESSION_DIR=$(mktemp -d "${TMPDIR:-/tmp}/migrate-to-cs-$(date +%Y%m%d-%H%M%S)-XXXXXX") && echo "SESSION_DIR=$SESSION_DIR"
   ```
-  Record the printed `SESSION_DIR` value (e.g. `/tmp/migrate-to-cs/20260608-143022`) and
+  Record the printed `SESSION_DIR` value (e.g. `/tmp/migrate-to-cs-20260608-143022-a1B2c3`) and
   **carry it as a concrete literal** through every shell command in this migration — do not
   regenerate it. This keeps each migration run isolated so concurrent sessions and re-runs
   never collide. If the user points you to a different workspace, use their path instead.
-- **Bundled scripts & references live next to this skill — resolve them via `{SKILL_DIR}`.**
+- **Bundled scripts & references live next to this skill — resolve them via `<SKILL_DIR>`.**
   This skill ships helper scripts (a `scripts/` folder) and reference docs (a `references/`
-  folder) **alongside this `SKILL.md` file**. Wherever these instructions write `{SKILL_DIR}`,
+  folder) **alongside this `SKILL.md` file**. Wherever these instructions write `<SKILL_DIR>`,
   substitute the absolute path of the directory this `SKILL.md` was loaded from — i.e. the
   skill's own install directory. **Do not assume a fixed path.** The location differs by AI
   assistant, by OS, and by whether the skill was installed per-project or per-user — for example
@@ -37,9 +37,8 @@ Follow these throughout — they matter more than any single command:
   `~/.claude/skills/migration-companion`, or a Windows path like
   `%USERPROFILE%\.claude\skills\migration-companion`. Determine the real path once
   (it is the folder you read this `SKILL.md` from; if unsure, search the workspace and home
-  directory for `*/migration-companion/SKILL.md`), and for shell commands set it as
-  a variable up front (`SKILL_DIR="<that absolute path>"`) so bundled scripts can be invoked as
-  `"$SKILL_DIR/scripts/<name>"`. The bundled scripts self-locate their own siblings, so once you
+  directory for `*/migration-companion/SKILL.md`), record it, and write it into every shell
+  command as a literal so bundled scripts are invoked as `"<SKILL_DIR>/scripts/<name>"`. The bundled scripts self-locate their own siblings, so once you
   invoke them by absolute path they work regardless of your current directory.
 - **Pin the Node version for the whole session.** A machine often has several Node versions
   (system, Homebrew, multiple nvm installs) and a non-interactive shell may resolve an old one
@@ -73,6 +72,12 @@ Follow these throughout — they matter more than any single command:
 - **Capture the outputs explicitly.** When a command prints a bundle path, a log directory,
   or a stack API key, record the exact path/value and reuse it verbatim. Do not guess paths —
   read them back from the command output.
+- **Placeholders are not shell variables.** Shell state does not persist between commands, so
+  `<PYTHON_CMD>`, `<SKILL_DIR>`, `<NODE_BIN_DIR>`, `<SESSION_DIR>`, `<ORG_UID>`, `<SPACE_ID>`,
+  `<EXPORT_JSON>`, `<BUNDLE_DIR>`, `<LOG_DIR>`, `<METADATA_PATH>` and `<MAPPER_PATH>` in these
+  instructions are placeholders: replace each with the literal value you recorded before running
+  the command (or set it at the top of that same command). Never rely on a variable set by an
+  earlier command.
 - **Browser-based login is normal here.** `csdx auth:login --oauth` opens the user's browser;
   the terminal then blocks and auto-detects when they finish. Run it, tell the user to complete
   login in the browser, and simply wait for the command to return — do not try to script the
@@ -85,14 +90,16 @@ Follow these throughout — they matter more than any single command:
 - **Never display code in your text output.** Do not show shell commands, code snippets,
   scripts, or any fenced code blocks (``` blocks) in your chat messages at any point during
   the migration. Just run commands silently and report the result in plain prose. The user
-  sees tool calls in the tool panel — repeating code in chat is noise.
+  sees tool calls in the tool panel — repeating code in chat is noise. Two exceptions: a command
+  the user must run themselves (for example `contentful login` or a manual plugin install), and
+  a template these instructions tell you to render verbatim (such as the Step 5 welcome message).
 
 ## The migration at a glance
 
 | # | Step | Command (core) | Produces |
 |---|------|----------------|----------|
 | 1 | Prerequisites & inputs | prereq check script | verified env + gathered inputs |
-| 2 | Install migrate plugin | `csdx plugins:link .` (or `plugins:add`) | `csdx migrate:*` available |
+| 2 | Install migrate plugin | `csdx plugins:install @contentstack/cli-external-migrate` | `csdx migrate:*` available |
 | 3 | Content Migration | `csdx migrate:create` | populated stack + bundle + credentials |
 | 4 | Code Migration | detect → plan → rewrite → eval (13 checks) | rewritten data layer |
 | 5 | Welcome to Contentstack 🎉 | — | celebration + next steps |
@@ -113,7 +120,7 @@ only the one you need, when you reach it.
 > **Self-contained skill.** Everything Step 4 needs — the full code-migration procedure, the
 > Contentful → Contentstack SDK reference (`references/`), and the eval scripts (`scripts/`) —
 > ships inside this one skill. There is no separate code-migration skill to install; resolve the
-> bundled files via `{SKILL_DIR}` as described above.
+> bundled files via `<SKILL_DIR>` as described above.
 
 ---
 
@@ -126,13 +133,14 @@ Read [references/step-1-prerequisites.md](references/step-1-prerequisites.md) be
 
 Summary of sub-steps (full commands, messages, and tables are in the reference file):
 
-- **1.0 — Create session workspace.** Create `$SESSION_DIR` once and record it as a literal.
+- **1.0 — Create session workspace.** Create the session directory once and record it as the literal `SESSION_DIR`.
 - **1.1 — Detect the Python 3 command.** Record `PYTHON_CMD`; if empty, stop — Python 3 is required.
-- **1.2 — Run the prerequisite checker** (`$PYTHON_CMD "{SKILL_DIR}/scripts/check_prereqs.py"`).
-  Record `NODE_BIN_DIR` from `node.bin_dir`. **Hard blocker:** exit code 1 means Node 20+ is
+- **1.2 — Run the prerequisite checker** (`<PYTHON_CMD> "<SKILL_DIR>/scripts/check_prereqs.py"`).
+  Tell the user first that it may install or upgrade the global `@contentstack/cli` and
+  `contentful-cli` npm packages. Record `NODE_BIN_DIR` from `node.bin_dir`. **Hard blocker:** exit code 1 means Node 20+ is
   missing — stop until it is fixed.
 - **1.3 / 1.4 — Handle missing Contentstack / Contentful login.** `csdx auth:login --oauth` for
-  Contentstack; the user runs `contentful login` themselves (it is interactive). Never ask for,
+  Contentstack, then record `cs_login.org_uid` as the literal `ORG_UID`; the user runs `contentful login` themselves (it is interactive). Never ask for,
   echo, or write the Management Token.
 - **1.5 — Show the prerequisites summary and confirm.** **Gate:** wait for the user to say
   proceed (or switch region / account) before continuing.
@@ -144,7 +152,7 @@ Summary of sub-steps (full commands, messages, and tables are in the reference f
 ```bash
 # Use the Node the checker validated (NODE_BIN_DIR from the prereq JSON).
 export PATH="<NODE_BIN_DIR>:$PATH"
-$PYTHON_CMD --version   # must print Python 3.x
+<PYTHON_CMD> --version  # must print Python 3.x
 node --version          # must print v20.x or higher
 csdx --version          # must print a version number
 csdx auth:whoami        # must print a logged-in email
@@ -157,7 +165,7 @@ later steps must still prefix `PATH="<NODE_BIN_DIR>:$PATH"` per the overview pri
 
 **Pass criteria:**
 
-- `$PYTHON_CMD` detected and exits 0 with `Python 3.x`
+- `PYTHON_CMD` detected and exits 0 with `Python 3.x`
 - Node major version ≥ 20
 - `csdx auth:whoami` returns an email (not "No user logged in")
 - `cs_login.org_uid` is non-null (captured from prereq JSON in step 1.2 / 1.3)
@@ -192,14 +200,14 @@ them to continue, then run the Eval.
 ### Eval — Verify Step 2 before proceeding
 
 ```bash
-csdx migrate --help
+PATH="<NODE_BIN_DIR>:$PATH" csdx migrate --help
 ```
 
 **Pass criteria:**
 
 - Output includes `migrate:create` (the one-shot command used in Step 3)
 
-If `migrate:create` is present, update the migration checklist to set cf-step2="completed" and cf-step3="in_progress", then proceed to Step 3. If the command errors or `migrate:create` is missing, re-run the install block above and re-verify.
+If `migrate:create` is present, proceed to Step 3 (its **[PROGRESS]** block marks Step 2 ✅ and Step 3 ⏳). If the command errors or `migrate:create` is missing, re-run the install block in [references/step-2-plugin-install.md](references/step-2-plugin-install.md) and re-verify.
 
 ---
 
@@ -216,12 +224,13 @@ Read [references/step-3-content-migration.md](references/step-3-content-migratio
 
 Summary of sub-steps (full commands, expected output, and parsing script are in the reference file):
 
-- **3.0 — Retrieve the stored Management Token** into `CONTENTFUL_MANAGEMENT_TOKEN`. Never display
-  it or write it to a file.
+- **3.0 — Check the stored Management Token** with `scripts/read_cf_token.py --check`, which
+  prints only `FOUND` / `NOT_FOUND`. Stop if it is not found. Never display the token or write it
+  to a file; 3.2 resolves it inside the same command that runs `csdx`.
 - **3.1 — Confirm before running.** **Gate:** this creates a new stack in the user's org — wait
   for confirmation.
-- **3.2 — Run `csdx migrate:create`** from `$SESSION_DIR`, teeing output to
-  `$SESSION_DIR/migrate-create.log`.
+- **3.2 — Run `csdx migrate:create`** from `<SESSION_DIR>`, teeing output to
+  `<SESSION_DIR>/migrate-create.log`.
 - **3.3 — Parse the output** into `EXPORT_JSON`, `BUNDLE_DIR`, `STACK_NAME`, `STACK_KEY`,
   `REGION`, `LOG_DIR`, `METADATA_PATH`, and `MAPPER_PATH`.
 - **3.4 — Show the user a progress summary** (entity counts + final stack box).
@@ -232,14 +241,14 @@ Summary of sub-steps (full commands, expected output, and parsing script are in 
 Confirm the key artifacts exist:
 
 ```bash
-ls -lh "$METADATA_PATH"
-ls -lh "$MAPPER_PATH"
+ls -lh "<METADATA_PATH>"
+ls -lh "<MAPPER_PATH>"
 ```
 
 Run the bundled import summary parser to verify entity counts match what was exported:
 
 ```bash
-$PYTHON_CMD "$SKILL_DIR/scripts/parse_import_summary.py" "$LOG_DIR" --export "$EXPORT_JSON"
+<PYTHON_CMD> "<SKILL_DIR>/scripts/parse_import_summary.py" "<LOG_DIR>" --export "<EXPORT_JSON>"
 ```
 
 **Pass criteria:**
@@ -260,20 +269,21 @@ Entries         53         53
 ✓ Imported into stack "<STACK_NAME>" (<STACK_KEY>)
 ```
 
-If all pass, update the migration checklist to set cf-step3="completed" and cf-step4="in_progress", then
-proceed to Step 4. If counts diverge or artifacts are missing, surface the discrepancy and
-point the user at `$LOG_DIR` — do not proceed until resolved.
+If all pass, proceed to Step 4 (its **[PROGRESS]** block marks Step 3 ✅ and Step 4 ⏳). If counts diverge or artifacts are missing, surface the discrepancy and
+point the user at `<LOG_DIR>` — do not proceed until resolved.
 
 ### Session variables carried into Step 4
 
 | Variable        | Value                                  | Purpose                                                  |
 | --------------- | -------------------------------------- | -------------------------------------------------------- |
-| `BUNDLE_DIR`    | from log (or `$SESSION_DIR/bundle`)    | Root of the import bundle                                |
+| `BUNDLE_DIR`    | from log (or `<SESSION_DIR>/bundle`)   | Root of the import bundle                                |
 | `METADATA_PATH` | from `✓ Bundle metadata written:` line | Stack credentials — API key, delivery token, environment |
-| `MAPPER_PATH`   | `$BUNDLE_DIR/mapper.json`              | Contentful → Contentstack field-UID mapping              |
+| `MAPPER_PATH`   | `<BUNDLE_DIR>/mapper.json`             | Contentful → Contentstack field-UID mapping              |
 | `STACK_NAME`    | from final summary box                 | Step 5 recap                                             |
 | `STACK_KEY`     | from final summary box                 | Step 5 recap                                             |
-| `REGION`        | from final summary box                 | `.env` setup in Step 4                                   |
+| `REGION`        | from final summary box                 | `CS_REGION` in the app's `.env` (Step 4)                 |
+| `LOG_DIR`       | from `SUCCESS: The log has been stored at:` | Step 3 Eval, Step 5 recap                           |
+| `EXPORT_JSON`   | from `Stored space data to json file at:`  | Step 3 Eval, Step 5 recap                           |
 
 ---
 
@@ -294,10 +304,11 @@ Summary of sub-steps (full detail in the reference file):
 
 - **4.1 — Collect inputs:** `repoPath`, `mapperPath` (field-UID table, confirmed with the user),
   and `metadataPath` (stack credentials — use `stack_api_key`, not `stack_id`, for `CS_API_KEY`).
-- **4.2 — Logging:** set `SKILL_DIR` and record every action through `"$SKILL_DIR/scripts/log.sh"`.
+- **4.2 — Logging:** record every action through `SESSION_DIR="<SESSION_DIR>" bash "<SKILL_DIR>/scripts/log.sh"`
+  (the log lands in `<SESSION_DIR>/migration-log/`, outside the user's repo).
 - **4.3 — Reference:** read the SDK mapping doc in full; it is the single source of truth.
 - **4.4 — Procedure:** DETECT (pause) → PREREQUISITES → PLAN (**gate:** pause before editing any
-  file) → MIGRATE → LIVE PREVIEW → VERIFY with `bash "$SKILL_DIR/scripts/run-all.sh"`. Hard-gate
+  file) → MIGRATE → LIVE PREVIEW → VERIFY with `bash "<SKILL_DIR>/scripts/run-all.sh" "<repoPath>"`. Hard-gate
   eval failures mean the migration is NOT done.
 
 ### 4.5 — Guardrails
@@ -323,10 +334,11 @@ Give the user a final summary of the whole migration journey:
   present and how it was reimplemented; every guessed UID; every TODO; and any call site not
   fully migrated (geo queries, `locale: '*'`, cross-space ResourceLinks, GraphQL features without
   an equivalent).
-- **Next steps:** set the `CS_*` env vars in the app's local `.env` from `metadata.json`
-  (`CS_API_KEY` = `stack_api_key`, `CS_DELIVERY_TOKEN` = `delivery_token`, `CS_ENVIRONMENT` =
-  `environment`, plus `CS_PREVIEW_TOKEN` = `preview_token` if Live Preview, and the region from
-  `csdx config:get:region`), run the app against Contentstack, and verify pages render.
+- **Next steps:** the user sets the `CS_*` env vars in the app's gitignored `.env` from
+  `metadata.json` (`CS_API_KEY` = `stack_api_key`, `CS_DELIVERY_TOKEN` = `delivery_token`,
+  `CS_ENVIRONMENT` = `environment`, plus `CS_PREVIEW_TOKEN` = `preview_token` if Live Preview, and
+  `CS_REGION` = the `REGION` recorded in Step 3), runs the app against Contentstack, and verifies
+  pages render.
 
 ---
 
@@ -342,11 +354,11 @@ captured during this session.
 ### Defaults
 
 - Logins use browser OAuth (`csdx auth:login --oauth`); never ask the user to paste passwords or tokens into chat.
-- Delivery and preview tokens may go into the migrated app's client config; the Contentful and Contentstack management tokens never do.
+- Delivery tokens are safe in the browser. Preview tokens read unpublished content: expose them client-side only on preview deployments (CSR preview needs them), never in production builds. Management tokens (Contentful or Contentstack) never reach the browser.
 
 ### Destructive Actions
 
-Logging in, creating a stack and editing the user's code are gated behind confirmation (see § Operating principles). Never delete the source Contentful space, an existing Contentstack stack, or user files.
+Logging in, creating a stack and editing the user's code are gated behind confirmation (see § Operating principles). The Step 1 prerequisite checker installs or upgrades the global `@contentstack/cli` and `contentful-cli` npm packages (and `@contentstack/cli-utilities`) when they are missing or outdated: tell the user before running it. Never delete the source Contentful space, an existing Contentstack stack (including a partial one left by a failed run), or user files.
 
 ### Secrets
 
@@ -354,4 +366,4 @@ Never display, echo or write management tokens. Credentials the migrated app nee
 
 ### Environment Variables
 
-The migrated app reads `CS_API_KEY`, `CS_DELIVERY_TOKEN`, `CS_ENVIRONMENT`, `CS_PREVIEW_TOKEN` (Live Preview only) and the region from its `.env`.
+The migrated app reads `CS_API_KEY`, `CS_DELIVERY_TOKEN`, `CS_ENVIRONMENT`, `CS_REGION` and `CS_PREVIEW_TOKEN` (Live Preview only) from its `.env`. Ask the user to fill in the values themselves; never ask for or log them.

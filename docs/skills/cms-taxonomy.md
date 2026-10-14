@@ -16,7 +16,7 @@ When you need help classifying content, designing category hierarchies, choosing
 ## What it covers
 
 - **Use taxonomy when**: you need structured, hierarchical classification queryable on the delivery side (product categories, geographic regions, content topics, document types).
-- **Don't use taxonomy when**: for freeform labels (use tags), internal CMS organization (use labels), or rich category pages with their own model (use a Category content type with references).
+- **Don't use taxonomy for**: freeform labels (use tags), internal CMS organization (use labels), or rich category pages with their own model (use a Category content type with references).
 - **Hierarchy design**: plan before creating; keep it practical (usually 3–4 levels). Terms are parent-child ordered. Moving a term with children is blocked unless the force flag is used.
 - **CDA filtering operators**: `$taxonomy_exists` (any term), `$taxonomy_equal` (specific term), `$taxonomy_below` (a term and descendants), `$taxonomy_above` (ancestors).
 - **Localization & import/export**: localization is plan-dependent; localized terms share the master term's UID. Import/export supports JSON and CSV; invalid CSV rows are skipped while valid rows process.

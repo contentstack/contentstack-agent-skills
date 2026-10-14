@@ -1,17 +1,19 @@
 ---
-title: Contentstack Studio
+title: Contentstack Studio (preview)
 description: Build with Contentstack Studio end to end, routed to one of 109 bundled specialist guides per task.
 ---
 
-# Contentstack Studio
+# Contentstack Studio (preview)
 
 **Slug:** `studio` · **Product:** Studio · **Type:** Action (gated) · **Ships specialist guides**
+
+> **Preview.** `studio` ships as a preview in 0.2.0; some guides are still being reconciled with the Studio team.
 
 A router skill for Contentstack Studio and the stack behind it. It reads `skills-index.md`, loads the one specialist guide that matches the task, and follows it. The guides cover SDK install, project provisioning, component registration, section and template authoring, data binding, canvas and preview routes, publishing, verification, troubleshooting and migration.
 
 ## When it triggers
 
-When a request touches Contentstack Studio: the Studio SDK, canvas, compositions, Connected or Freeform templates, sections and section slots, repeaters, registering components, BYOC, Studio preview routes, or making a project Studio-ready.
+When a request touches Contentstack Studio: the Studio SDK, canvas, compositions, Connected or Freeform templates, sections and section slots, repeaters, registering components, BYOC, Studio preview routes, or making a project Studio-ready. It deliberately does not trigger for general CMS, Live Preview, Visual Editor or Launch questions that don't involve Studio.
 
 ## How it works
 
@@ -20,6 +22,10 @@ When a request touches Contentstack Studio: the Studio SDK, canvas, compositions
 3. On every turn, apply two standing rules: decompose into atomic, reusable components before registering anything, and meet the definition of done so marketers, not just developers, can use the result.
 
 It prefers Contentstack MCP tools when they are connected and falls back to OAuth-authenticated API calls for missing operations.
+
+## Safety notes
+
+Resolves credentials OAuth-first: it asks before reading or refreshing a stored OAuth session from another tool, and uses a session `authtoken` only as a last resort. Confirms before creating or changing stacks, content types, entries, compositions or Studio projects. Never prints tokens or `.env` contents, never weakens TLS verification, and never ships permissive frame headers outside the canvas route.
 
 ## Example prompts
 

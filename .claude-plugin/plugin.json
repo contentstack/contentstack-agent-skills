@@ -1,10 +1,10 @@
 {
   "name": "contentstack-skills",
   "version": "0.2.0",
-  "description": "Contentstack agent skills for CMS modeling, Delivery SDK, Live Preview, Brand Kit, Developer Hub apps, Launch, and migrations.",
+  "description": "Contentstack agent skills for CMS modeling, Delivery SDK, Live Preview, Studio, Brand Kit, Developer Hub apps, Launch, and migrations.",
   "author": { "name": "Contentstack", "url": "https://www.contentstack.com" },
   "homepage": "https://developers.contentstack.com",
   "repository": "https://github.com/contentstack/contentstack-agent-skills",
   "license": "MIT",
-  "keywords": ["contentstack", "cms", "headless-cms", "delivery-sdk", "live-preview", "launch"]
+  "keywords": ["contentstack", "cms", "headless-cms", "delivery-sdk", "live-preview", "studio", "launch"]
 }

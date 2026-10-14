@@ -9,7 +9,7 @@ Every skill in the bundle carries an explicit safety contract. This is what make
 
 ## Product-level defaults
 
-Each skill is tagged with a product, and each product defines baseline safety rules.
+Each skill is tagged with a product, and each product defines baseline safety rules. Most CMS, Developer Experience, Launch and Developer Hub skills carry a Product Context block with these baseline rules; for Studio and Brand Kit the list below summarizes the skill's own Security defaults.
 
 ### CMS
 
@@ -55,7 +55,7 @@ Each skill is tagged with a product, and each product defines baseline safety ru
 
 ## The four safety pillars
 
-Every skill's Security section addresses four areas.
+Every skill's Security section addresses four areas. The validator enforces this: each `SKILL.md` must have a `## Security` section with `### Defaults`, `### Destructive Actions`, `### Secrets` and `### Environment Variables`.
 
 ### 1. Defaults
 
@@ -70,6 +70,9 @@ Most skills are **advisory and read-only**: they explain and generate code but n
 - **Trigger & Monitor Launch Deployments**. Requires explicit confirmation for production deployments; never auto-deploys; exits non-zero on failure.
 - **Sync Launch env vars**. Treats any PATCH as a destructive external action; confirms the target project/environment; prefers dry-run.
 - **Migration Companion**. Gates login, stack creation, and code edits behind confirmation.
+- **Contentstack Studio**. Confirms before creating or changing stacks, content types, entries, compositions or Studio projects; never deletes or overwrites without explicit approval.
+
+Brand Kit Assistant, Developer Hub App Architect and Kickstart Next are advisory by default but confirm before any delete, overwrite, publish, seeding or history-rewriting step.
 
 ### 3. Secrets
 
@@ -85,9 +88,9 @@ A recurring theme across CMS skills:
 
 | Token | Client-safe? | Use |
 | --- | --- | --- |
-| **Delivery token** | Yes | Read published content via the CDA |
-| **Preview token** | Treat as sensitive | Read unpublished draft content for Live Preview |
-| **Management token** | No, server-side only | Stack-level read/write (CMA) |
+| **Delivery token** | Yes | Read published content via the CDA; safe in the browser |
+| **Preview token** | Preview deployments only | Reads unpublished content. Expose it client-side only on preview deployments (CSR preview needs it), never in production builds |
+| **Management token** | No, server-side only | Stack-level read/write (CMA); never reaches the browser |
 | **Authtoken / OAuth** | No, server-side only | User sessions and automation (OAuth preferred in SSO orgs) |
 
 See [Tokens & Authentication](../skills/cms-tokens-authentication.md) for full guidance.

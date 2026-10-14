@@ -5,7 +5,7 @@ description: How Contentstack Agent Skills are authored once and installed into 
 
 # Architecture
 
-Contentstack Agent Skills follow a **single-source, no-copies** model. Each skill is authored once in the open [Agent Skills](https://agentskills.io) format, and every supported tool reads that format directly. Nothing is generated, so nothing can drift.
+Contentstack Agent Skills follow a **single-source, no-copies** model. Each skill is authored once in the open [Agent Skills](https://agentskills.io) format, and every supported tool reads that format directly. Nothing is generated, so installed skills can't drift from source. The `docs/skills/` pages are hand-written, so keep them in step when a skill changes.
 
 ## Source of truth
 
@@ -17,6 +17,7 @@ skills/
     SKILL.md                 # the canonical skill definition
     references/              # optional, read-on-demand docs
     scripts/                 # optional, executable helpers
+    *.md                     # optional sibling guides (e.g. studio's specialist files)
 ```
 
 `skills/` is the **only** place you edit. See [Add or edit a skill](../contributing/add-or-edit-a-skill.md).
@@ -28,7 +29,7 @@ Each tool finds the skills through its own manifest. They all point at the same 
 | Manifest | Used by |
 | --- | --- |
 | `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json` | Claude Code, claude.ai / Cowork (synced), Copilot CLI |
-| `plugin.json` (Agent Plugins 1.0) | Codex, Cursor, VS Code |
+| `plugin.json` (Agent Plugins 1.0) | Codex, VS Code |
 | `.agents/plugins/marketplace.json` | Codex marketplace |
 | `.cursor-plugin/plugin.json` + `.cursor-plugin/marketplace.json` | Cursor |
 | `gemini-extension.json` | Gemini CLI (bundles `skills/` automatically) |
@@ -49,11 +50,12 @@ Maintaining a separate copy of every skill per tool would guarantee drift. Becau
 
 - Every skill's `name` matches its folder name and follows the naming rules (lowercase letters, digits, single hyphens, max 64 characters).
 - Every `description` exists, includes "Use when…", and stays within 1024 characters.
-- Relative links in every markdown file under `skills/` resolve.
-- Frontmatter values in `skills/` and `docs/` that contain `: ` or ` #` are quoted.
-- Every manifest parses, and every `version` field they declare is the same. The Cursor and Codex marketplace files have no version field; they point at the plugin, which carries it.
+- Every `SKILL.md` has a `## Security` section with `### Defaults`, `### Destructive Actions`, `### Secrets` and `### Environment Variables`.
+- Relative links in every markdown file under `skills/` resolve and stay inside the skill's folder (links in code blocks are ignored).
+- Frontmatter values in `skills/` and `docs/` that contain `: ` are quoted.
+- Every manifest parses. The versioned manifests (`.claude-plugin/plugin.json`, the plugin entry in `.claude-plugin/marketplace.json`, `.cursor-plugin/plugin.json`, `plugin.json` and `gemini-extension.json`) must each declare a `version`, and all versions must match. The Cursor and Codex marketplace files have no version field; they point at the plugin, which carries it.
 
-Run it locally with `node scripts/validate.mjs`. The GitHub Action in `.github/workflows/validate.yml` runs it on every pull request and on push to `main`.
+Run it locally with `node scripts/validate.mjs`. The GitHub Action in `.github/workflows/validate.yml` runs it on pull requests to any branch, on pushes to `main` and `next`, and manually (workflow dispatch).
 
 ## Repository layout
 
@@ -62,7 +64,7 @@ skills/<slug>/SKILL.md            Source of truth: one folder per skill
 .claude-plugin/                   Claude Code / claude.ai / Copilot CLI plugin and marketplace
 .cursor-plugin/                   Cursor plugin and marketplace
 .agents/plugins/marketplace.json  Codex marketplace
-plugin.json                       Agent Plugins manifest (Codex, Cursor, VS Code)
+plugin.json                       Agent Plugins manifest (Codex, VS Code)
 gemini-extension.json             Gemini CLI extension
 .github/workflows/validate.yml    CI that runs the validator
 scripts/validate.mjs              Validates skills and manifests

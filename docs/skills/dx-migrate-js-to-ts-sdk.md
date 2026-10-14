@@ -7,7 +7,7 @@ description: Migrate Contentstack Delivery SDK code from the JavaScript SDK to t
 
 **Slug:** `dx-migrate-js-to-ts-sdk` · **Product:** Developer Experience · **Type:** Advisory (read-only)
 
-Migrates Contentstack Delivery SDK code from JavaScript to TypeScript: setup, initialization, Stack, Entries, Assets, Query, pagination, cache, utils, taxonomy, and image transforms: preserving behavior and calling out TypeScript-specific differences.
+Migrates Contentstack Delivery SDK code from JavaScript to TypeScript: setup, initialization, Stack, Entries, Assets, Query, pagination, cache, utils, taxonomy, and image transforms, preserving behavior and calling out TypeScript-specific differences.
 
 ## When it triggers
 

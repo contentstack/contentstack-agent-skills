@@ -1,17 +1,17 @@
 # Step 1 — Prerequisites & inputs (detailed procedure)
 
-> **When to read:** Before running Step 1. Contains sub-steps 1.0–1.6: session workspace, Python detection, the prereq checker, login recovery, the summary/confirm table, region picker, and Contentful space selection. This file is part of the [migration-companion skill](../SKILL.md); `{SKILL_DIR}` / `$SKILL_DIR` refer to that skill's install directory.
+> **When to read:** Before running Step 1. Contains sub-steps 1.0–1.6: session workspace, Python detection, the prereq checker, login recovery, the summary/confirm table, region picker, and Contentful space selection. This file is part of the [migration-companion skill](../SKILL.md); `<SKILL_DIR>` refers to that skill's install directory.
 
 ### 1.0 — Create session workspace
 
 Before doing anything else, create the unique session directory for this migration run:
 
 ```bash
-mkdir -p /tmp/migrate-to-cs && SESSION_DIR=$(mktemp -d "/tmp/migrate-to-cs/$(date +%Y%m%d-%H%M%S)-XXXXXX") && echo "SESSION_DIR=$SESSION_DIR"
+SESSION_DIR=$(mktemp -d "${TMPDIR:-/tmp}/migrate-to-cs-$(date +%Y%m%d-%H%M%S)-XXXXXX") && echo "SESSION_DIR=$SESSION_DIR"
 ```
 
-**Record the printed `SESSION_DIR` path exactly** (e.g. `/tmp/migrate-to-cs/20260608-143022`).
-Substitute this concrete value wherever these instructions reference `$SESSION_DIR`.
+**Record the printed `SESSION_DIR` path exactly** (e.g. `/tmp/migrate-to-cs-20260608-143022-a1B2c3`).
+Substitute this concrete value wherever these instructions write `<SESSION_DIR>`.
 Do not regenerate it — every step in this migration must use the same directory so artifacts
 chain correctly.
 
@@ -32,7 +32,7 @@ fi
 echo "PYTHON_CMD=$PYTHON_CMD"
 ```
 
-**Record `PYTHON_CMD` exactly as printed.** Substitute `$PYTHON_CMD` wherever these instructions
+**Record `PYTHON_CMD` exactly as printed.** Substitute it for `<PYTHON_CMD>` wherever these instructions
 show a Python invocation — do not hardcode `python3` or `python`.
 
 If `PYTHON_CMD` is empty, stop immediately and tell the user:
@@ -45,12 +45,15 @@ Do not proceed past this point until Python 3 is detected.
 
 ### 1.2 — Run the prerequisite checker
 
-Run this single script. It silently evaluates Node.js, installs any missing CLIs (`csdx`,
-`contentful`), checks the Contentstack region and login, and checks the Contentful login and
-spaces — all in one pass. It outputs a JSON summary:
+Run this single script. It evaluates Node.js, installs any missing CLIs (`csdx`, `contentful`)
+and upgrades outdated ones, checks the Contentstack region and login, and checks the Contentful
+login and spaces — all in one pass. It outputs a JSON summary.
+
+**Tell the user before running it** that it may install or upgrade the global npm packages
+`@contentstack/cli`, `contentful-cli` and `@contentstack/cli-utilities`.
 
 ```bash
-$PYTHON_CMD "{SKILL_DIR}/scripts/check_prereqs.py"
+<PYTHON_CMD> "<SKILL_DIR>/scripts/check_prereqs.py"
 ```
 
 Parse the JSON result and carry every field forward as session state.
@@ -83,12 +86,15 @@ If `cs_login.ok` is false (needs_login) or `cs_login.org_uid` is null (needs_oau
 trigger a fresh OAuth login:
 
 ```bash
-csdx auth:login --oauth
+PATH="<NODE_BIN_DIR>:$PATH" csdx auth:login --oauth
 ```
 
 Tell the user: _"A browser window is opening — complete the Contentstack login there, then come
 back here."_ Wait for the command to return (it blocks until the browser flow finishes), then
 **re-run the prereq checker** (same command as 1.2) to capture the updated email and org UID.
+
+Once `cs_login.org_uid` is non-null (whether this sub-step ran or not), record it as the
+literal `ORG_UID`; Step 3 passes it to `migrate:create` as `--org "<ORG_UID>"`.
 
 If the org UID is still missing after the retry, tell the user:
 
@@ -127,7 +133,7 @@ JSON result. Use ✅ for items that look good and ⚠️ for anything that may n
 
 | Check                   | Status                                                | Detail                        |
 | ----------------------- | ----------------------------------------------------- | ----------------------------- |
-| Python 3                | ✅ `<$PYTHON_CMD --version output>`                   |                               |
+| Python 3                | ✅ `<output of PYTHON_CMD --version>`                 |                               |
 | Node.js                 | ✅ `<node.version>`                                   |                               |
 | Contentstack CLI (csdx) | ✅ `<csdx.version>`                                   |                               |
 | Contentstack region     | ⚙️ `<cs_region.region>`                               |                               |
@@ -150,8 +156,8 @@ Then ask this single question:
 | Answer                               | Action                                                                                                                                            |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | "proceed" / "yes" / any confirmation | Skip to 1.6                                                                                                                                       |
-| "region"                             | Present the region menu (see below), wait for selection, run `csdx config:set:region <REGION>`, re-run the prereq checker, re-display the summary |
-| "contentstack login"                 | Run `csdx auth:login --oauth`, wait for browser login, re-run the prereq checker, re-display the summary                                          |
+| "region"                             | Present the region menu (see below), wait for selection, run `PATH="<NODE_BIN_DIR>:$PATH" csdx config:set:region <REGION>`, re-run the prereq checker, re-display the summary |
+| "contentstack login"                 | Run `PATH="<NODE_BIN_DIR>:$PATH" csdx auth:login --oauth`, wait for browser login, re-run the prereq checker, re-display the summary                                          |
 | "contentful login"                   | Instruct the user to run `contentful login` themselves (same as 1.4), wait for confirmation, re-run the prereq checker, re-display the summary    |
 
 **Region picker** — when the user asks to change the region, show this menu and wait for their
@@ -170,7 +176,7 @@ choice before running the command:
 Map the number to its region code and run:
 
 ```bash
-csdx config:set:region <REGION>   # e.g. csdx config:set:region AWS-EU
+PATH="<NODE_BIN_DIR>:$PATH" csdx config:set:region <REGION>   # e.g. <REGION> = AWS-EU
 ```
 
 Repeat the summary + question until the user confirms they are ready to proceed.
@@ -209,7 +215,7 @@ If the list is empty (no spaces parsed), fall back to asking:
 Then confirm the token can reach the selected space:
 
 ```bash
-contentful space use --space-id <SPACE_ID>
+PATH="<NODE_BIN_DIR>:$PATH" contentful space use --space-id <SPACE_ID>
 ```
 
 If this fails, the token likely lacks access to that space — tell the user and ask them to
