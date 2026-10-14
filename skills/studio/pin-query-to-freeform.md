@@ -30,7 +30,7 @@ Freeform templates can pin a CDA query so a Repeater iterates a dynamic list of 
 6. **Save** the query. It appears in the Pinned Queries list.
 7. Use the query on canvas: drop a **Repeater** component, click **Bind items** in Properties, and pick **Pinned Queries**, then `<name>`.
 8. Drop a card or item component inside the Repeater body. Its bindings resolve against `repeater.*`: each iteration represents one entry from the query result.
-9. If the iterated content type contains references (single-CT or multi-CT), pair the Repeater with a **Condition Block** for each reference field. See `use-condition-block`.
+9. Every item is an entry of the one content type you picked in step 4, so the Repeater itself needs no **Condition Block**, and neither does a reference field that points at a single CT. Add a Condition Block only where an item renders a **multi-CT** reference field and needs a different layout per referenced content type (a content-type check on that reference). See `use-condition-block`.
 
 ## Inputs needed from the user
 

@@ -6,7 +6,7 @@ name: configure-studio
 
 Configure a Studio project's Environment, Language, and Canvas URL in one guided pass, replacing manual clicking through the Studio settings panels.
 
-Use right after `seed-studio-project` (or manual project creation) to go from "empty Studio project" to "ready to author". Phrases: "configure Studio project", "set canvas URL", "change environment". Do NOT use to register components (use `register-component`) or wire preview routes (use `setup-template-preview-routes`).
+Use right after `provision-studio-project` (or manual project creation) to go from "empty Studio project" to "ready to author". Phrases: "configure Studio project", "set canvas URL", "change environment". Do NOT use to register components (use `register-component`) or wire preview routes (use `setup-template-preview-routes`).
 
 > **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 

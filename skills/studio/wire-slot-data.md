@@ -6,7 +6,7 @@ name: wire-slot-data
 
 Wrap a component's `slot` prop in `<Slot data={...}>` so components an author drops into the slot can bind the owner's data via Component Default Data.
 
-Use when a registered component exposes a `slot` prop AND holds data the dropped component needs (a Hero banner owning its CTA's destination. Phrases) "pass data into a slot", "slot children can't see props", "dropped component needs the parent's value". Do NOT use to declare the `slot` prop (`register-component`) or to carve a Section Slot (`use-section-slot`).
+Use when a registered component exposes a `slot` prop AND holds data the dropped component needs (a Hero banner owning its CTA's destination). Phrases: "pass data into a slot", "slot children can't see props", "dropped component needs the parent's value". Do NOT use to declare the `slot` prop (`register-component`) or to carve a Section Slot (`use-section-slot`).
 
 > **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session: Read that skill for where it is, even with no MCP connected. **Never ask the user for a session `authtoken`.** If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 

@@ -18,16 +18,16 @@ Use when the greenfield build has 3+ page kinds sharing common atoms (Hero, Card
 
 > ## Verification status
 >
-> Orchestrator over verified skills. Trust is inherited from the underlying skills. The orchestration logic itself is verified against one synthetic 3-page design.
+> Orchestrator over verified skills. Trust is inherited from the underlying skills. The orchestration logic itself is verified against one synthetic 6-page design.
 >
 > - Underlying [`decompose-design`](decompose-design.md) is verified. This skill just loops it per template + dedupes.
 > - Verified: chain-in skills at the closing offer (`provision-studio-stack`, `register-component`, `author-composition-via-api`, `import-content`, `verify-setup`, `deploy-studio-site`) all exist and are documented. Their individual verification status is stated in their own frontmatter callouts.
-> - **Full orchestration logic runtime-verified** against a synthetic **6-page design** (homepage + blog_post + product_detail + author_bio + category_listing + contact). 18/18 acceptance-criteria claims pass: page-kind rows emitted, component registry ≤ 15 entries (produced 6 at N=6 pages, so dedup holds under scale), atomics + layer-2 deduped across pages by prop-shape, `hero` / `seo` / `footer` identified as Global Fields (each embedded in all 6 CTs), build order strictly topologically sorted, `site-build-plan.md` + one build sheet per page kind emitted. Reproduce with `npx ts-node scripts/verify-decompose-site.ts` (input at [`scripts/synth-site-design.json`](../../scripts/synth-site-design.json), artifacts land under [`docs/_decompose-verification/`](../../docs/_decompose-verification/)).
-> - **Real-design edge cases runtime-verified.** Three failure modes the skill's guidance addresses are checked by the reproducer:
+> - **Full orchestration logic runtime-verified** against a synthetic **6-page design** (homepage + blog_post + product_detail + author_bio + category_listing + contact). 18/18 acceptance-criteria claims pass: page-kind rows emitted, component registry ≤ 15 entries (produced 6 at N=6 pages, so dedup holds under scale), atomics + layer-2 deduped across pages by prop-shape, `hero` / `seo` / `footer` identified as Global Fields (each embedded in all 6 CTs), build order strictly topologically sorted, `site-build-plan.md` + one build sheet per page kind emitted.
+> - **Real-design edge cases runtime-verified.** Three failure modes the skill's guidance addresses were checked in the same run:
 >   - **Variant-choice-prop merge**: 3 button variants (primary / secondary / tertiary) collapse into ONE `button` component via a `variant: choice` prop, not three separate components.
 >   - **Slot-shape divergence**: `Card` is deduped by prop-shape (identical props on every usage), and the plan tracks the 3 distinct slot content-shapes it carries per usage (`text+image+cta`, `icon+text`, `image+text+price+cta`) so section authors pick the right slot content.
 >   - **Single-usage roles**: `body`, `features`, `contact_form`, `author_card`, etc. (roles that appear on only ONE CT) are NOT wrongly promoted to Global Fields. GF extraction requires the 2+-CT threshold to hold.
-> - Verified with **N > 5 page kinds**: reproducer covers 6 CTs, dedup holds under scale (6-entry registry, well below the 15-entry budget), all 3 GFs consistent across all 6 CTs. Structural claims scale linearly.
+> - Verified with **N > 5 page kinds**: the verification run covered 6 CTs, dedup holds under scale (6-entry registry, well below the 15-entry budget), all 3 GFs consistent across all 6 CTs. Structural claims scale linearly.
 
 ## Context
 

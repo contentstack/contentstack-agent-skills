@@ -134,6 +134,6 @@ This skill succeeds only when ALL of the following are true. If any fails, surfa
 ## See also
 
 - `docs/20-bring-your-own-components/set-component-default-data.md`: full reference.
-- Pair with `register-studio-component` when you're introducing the component for the first time.
-- Pair with `bind-prop-to-template` once the component renders and the author is ready to wire real data.
+- Pair with `register-component` when you're introducing the component for the first time.
+- Pair with `build-connected-template` once the component renders and the author is ready to bind real data in the UI (`author-composition-bindings` for the same by API).
 - `wire-slot-data`: when the values a child needs come from the component that owns its slot, not from a static default.

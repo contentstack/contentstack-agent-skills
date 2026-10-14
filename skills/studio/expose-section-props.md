@@ -91,5 +91,5 @@ If any check fails, do not claim success. Surface the failure and stop.
 ## See also
 
 - `docs/32-sections/expose-section-props.md`: full reference
-- `setup-section-slots` skill: for swappable component subtrees
-- `bind-linked-schema` skill: for per-instance list data
+- `use-section-slot` skill: for swappable component subtrees
+- `understand-linked-schemas` skill: for per-instance list data

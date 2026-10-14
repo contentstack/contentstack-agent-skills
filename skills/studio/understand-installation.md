@@ -28,10 +28,10 @@ You don't install one without the others: install-studio wires all three.
 
 This is the single most-confused part of the install:
 
-- **`<StudioCanvas />`** mounts on **ONE canvas route** (e.g. `/canvas`). It's the surface Studio's iframe uses to author Sections. Visitors never hit this route. Set the Canvas URL in Project Settings to the path you mount it on. See [`setup-section-preview`](setup-section-preview.md).
-- **`<StudioComponent />`** mounts on **ONE catch-all route** (`app/[[...slug]]/page.tsx` for Next App Router, `<Route path="*">` for React Router). Studio resolves EVERY visitor URL through this one mount via `sdk.fetchCompositionData({ url })`. No per-template routes. See [`setup-template-preview-routes`](setup-template-preview-routes.md).
+- **`<StudioCanvas />`** mounts on **ONE canvas route** (e.g. `/canvas`). It's the surface Studio's iframe uses to author Sections. Visitors never hit this route. A project has one Canvas URL: set it in Project Settings to the path you mount it on. See [`setup-section-preview`](setup-section-preview.md).
+- **`<StudioComponent />`** mounts on your visitor routes. The default is **ONE catch-all route** (`app/[[...slug]]/page.tsx` for Next App Router, `<Route path="*">` for React Router): Studio resolves every visitor URL through this one mount via `sdk.fetchCompositionData({ url })`. Per-template routes (e.g. `app/blog/[slug]/page.tsx`) also work, since `fetchCompositionData` only needs the URL. They mean more boilerplate. See [`setup-template-preview-routes`](setup-template-preview-routes.md).
 
-Two mounts. Total. The install does not add per-template routes.
+Two mounts in the default setup. The install does not add per-template routes.
 
 ## What gets wired at install time
 
@@ -42,7 +42,7 @@ After `install-studio` completes:
 3. **A side-effect import** at the app shell so the bootstrap runs once. Next App Router needs a `"use client" StudioInit` boundary. Vite / Pages Router / Remix import directly.
 4. **`.env.local`** with the five credentials.
 
-The two route mounts are SEPARATE skills: `setup-section-preview` adds the canvas route. `setup-template-preview-routes` adds the catch-all visitor route. `install-studio` deliberately stops before them so each route is an explicit decision.
+The two route mounts are SEPARATE skills: `setup-section-preview` adds the canvas route. `setup-template-preview-routes` adds the visitor route (catch-all by default). `install-studio` deliberately stops before them so each route is an explicit decision.
 
 ## What install does NOT do
 

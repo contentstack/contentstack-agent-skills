@@ -53,7 +53,7 @@ Each node in the `ui` tree has:
 
 - `type`: registered component UID (`page`, `section`, `repeater`, `condition-block`, `section-slot`, or a custom registered component)
 - `props`: bindings + static values + exposed-prop metadata
-- `slots`: `{ <slot_uid>: [<child_node>, ...] }` for children. **Every slot must have a non-empty array**: empty slots crash the renderer (see [`troubleshoot-canvas`](troubleshoot-canvas.md)).
+- `slots`: `{ <slot_uid>: [<child_node>, ...] }` for children. **Every slot must have a non-empty array**: empty slots crash the renderer (see [`troubleshoot-canvas`](troubleshoot-canvas.md)). Two exceptions: a `section-slot` node keeps `slots: { "<its-own-uid>": [] }` until a template fills it. The other is the page-side `section-composition` node, which keeps `slots: { "<section-slot-uid>": [] }` for each slot the template hasn't filled yet.
 - `metadata`: `mode` (preview/design), `condition`, `sectionBindingOverride`, etc.
 
 ## When API-authoring is the right choice

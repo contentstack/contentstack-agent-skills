@@ -41,7 +41,7 @@ If the thing you want to register is neither: a pure layout primitive (Grid, Sta
 
 Studio composes pages from React components. By default it uses its **own** built-ins (Hero, Card, Button) so authors can play immediately, but for production, every component should come from the customer's library. Registering tells Studio's palette "use THIS component for type 'site-hero'" so authors drop branded components, not defaults.
 
-The registration is a `registerComponent` call that names the component, gives it a unique `type`, and declares the **prop schema** Studio's right-panel will offer for binding. Prop types are strict and finite, exactly: `string`, `boolean`, `number`, `choice`, `href`, `imageurl`, `datestring`, `array`, `object`, `slot`, `json_rte`, `any`. There is no `text`, `link`, `color`, or `image`, common false-friends from other systems.
+The registration is a `registerComponent` call that names the component, gives it a unique `type`, and declares the **prop schema** Studio's right-panel will offer for binding. Prop types are strict: only the 14 in step 3. There is no `text`, `link`, `color`, or `image` (false friends from other systems).
 
 Reference: `docs/20-bring-your-own-components/register-components.md`, `docs/20-bring-your-own-components/component-schema-prop-types.md`.
 
@@ -54,11 +54,12 @@ Reference: `docs/20-bring-your-own-components/register-components.md`, `docs/20-
    - `propTypes` block, second-best
    - Destructured args + JSDoc comments, fallback only
 
-3. **Map each prop to a Studio prop type.** Use the **exact** strings below (13 in total). Anything else is rejected:
+3. **Map each prop to a Studio prop type.** Use the **exact** strings below (14). Anything else is rejected:
 
    | Source shape | Studio prop type |
    |---|---|
    | `string` / `string \| undefined` | `string` |
+   | plain-text-only `string` | `plaintext` (Single / Multi Line only) |
    | `number` | `number` |
    | `boolean` | `boolean` |
    | `string` constrained to known values (union literal, enum) | `choice` (set `options:` to the literal values. `defaultValue` is the **bare value** for single-select (`"centered"`) and an **array** only when `multiSelect: true`) |

@@ -27,10 +27,13 @@ Repeater-scoped bindings resolve as `dataSources.repeater.<repeaterUID>.context.
 ```jsonc
 { "type": "repeater", "uid": "R-outer",
   "metadata": { "mode": "preview" },
-  "props": { "items": { "binding": {
-    "type": "template",
-    "value": { "path": { "footer_columns": {} } }
-  } } },
+  "props": {
+    "items": { "binding": {
+      "type": "template",
+      "value": { "path": { "footer_columns": {} } }
+    } },
+    "children": { "type": "slot", "slot": "<R-outer-slot>" }   // ← wires the slot below
+  },
   "slots": { "<R-outer-slot>": [
     /* outer iteration body — one column */
     { "type": "site-column-header", "uid": "CH1",
@@ -40,11 +43,14 @@ Repeater-scoped bindings resolve as `dataSources.repeater.<repeaterUID>.context.
       } } } },
     { "type": "repeater", "uid": "R-inner",
       "metadata": { "mode": "preview" },
-      "props": { "items": { "binding": {
-        "type": "repeater",                                      // ← NOT template
-        "value": { "repeaterUID": "R-outer",                     // ← outer's UID
-                   "path": { "links": {} } }                     // ← path on outer's iteration item
-      } } },
+      "props": {
+        "items": { "binding": {
+          "type": "repeater",                                    // ← NOT template
+          "value": { "repeaterUID": "R-outer",                   // ← outer's UID
+                     "path": { "links": {} } }                   // ← path on outer's iteration item
+        } },
+        "children": { "type": "slot", "slot": "<R-inner-slot>" }
+      },
       "slots": { "<R-inner-slot>": [
         { "type": "site-footer-link", "uid": "L1",
           "props": {
@@ -56,6 +62,8 @@ Repeater-scoped bindings resolve as `dataSources.repeater.<repeaterUID>.context.
       ] } }
   ] } }
 ```
+
+Both Repeaters carry `props.children` pointing at their own slot. Without it the Repeater iterates but renders nothing ([`author-composition-repeater-recipes`](author-composition-repeater-recipes.md) step 2).
 
 ### Source-type combos
 

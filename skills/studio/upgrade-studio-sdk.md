@@ -42,9 +42,10 @@ The `peerDependencies` are `react ^18.0.0 || ^19.0.0` and `react-dom ^18.0.0 || 
    - The studio-client CHANGELOG lives at `node_modules/@contentstack/studio-client/CHANGELOG.md` on the consumer side. Same for the other packages.
    - Flag any entry that touches: registry singleton, SSR / `"use client"` boundary, `fetchSpec` / `fetchCompositionData` signatures, URL pattern compilation, design-token / font loading, data-binder type-mismatch. Those are the ones most likely to surface integration friction even when the bump is technically non-breaking.
 
-3. **Upgrade together, not piecemeal.** Bump all Studio SDK packages installed by the host in the same change. That includes the ones `studio-react` pulls in: they float on `^` ranges and drift apart (a `studio-react@1.7.0` app stopped building that way), so list all seven in `package.json`. Mixing, say, `studio-react@1.3` with `studio-registry@1.2` risks the registry-singleton API drift (the globalThis-backed singleton landed across packages in coordinated bumps).
+3. **Upgrade the packages the host declares, together.** Bump every `@contentstack/studio-*` package listed in the host's `package.json` in the same change. Usually that is only `@contentstack/studio-react`, as `install-studio` installs it. `studio-react` declares the other Studio packages as its own dependencies, so upgrading it brings in matching versions. Do **not** add those internal packages to `package.json`: a direct pin that falls outside `studio-react`'s range installs a second copy, which splits the registry singleton (the globalThis-backed singleton landed across packages in coordinated bumps).
    - Pick the exact versions (avoid `^` for the upgrade commit so the resolved versions are reproducible. You can relax to `^` after smoke passes).
-   - Run `npm install @contentstack/studio-react@<v> @contentstack/studio-react-components@<v> @contentstack/studio-client@<v> @contentstack/studio-registry@<v> @contentstack/studio-core@<v> @contentstack/studio-internal@<v> @contentstack/studio-react-editor@<v>` (or the matching `pnpm` / `yarn` form). Use `--save-exact` if you want the upgrade-commit to pin exact versions.
+   - Run `npm install @contentstack/studio-react@<v>` (plus any other `@contentstack/studio-*` package already in `package.json`), or the matching `pnpm` / `yarn` form. Use `--save-exact` if you want the upgrade-commit to pin exact versions.
+   - Re-run the `npm ls` from step 1: each Studio package should resolve to one version, with the nested copies `deduped`.
 
 4. **Smoke-test the host app.** Concrete steps depend on the framework. The matrix below is the minimum surface that catches the common breakages.
 
@@ -60,8 +61,8 @@ The `peerDependencies` are `react ^18.0.0 || ^19.0.0` and `react-dom ^18.0.0 || 
 5. **If something breaks.** Match the symptom to the troubleshooting skill: `troubleshoot-ssr-rendering` for boundary errors, `troubleshoot-data-binding` for binding drift, `troubleshoot-composition-resolution` for live-site URL behavior, `troubleshoot-canvas` for editor iframe. Almost every recent SDK regression has a corresponding row in one of those skills.
 
 6. **Rollback path** (concrete. Do not skip in production).
-   - Revert `package.json` and the lockfile to the pre-upgrade commit (`git checkout HEAD~1 -- package.json package-lock.json`).
-   - `rm -rf node_modules && npm install` (don't try to selectively downgrade: lockfile reconciliation across the seven packages is unreliable).
+   - Restore `package.json` and the project's own lockfile (`package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`) from the last commit before the upgrade: `git checkout <pre-upgrade-commit> -- package.json <lockfile>`. Find that commit with `git log -- package.json`, not by assuming `HEAD~1`.
+   - `rm -rf node_modules`, then a clean install from that lockfile with the project's package manager: `npm ci`, `pnpm install --frozen-lockfile`, or `yarn install --frozen-lockfile` (`yarn install --immutable` on Yarn 2+). Don't try to selectively downgrade: lockfile reconciliation across the Studio packages is unreliable.
    - Re-run the smoke check. If you can't get back to a working state with a hard revert, escalate.
 
 ## Knowing what actually changed

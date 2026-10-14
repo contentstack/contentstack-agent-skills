@@ -63,7 +63,7 @@ function coerce(img: ImageProp): string | undefined {
 }
 ```
 
-Every registered component's `imageurl` prop declares its TS type as `string | { url?: string } | null | undefined`, and the component internally calls a coerce helper (or optional-chains `img?.url ?? img`). This is a first-class contract, peer of the null-safety and `$`-twin contracts, not a pitfall row.
+Every registered component's `imageurl` prop declares its TS type as `string | { url?: string } | null | undefined`, and the component internally calls a coerce helper (or inlines `typeof img === "string" ? img : img?.url`. Never `img?.url ?? img`: an asset object with no `url` falls through to the object itself and renders `[object Object]`). This is a first-class contract, peer of the null-safety and `$`-twin contracts, not a pitfall row.
 
 Rationale: Studio's picker doesn't ship type-aware binding coercion today (Part 1 #2 in the product improvements backlog). Until it does, the component compensates.
 
@@ -94,9 +94,14 @@ function label(link: LinkProp, fallback: string): string {
 
 Same shape as the image tolerance contract above.
 
-## `{{entry.title}}` and other unresolved placeholders: Studio only resolves `{{entry.url}}` in Connected template URL patterns
+## `{{entry.title}}` and other unresolved placeholders: what a Connected template URL pattern resolves depends on `url_metadata.url_source`
 
-Studio's Template URL Pattern field supports one placeholder: **`{{entry.url}}`**. It resolves to the CT's `url` field at render time. Every other pattern (`{{entry.title}}`, `{{entry.slug}}`, `{{author.name}}`) is left **literal in the response**. The SDK does not template-expand them.
+Which placeholders a Template URL Pattern resolves depends on the composition's `url_metadata.url_source`:
+
+- **`content_type_url_pattern` or `legacy_url`**: Studio matches the request path against the CT's `url` field only. **`{{entry.url}}`** is the one placeholder that resolves.
+- **Pattern sources (`user_specified_pattern`, `default_url_pattern`)**: the SDK matches the request path against the pattern and queries on each variable: entry fields (`{{entry.slug}}`), a field of an included reference, `{{taxonomy:<uid>}}`, and `{{entry_created_date:year}}`-style dates.
+
+A variable the SDK doesn't recognise (`{{author.name}}`) is never processed, and a placeholder anywhere other than the URL pattern is left **literal in the response**. The SDK does not template-expand it.
 
 Where this bites:
 
@@ -104,13 +109,11 @@ Where this bites:
 - Template preview iframe URL with a non-`{{entry.url}}` placeholder never resolves. Iframe stays on the placeholder URL.
 - OG image / social preview URLs with placeholders produce broken share cards.
 
-The only supported form:
-
 ```
-URL Pattern: /blog/{{entry.url}}      ✓ resolves to entry.url
+URL Pattern: /blog/{{entry.url}}      ✓ resolves to entry.url (any url_source)
 URL Pattern: {{entry.url}}            ✓ site root only (entry url "/"). Every other template needs a prefix
-URL Pattern: /blog/{{entry.title}}    ✗ ships literal "{{entry.title}}" — SEO break
-URL Pattern: /author/{{author.name}}  ✗ same
+URL Pattern: /blog/{{entry.slug}}     ✓ only with a pattern source (user_specified_pattern / default_url_pattern); ✗ with content_type_url_pattern / legacy_url
+URL Pattern: /author/{{author.name}}  ✗ not a recognised variable, never resolves
 ```
 
 If you need a title-based slug, populate the CT's `url` field with the slug at entry time (Contentstack workflows / hook / manual), do not template-expand at render time.

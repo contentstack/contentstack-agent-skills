@@ -26,6 +26,7 @@ Two kinds of pages exist in Studio, with very different authoring flows:
 | Page kind | What it is | When you'll use it | Where to start |
 |---|---|---|---|
 | **Connected Template** (the main authoring surface) | One layout, bound to a whole content type. Every entry of that CT renders through this layout at a URL derived from the entry (e.g. `/blog/<slug>` for every blog post). Also used for one-off pages backed by a single-entry CT (the homepage, the about page, etc. Your developer may have modelled those as single-entry CTs). | "Add a new blog post." "Add a new product." "Update the homepage hero copy." | **Contentstack**: create or edit the entry in the CT. Studio auto-renders it. |
+| **Freeform template** (only if the project has the Freeform feature turned on) | One layout not tied to any content type. Its content comes from pinned entries, pinned queries, or values typed straight into the layout. | A one-off landing page the developer built as Freeform. | **Studio**: open the template from the **Templates** sub-tab. Content edits happen in the layout (Flow C). To build a new one, use `build-freeform-template`. |
 
 **Most content-team work is content-first**: edit the entry in Contentstack, the page updates automatically. Open Studio only when the layout itself needs to change.
 
@@ -35,12 +36,12 @@ Two kinds of pages exist in Studio, with very different authoring flows:
 
 Open the URL the developer shared. You should land in a **Studio project** with two tabs in the top nav:
 
-- **Compositions**: every page-shaped layout in this project. The page splits into two sub-tabs inside: **Templates** (Connected Templates you'd publish at a URL) and **Sections** (reusable layout blocks the developer prepared, dropped into compositions: you do not usually create these directly). This is the main authoring surface.
+- **Compositions**: every page-shaped layout in this project. The page splits into two sub-tabs inside: **Templates** (the page templates you'd publish at a URL: Connected Templates, plus Freeform templates if the project has Freeform turned on) and **Sections** (reusable layout blocks the developer prepared, dropped into compositions: you do not usually create these directly). This is the main authoring surface.
 - **Settings**: project-level config (rarely needed by authors).
 
 Registered React components don't have a top-level tab. They're visible from the left palette when you have a composition open. There is no UI to create or edit components from inside Studio.
 
-If the **Templates** sub-tab is empty, stop. Ask the developer to confirm at least one Connected Template has been created. Without a starting point, you cannot author.
+If the **Templates** sub-tab is empty, stop. Ask the developer to confirm at least one template has been created. Without a starting point, you cannot author.
 
 ### 2. Decide your path from the goal
 
@@ -69,6 +70,8 @@ Map your `goal` to one of these three flows.
 4. **Save**, then **Deploy**. Save persists the draft in Studio. Deploy makes the live URL render the new layout.
 
 #### Flow D: Just change content (text / image / link) on an existing page
+
+For a Freeform template page, there is no template entry. Text from a pinned entry or query is edited on that entry in Contentstack (as below). Anything else lives in the layout, so use Flow C.
 
 For a Connected template page: it's a Contentstack entry edit. Flow A, but on an existing entry: open the entry, edit the fields, click **Update**, then **Publish** (Contentstack's own publish action, not Studio's Deploy).
 

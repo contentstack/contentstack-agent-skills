@@ -18,7 +18,7 @@ Use when Sections + Templates exist but need real content to render. Phrases: "p
 >
 > - `@contentstack/json-rte-serializer` (v3.1.0) confirmed real on npm. Use this package to convert HTML into JSON RTE.
 > - CMA endpoints (`/v3/assets`, `/v3/content_types/<ct>/entries`, `/v3/content_types/<ct>/entries/publish`) match those used by [`provision-studio-stack`](provision-studio-stack.md) and [`author-composition-via-api`](author-composition-via-api.md).
-> - Retry + rate-limit pattern matches [`scripts/upload-to-digital-concierge.ts`](../../scripts/upload-to-digital-concierge.ts), production-tested against Contentstack's Digital Concierge API.
+> - Retry + rate-limit pattern, production-tested against Contentstack's Digital Concierge API: concurrency 2; retry 429 / 502 / 503 / 504 and network errors, honouring `Retry-After`, else exponential backoff with jitter (1s doubling to 30s); stop after 5 retries.
 > - **Preview mode (Step 1a) runtime-verified**: the bundled sample JSON parses to exactly 3 posts / 2 unique authors / 2 embedded assets, and `@contentstack/json-rte-serializer` + `jsdom` produce a valid JSON RTE doc (with h2 heading, list, and inline `<img>` preserved) that round-trips back to HTML. Reproduce with `npx ts-node scripts/verify-import-preview.ts`.
 > - **End-to-end run verified against a live stack**: provisions an isolated CT with a `source_uid` field, uploads an asset (`/v3/assets` multipart), POSTs 3 entries with JSON-RTE bodies, re-runs the same import and confirms **0 duplicates created** + same entry UIDs returned, then cleans up. 8/8 structural claims pass. Reproduce with `npx ts-node scripts/verify-import-e2e.ts` (requires `CS_API_KEY` + `CS_AUTH_TOKEN` in `.env`).
 > - **`source_uid` field convention** works as documented. **Important:** the field UID MUST NOT start with an underscore: Contentstack rejects CTs whose field UIDs begin with `_` (error 115 "The UID must begin with a letter"). Use `source_uid`, not `_source_uid`.
@@ -277,7 +277,7 @@ Target: blog_post on blt3f2a9d7...
 | Converting HTML into JSON RTE with naive string parsing | Loses formatting, breaks embedded images, mangles nested lists | Use `@contentstack/json-rte-serializer`. Never write your own. |
 | Not attaching `source_uid` to imported entries | Second run can't detect duplicates, so it creates copies | Every CT that receives imports must have a `source_uid` (single-line text) field. Add it to the CT during `provision-studio-stack` if it isn't already. |
 | Skipping the "publish to production" confirmation | Draft entries silently land on the live site on the wrong environment | Explicit prompt required before ProdPublish. |
-| Ignoring rate limits | CMA 429s produce an auto-retry storm, which produces a longer 429, which cascades into failure | Concurrency 2-3, honour `Retry-After`, exponential backoff on unresolved 429. Match the DC uploader's approach, see [`upload-to-digital-concierge.ts`](../../scripts/upload-to-digital-concierge.ts) for the reference implementation. |
+| Ignoring rate limits | CMA 429s produce an auto-retry storm, which produces a longer 429, which cascades into failure | Concurrency 2-3, honour `Retry-After`, exponential backoff on unresolved 429. |
 
 ## Handling per-source specifics
 
@@ -295,4 +295,3 @@ Target: blog_post on blt3f2a9d7...
 - [`decompose-design`](decompose-design.md) / [`decompose-site`](decompose-site.md): plan the schema this skill fills.
 - [`migrate-ct-schema`](migrate-ct-schema.md): if source and target schemas diverge, run this alongside to align.
 - [`agent-idempotency`](../../docs/50-advanced/agent-idempotency.md): the state-file + resume pattern this skill uses is documented as the canonical convention for every skill making CMA writes.
-- `scripts/upload-to-digital-concierge.ts` in this repo: reference implementation of the retry + state + concurrency pattern.

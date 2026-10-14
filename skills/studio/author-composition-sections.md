@@ -85,7 +85,8 @@ When a section's `selectedField` is set to the iterated field (e.g. `selectedFie
         "type": "template",
         "value": { "path": {} }      // ← scope-root, NOT { products: {} }
       }
-    }
+    },
+    "children": { "type": "slot", "slot": "<R-slot>" }   // ← required, wires the slot below
   },
   "slots": {
     "<R-slot>": [
@@ -138,7 +139,7 @@ The built-in `section-slot` type declares a **placeholder** inside a section's `
 
 Two things that trip API authors:
 
-1. **`slots.<own-uid>: []` is required**: the section-slot's own uid appears as the slot key, with an empty array. This is the ONE legitimate exception to the preflight rule "no empty slot arrays". Omitting the entry (no `slots` at all, or `slots: {}`) leaves the template unable to target the slot when composing.
+1. **`slots.<own-uid>: []` is required**: the section-slot's own uid appears as the slot key, with an empty array. This is one of only two legitimate exceptions to the preflight rule "no empty slot arrays". The other is the page-side `section-composition` node, where Studio writes `slots.<section-slot-uid>: []` for each slot the template hasn't filled yet. Omitting the entry (no `slots` at all, or `slots: {}`) leaves the template unable to target the slot when composing.
 2. **The slot is filled by the TEMPLATE, not the section.** In the section's authored tree the slot stays empty. The template's `section-composition` node holds the fill in its own `slots`, keyed by the section-slot uid ([Pattern B](author-composition-section-slot-fill.md)).
 
 Section slots typically sit inside a Repeater + Condition Block on the wrapper section (Pattern B for reference / MB iteration) or directly under the section root (Pattern B for a simpler single-slot section).

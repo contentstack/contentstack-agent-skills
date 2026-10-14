@@ -32,11 +32,15 @@ Sibling to the multi-reference recipe in [`author-composition-repeater-recipes`]
 {
   "type": "repeater", "uid": "R1",
   "metadata": { "mode": "preview" },
-  "props": { "items": { "binding": { "type": "template", "value": { "path": {} } } } },
+  "props": {
+    "items": { "binding": { "type": "template", "value": { "path": {} } } },
+    "children": { "type": "slot", "slot": "<R1-slot>" }      // required, see repeater-recipes step 2
+  },
   "slots": { "<R1-slot>": [
     { "type": "condition-block", "uid": "CB1",
       "metadata": { "condition": { "type": "reference", "operator": "eq", "value": "author",
         "conditionBinding": {…} } },   // required, see repeater-recipes step 4
+      "props": { "children": { "type": "slot", "slot": "<CB1-slot>" } },
       "slots": { "<CB1-slot>": [
         { "type": "section-slot", "uid": "SS1",
           "slots": { "SS1": [] } }

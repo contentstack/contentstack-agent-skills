@@ -38,7 +38,7 @@ The SDK's runtime renderer walks the composition node tree and throws on certain
 
 Before calling `POST /v3/.../entries` (or `PUT` on update), walk the inflated `ui` tree and assert:
 
-- [ ] **Every `slots[<slot_uid>]` value is a non-empty array**, no `{ "<uid>": [] }` entries. Either populate the slot with at least one node, OR remove the slot from the parent's `slots` object entirely.
+- [ ] **Every `slots[<slot_uid>]` value is a non-empty array**, no `{ "<uid>": [] }` entries. Either populate the slot with at least one node, OR remove the slot from the parent's `slots` object entirely. Two exceptions: a `section-slot` node keeps `slots: { "<its-own-uid>": [] }` until a template fills it, and the page-side `section-composition` node keeps an empty entry for each slot the template hasn't filled yet ([`author-composition-sections`](author-composition-sections.md) § `section-slot` node shape). Skip that shape in the check.
 - [ ] **No node references a removed descendant**: every uid mentioned in a parent's `slots` array maps to an actual node in the tree. (Common when refactoring: removing a node but leaving its uid in a parent's slot array.)
 - [ ] **Every Repeater has `metadata.mode: "preview"` AND a Condition Block child (for reference / modular block iteration).** Missing either silently renders zero iterations.
 - [ ] **Every Section Slot inside the iteration has its child Section's node in place**. See `build-repeating-section` § Step 6.
