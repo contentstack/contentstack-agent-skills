@@ -55,6 +55,8 @@ for (const slug of slugs) {
   else if (description.length > 1024) fail(`skills/${slug}: description is ${description.length} chars (max 1024)`);
   else if (!/\bUse when\b/.test(description)) fail(`skills/${slug}: description should say "Use when ..." so agents know when to load it`);
 
+  if (!/^## Security\b/m.test(text)) fail(`skills/${slug}/SKILL.md: missing the mandatory "## Security" section`);
+
   // Relative links in every markdown file of the skill must resolve.
   for (const md of markdownFiles(join(skillsDir, slug))) {
     const rel = md.slice(skillsDir.length + 1);

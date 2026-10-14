@@ -19,7 +19,7 @@ already good.
   3. Preserve `live_preview` and `preview_timestamp` across client-side route changes, or force a full navigation inside preview. Use Timeline's URL navigation box rather than in-page link clicks when demoing.
   4. Do not reuse a hash across contexts. For Timeline requests use the `live_preview` hash Timeline puts on the iframe URL; for Visual Editor requests use the one Visual Editor puts there.
   5. Append the params correctly when the base URL already carries a query string, rather than overwriting the existing one.
-- **verification**: Pick a future scheduled-publish marker; the request to the preview host should carry both headers and the response `_version` should match the version expected at that timestamp.
+- **verification**: Pick a future scheduled-publish marker; the request to the preview host should carry both the `live_preview` hash and the `preview_timestamp` value (check the request's headers and query string), and the response `_version` should match the version expected at that timestamp.
 
 ---
 

@@ -336,3 +336,22 @@ The migration is complete. Read [references/step-5-welcome-message.md](reference
 and display that message to the user — render it exactly as shown there, preserving the section
 headings, icons, and line breaks, and filling the file-location table with the real paths
 captured during this session.
+
+## Security
+
+### Defaults
+
+- Logins use browser OAuth (`csdx auth:login --oauth`); never ask the user to paste passwords or tokens into chat.
+- Delivery and preview tokens may go into the migrated app's client config; the Contentful and Contentstack management tokens never do.
+
+### Destructive Actions
+
+Logging in, creating a stack and editing the user's code are gated behind confirmation (see § Operating principles). Never delete the source Contentful space, an existing Contentstack stack, or user files.
+
+### Secrets
+
+Never display, echo or write management tokens. Credentials the migrated app needs go only into its gitignored `.env`, with the user's confirmation; never into source, logs or the final report.
+
+### Environment Variables
+
+The migrated app reads `CS_API_KEY`, `CS_DELIVERY_TOKEN`, `CS_ENVIRONMENT`, `CS_PREVIEW_TOKEN` (Live Preview only) and the region from its `.env`.

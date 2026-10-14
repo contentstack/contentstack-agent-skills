@@ -77,3 +77,23 @@ Read [`complete-the-build`](complete-the-build.md) for the how and the verificat
 - Never skip step 1. The lookup is cheap. Missing a skill is expensive.
 - If the user's request implies multiple skills (e.g. "install and set up preview routes"), pull each in the order they must run: skills-index.md's Trigger table encodes that ordering.
 - Prerequisite skills: many authoring skills assume `install-studio` + `configure-studio` are done. If the user's project state is unclear, run `analyze-project-fit` first.
+
+## Security
+
+### Defaults
+
+- Resolve credentials OAuth-first (see § Standing rule: auth preflight). Ask before reading or refreshing another tool's stored OAuth session.
+- Delivery and preview tokens may reach the browser; management tokens, OAuth tokens and session authtokens never do.
+- Never disable TLS certificate or hostname verification, and never ship permissive frame headers (`frame-ancestors *`, `Access-Control-Allow-Origin: *`) outside local development or the canvas route.
+
+### Destructive Actions
+
+Creating or changing stacks, content types, entries, compositions or Studio projects is a real mutation. State what will change and get confirmation first. Never delete or overwrite existing content, sections or templates without explicit approval.
+
+### Secrets
+
+Never print, echo or store tokens, API keys or `.env` values, in chat, logs or files. If a secret appears in input, don't repeat it; recommend rotating it.
+
+### Environment Variables
+
+Use descriptive placeholders such as `CONTENTSTACK_API_KEY`, `CONTENTSTACK_DELIVERY_TOKEN`, `CONTENTSTACK_PREVIEW_TOKEN` and `CS_OAUTH_ACCESS_TOKEN`, and keep real values in a gitignored `.env`.

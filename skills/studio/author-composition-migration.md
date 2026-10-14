@@ -26,7 +26,7 @@ The fix (do both, in order):
 
 ### 2. Block-index paths must be remapped when the destination CT's field ORDER differs
 
-Bindings into an ordered multi-value field bake the index into the path: `{ modular_blocks: { "2": { image_grid: {} } } }`. If the destination entry orders those blocks differently (an extra block inserted, a different author order), every baked index points at the wrong block, which produces wrong data or a blank. Before writing, diff the source vs destination entry's block order and rewrite each index in the `ui` binding paths (the path flattener keeps numeric keys, so a global `old→new` index map over `modular_blocks.<N>` is enough).
+Bindings into an ordered multi-value field bake the index into the path: `{ modular_blocks: { "2": { image_grid: {} } } }`. If the destination entry orders those blocks differently (an extra block inserted, a different author order), every baked index points at the wrong block, which produces wrong data or a blank. Block order is stored **per entry**, so build the `old→new` index map **per migrated entry**: match each source block to its destination block by block type and identity (not position), then rewrite the indices in the `ui` binding paths that point at that entry. The path flattener keeps numeric keys, so the rewrite itself is a straight substitution over `modular_blocks.<N>`. Never reuse one entry's map for another.
 
 ### 3. Binding paths + `selected_field` must match the DESTINATION CT's schema, not the source's
 
