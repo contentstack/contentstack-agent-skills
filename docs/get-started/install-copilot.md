@@ -30,7 +30,7 @@ Then install **contentstack-skills** from the Extensions view.
 
 ## What gets installed
 
-All 22 skills under `skills/<slug>/SKILL.md`, with their bundled `references/` and `scripts/`.
+All skills under `skills/<slug>/SKILL.md`, with their bundled `references/` and `scripts/`.
 
 ## Verify
 

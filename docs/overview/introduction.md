@@ -9,7 +9,7 @@ description: What Contentstack Agent Skills are, the problem they solve, and how
 
 An **agent skill** is a self-contained instruction set that teaches an AI coding assistant how to perform a specific task correctly. Each skill captures Contentstack's recommended approach to one area: data modeling, entry queries, asset delivery, Live Preview, Launch deployments, and so on, including the patterns to follow, the mistakes to avoid, and the safety rules to enforce.
 
-Contentstack Agent Skills bundle **22 of these skills** into a single package you can install into the AI tool you already use. Once installed, your assistant automatically reaches for the right skill based on what you ask. You don't have to remember which file to open or paste documentation into your prompt.
+Contentstack Agent Skills bundle **these skills** into a single package you can install into the AI tool you already use. Once installed, your assistant automatically reaches for the right skill based on what you ask. You don't have to remember which file to open or paste documentation into your prompt.
 
 ## The problem they solve
 
@@ -24,12 +24,13 @@ Agent skills close that gap. They give the assistant Contentstack-specific knowl
 
 ## What's in the bundle
 
-The 22 skills span five Contentstack product areas:
+The skills span six Contentstack product areas:
 
 | Product | Skills |
 | --- | --- |
 | **CMS** | Assets · Branches & Aliases · Data Modeling · Entries · Environments & Publishing · Localization · Releases · Roles & Permissions · Taxonomy · Tokens & Authentication · Variants & Personalization · Webhooks · Workflows |
 | **Developer Experience** | Delivery SDK · Contentstack Kickstart Next · Migrate JS→TS SDK · Live Preview & Visual Editor Support · Migration Companion |
+| **Studio** | Contentstack Studio |
 | **Launch** | Sync env vars from `.env.example` · Trigger & Monitor Deployments |
 | **Brand Kit** | Brand Kit Assistant |
 | **Developer Hub** | Developer Hub App Architect |

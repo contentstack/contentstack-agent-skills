@@ -50,8 +50,8 @@ Every skill is written once in the open [Agent Skills](https://agentskills.io) f
 
 |                          |                                                                                                                |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| **Skills included**      | 22                                                                                                             |
-| **Products covered**     | CMS, Developer Experience, Launch, Brand Kit, Developer Hub                                                    |
+| **Skills included**      | 23 (see the [skill reference](skills/index.md))                                                                |
+| **Products covered**     | CMS, Developer Experience, Studio, Launch, Brand Kit, Developer Hub                                            |
 | **Supported tools**      | Claude Code, claude.ai / Cowork, Cursor, Codex, GitHub Copilot, Gemini CLI, `skills` CLI                       |
 | **Source of truth**      | `skills/<slug>/SKILL.md`                                                                                       |
 | **Repository**           | [github.com/contentstack/contentstack-agent-skills](https://github.com/contentstack/contentstack-agent-skills) |

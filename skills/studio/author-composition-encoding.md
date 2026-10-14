@@ -10,27 +10,31 @@ Part of the API-authoring set. Start at [`author-composition-via-api`](author-co
 
 ## Never pass the compressed `ui` inline via a shell variable
 
-Silent-corruption trap. The `zlib:<base64>` blob is binary-ish. Interpolating it into a `curl -d "..."` string via a shell variable mutates one byte and the SDK renders a blank canvas with **no error anywhere**: `hasSpec: true`, spec present, SSR looks fine, and every child slot silently resolves empty because the key `"children"` was corrupted to `"c1ildren"` (or similar) throughout the tree. Background colors still paint (from `responsiveStyles`), masking the bug until you inspect the raw HTML.
+A large `zlib:<base64>` blob inlined into a `curl -d "..."` string is fragile: JSON quoting and escaping mistakes, argument-length limits and copy-paste truncation all corrupt the payload. A corrupted `ui` tree fails silently: `hasSpec: true`, SSR looks fine, but if a structural key such as `"children"` is wrong, every child slot resolves empty and the canvas renders blank with **no error anywhere**. Background colors still paint (from `responsiveStyles`), masking the bug until you inspect the raw HTML.
 
-Always write the full payload to a temp file and POST with `-d @file`:
+Always build the payload in a file and POST with `-d @file`. Save the uncompressed tree as `ui.json` first, then:
 
 ```bash
-python3 -c "import json,zlib,base64; \
-  raw = json.dumps(ui_tree); \
-  assert '\"c1ildren\"' not in raw, 'corrupt key'; \
-  assert raw.count('\"children\"') >= <expected slot count>, 'children count wrong'; \
-  compressed = 'zlib:' + base64.b64encode(zlib.compress(raw.encode())).decode(); \
-  open('/tmp/entry.json','w').write(json.dumps({'entry': {'ui': compressed, ...}}))"
+python3 - <<'PY'
+import json, zlib, base64
+EXPECTED_SLOTS = 0  # set to the number of child slots you authored
+raw = json.dumps(json.load(open("ui.json")))
+assert raw.count('"children"') >= EXPECTED_SLOTS, "children count wrong"
+compressed = "zlib:" + base64.b64encode(zlib.compress(raw.encode())).decode()
+entry = json.load(open("entry-fields.json"))  # title, url, static_value, ...
+entry["ui"] = compressed
+json.dump({"entry": entry}, open("entry.json", "w"))
+PY
 
 curl -X POST "<cma-host>/v3/content_types/<uid>/entries" \
   -H "api_key: ..." -H "$CS_AUTH" \
   -H "Content-Type: application/json" \
-  -d @/tmp/entry.json
+  -d @entry.json
 ```
 
-The count-assert catches shell corruption **before** compression: once the tree is zlib+base64'd, the corruption is opaque.
+The count-assert catches a malformed tree **before** compression: once the tree is zlib+base64'd, the damage is opaque.
 
-**Non-prod hosts + Python.** Against a non-prod data center, Python's `urllib`/`requests` fail SSL verification (`SSLCertVerificationError: unable to get local issuer certificate`), the non-prod chain isn't in the default Python CA store, but `curl` reads the system keychain and succeeds. Rule: use `curl` for the CMA POST/PUT itself. Use Python only to build/assert the payload. If Python HTTP is unavoidable (dev tooling only, never app code), pass a permissive SSL context: `ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE; urllib.request.urlopen(req, context=ctx)`.
+**Non-prod hosts + Python.** Against a non-prod data center, Python's `urllib`/`requests` fail SSL verification (`SSLCertVerificationError: unable to get local issuer certificate`), the non-prod chain isn't in the default Python CA store, but `curl` reads the system keychain and succeeds. Rule: use `curl` for the CMA POST/PUT itself. Use Python only to build/assert the payload. If Python HTTP is unavoidable, point it at the trusted CA bundle for that host (`ssl.create_default_context(cafile=...)` or `REQUESTS_CA_BUNDLE`). Never disable certificate or hostname verification: if the chain can't be verified, stop and report it.
 
 ## Preflight: validate the `ui` tree before publishing
 

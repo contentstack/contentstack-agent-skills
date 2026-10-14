@@ -43,7 +43,7 @@ The slug is the skill's directory name (and its `name` field). Find it with `--l
 ## When to use this vs the full bundle
 
 - **Single skill** → you want one focused capability, or your agent isn't covered by a plugin install.
-- **Full bundle** (Claude Code, claude.ai, Cursor, Codex, Copilot, Gemini) → you want all 22 skills available and kept up to date through your tool's plugin system. See [Supported tools](../overview/supported-tools.md).
+- **Full bundle** (Claude Code, claude.ai, Cursor, Codex, Copilot, Gemini) → you want every skill available and kept up to date through your tool's plugin system. See [Supported tools](../overview/supported-tools.md).
 
 ## Note on selection
 

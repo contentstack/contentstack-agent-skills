@@ -5,7 +5,7 @@ description: The tools Contentstack Agent Skills install into, what each install
 
 # Supported tools & compatibility
 
-The same 22 skills install into every tool below. Each one reads the [Agent Skills](https://agentskills.io) format natively, so there's no tool-specific copy: just a different way to install. Pick the row that matches your assistant.
+The same skills install into every tool below. Each one reads the [Agent Skills](https://agentskills.io) format natively, so there's no tool-specific copy: just a different way to install. Pick the row that matches your assistant.
 
 | Tool                         | What you install                                         | Install guide                                                         |
 | ---------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------- |
@@ -17,7 +17,7 @@ The same 22 skills install into every tool below. Each one reads the [Agent Skil
 | **Gemini CLI**               | The extension from the GitHub repository                 | [Install for Gemini](../get-started/install-gemini.md)                |
 | **`skills` CLI**             | One or more skills you name, into any supported agent    | [Use the skills CLI](../get-started/skills-cli.md)                    |
 
-Every full install gives you all 22 skills with their `references/` and `scripts/`.
+Every full install gives you every skill with their `references/` and `scripts/`.
 
 ## How to choose
 

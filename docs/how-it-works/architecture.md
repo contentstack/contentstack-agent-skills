@@ -37,7 +37,7 @@ The **`skills` CLI** needs no manifest: it reads `skills/<slug>/` directly and c
 
 ## Why one copy
 
-Maintaining a separate copy of 22 skills per tool would guarantee drift. Because every tool now reads `SKILL.md` natively:
+Maintaining a separate copy of every skill per tool would guarantee drift. Because every tool now reads `SKILL.md` natively:
 
 1. Authors edit only `skills/`.
 2. Every tool installs those same files, frontmatter, `references/` and `scripts/` included.
@@ -66,7 +66,7 @@ gemini-extension.json             Gemini CLI extension
 .github/workflows/validate.yml    CI that runs the validator
 scripts/validate.mjs              Validates skills and manifests
 docs/                             This documentation
-CLAUDE.md                         Contributor guide (AGENTS.md links to it)
+CLAUDE.md                         Contributor guide (AGENTS.md is a symlink to it)
 ```
 
 ## Implications for docs

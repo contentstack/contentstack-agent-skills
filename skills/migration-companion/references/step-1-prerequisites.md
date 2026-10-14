@@ -7,7 +7,7 @@
 Before doing anything else, create the unique session directory for this migration run:
 
 ```bash
-SESSION_ID=$(date +%Y%m%d-%H%M%S) && SESSION_DIR="/tmp/migrate-to-cs/$SESSION_ID" && mkdir -p "$SESSION_DIR" && echo "SESSION_DIR=$SESSION_DIR"
+mkdir -p /tmp/migrate-to-cs && SESSION_DIR=$(mktemp -d "/tmp/migrate-to-cs/$(date +%Y%m%d-%H%M%S)-XXXXXX") && echo "SESSION_DIR=$SESSION_DIR"
 ```
 
 **Record the printed `SESSION_DIR` path exactly** (e.g. `/tmp/migrate-to-cs/20260608-143022`).

@@ -21,7 +21,7 @@ Follow these throughout — they matter more than any single command:
 - **Work in a unique session workspace.** At the very start of Step 1, create a
   session-scoped directory by running:
   ```bash
-  SESSION_ID=$(date +%Y%m%d-%H%M%S) && SESSION_DIR="/tmp/migrate-to-cs/$SESSION_ID" && mkdir -p "$SESSION_DIR" && echo "SESSION_DIR=$SESSION_DIR"
+  mkdir -p /tmp/migrate-to-cs && SESSION_DIR=$(mktemp -d "/tmp/migrate-to-cs/$(date +%Y%m%d-%H%M%S)-XXXXXX") && echo "SESSION_DIR=$SESSION_DIR"
   ```
   Record the printed `SESSION_DIR` value (e.g. `/tmp/migrate-to-cs/20260608-143022`) and
   **carry it as a concrete literal** through every shell command in this migration — do not

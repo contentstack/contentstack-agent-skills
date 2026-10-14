@@ -15,7 +15,7 @@ Cursor installs the bundle as a **plugin** described by `.cursor-plugin/plugin.j
 
 ## What gets installed
 
-- All 22 skills under `skills/<slug>/SKILL.md`, with their bundled `references/` and `scripts/`.
+- All skills under `skills/<slug>/SKILL.md`, with their bundled `references/` and `scripts/`.
 - The plugin and marketplace manifests from `.cursor-plugin/`.
 
 ## Verify

@@ -17,7 +17,7 @@ claude.ai installs the bundle as a **plugin** from a marketplace. Once added, th
 
 ## What gets installed
 
-The same plugin Claude Code uses (`.claude-plugin/`): all 22 skills under `skills/<slug>/SKILL.md`, with their bundled `references/` and `scripts/`.
+The same plugin Claude Code uses (`.claude-plugin/`): all skills under `skills/<slug>/SKILL.md`, with their bundled `references/` and `scripts/`.
 
 ## Verify
 

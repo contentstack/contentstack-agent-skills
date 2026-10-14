@@ -11,11 +11,11 @@ There is no router file. Each skill's **description** tells the agent when to us
 
 Agents that read the [Agent Skills](https://agentskills.io) format load skills in three stages:
 
-1. **At startup**, only each skill's `name` and `description` from the frontmatter go into context. For 22 skills that's a few thousand tokens.
+1. **At startup**, only each skill's `name` and `description` from the frontmatter go into context. For the whole bundle that's a few thousand tokens.
 2. **When a request matches** a description, the agent loads that skill's full `SKILL.md` and follows it.
 3. **When the task needs more detail**, the skill points the agent to files in its `references/` folder or runs a bundled script.
 
-This keeps context lean: you get all 22 skills available without paying for 22 full instruction sets in every conversation.
+This keeps context lean: you get every skill available without paying for every full instruction set in every conversation.
 
 ## How a request is matched
 

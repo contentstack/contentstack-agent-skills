@@ -5,7 +5,7 @@ description: The full catalog of Contentstack Agent Skills, grouped by product.
 
 # Skills reference
 
-The bundle includes 22 skills across five Contentstack products. Each links to a dedicated page with what it does, when it triggers, example prompts, and its safety notes.
+The bundle includes 23 skills across six Contentstack products. Each links to a dedicated page with what it does, when it triggers, example prompts, and its safety notes.
 
 > Each skill page mirrors its canonical `skills/<slug>/SKILL.md`. The slug is the skill's identifier: use it with the [`skills` CLI](../get-started/skills-cli.md).
 

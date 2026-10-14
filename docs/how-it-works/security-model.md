@@ -39,6 +39,13 @@ Each skill is tagged with a product, and each product defines baseline safety ru
 - Never grant broader permissions than required.
 - Keep app credentials server-side only.
 
+### Studio
+
+- Resolve credentials OAuth-first; a session `authtoken` is a last resort, only after a refreshed OAuth token fails.
+- Ask before reading or refreshing a stored OAuth session from another tool.
+- Confirm before creating stacks, projects, content types or entries.
+- Never weaken TLS verification or ship permissive frame headers outside the canvas route.
+
 ### Brand Kit
 
 - Never expose Brand Kit API tokens.

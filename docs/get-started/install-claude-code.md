@@ -23,7 +23,7 @@ If you already added the marketplace in claude.ai, the plugin syncs to Claude Co
 ## What gets installed
 
 - The plugin and marketplace manifests from `.claude-plugin/`.
-- All 22 skills under `skills/<slug>/SKILL.md`, with their bundled `references/` and `scripts/`.
+- All skills under `skills/<slug>/SKILL.md`, with their bundled `references/` and `scripts/`.
 
 ## Verify
 

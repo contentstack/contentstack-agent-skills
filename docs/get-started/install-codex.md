@@ -18,7 +18,7 @@ codex plugin add contentstack-skills@contentstack-skills
 
 ## What gets installed
 
-All 22 skills under `skills/<slug>/SKILL.md`, with their bundled `references/` and `scripts/`, frontmatter included.
+All skills under `skills/<slug>/SKILL.md`, with their bundled `references/` and `scripts/`, frontmatter included.
 
 ## Verify
 

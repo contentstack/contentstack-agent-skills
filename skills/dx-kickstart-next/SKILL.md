@@ -32,3 +32,23 @@ Use this skill when working in `contentstack/kickstart-next` or a close fork. In
 - For reviews, separate blockers from major issues and minor nits.
 - For repo setup help, give the shortest successful path first, then optional troubleshooting.
 - If asked to generalize framework-specific guidance later, keep Contentstack behavior in `contentstack.md` and Next.js behavior in `next.md`.
+
+## Security
+
+### Defaults
+
+- Never commit real Contentstack credentials. `.env.example` and docs use placeholders; real values live in a gitignored `.env`.
+- Delivery and preview tokens are read-only and may reach the browser; management tokens never do.
+- Never recommend enabling Live Preview in production builds.
+
+### Destructive Actions
+
+Advisory by default. Before changing a user's stack (seeding, schema changes) or force-pushing, deleting branches or rewriting history in the repo, describe the impact and get explicit confirmation.
+
+### Secrets
+
+Never print, echo or store tokens, API keys or `.env` values. If a secret appears in a file, log or message, don't repeat it; recommend rotating it.
+
+### Environment Variables
+
+Use the variable names from the repo's `.env.example`, for example `NEXT_PUBLIC_CONTENTSTACK_API_KEY` and `NEXT_PUBLIC_CONTENTSTACK_DELIVERY_TOKEN`, with placeholder values.

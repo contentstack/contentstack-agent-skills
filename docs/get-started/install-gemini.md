@@ -17,7 +17,7 @@ gemini extensions install https://github.com/contentstack/contentstack-agent-ski
 
 ## What gets installed
 
-The extension manifest (`gemini-extension.json`) registers the bundle as the `contentstack-skills` extension. Gemini picks up the extension's `skills/` folder automatically, so all 22 skills are available with their `references/` and `scripts/`.
+The extension manifest (`gemini-extension.json`) registers the bundle as the `contentstack-skills` extension. Gemini picks up the extension's `skills/` folder automatically, so every skill is available with their `references/` and `scripts/`.
 
 ## Verify
 

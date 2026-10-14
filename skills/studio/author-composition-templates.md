@@ -139,7 +139,7 @@ Notes on the tree that aren't in the recipe examples above:
 - The root's `type` is `"page"`, the built-in Page system component. Freeform / Connected templates wrap their content in this root.
 - `props.children.type: "slot"` + `props.children.slot: "<slot-uid>"`: declares that this node's children live in the matching key inside `slots`. Same pattern on nested slot-owning components.
 - `metadata.slotNames.<slot-uid>: "<author-visible name>"`: components with named slots (like `doc-hero`'s `"Actions"` slot) register the label here so the canvas shows it.
-- Each `props.<name>.type` (`"string"`, `"imageurl"`, `"number"`, `"href"`, `"choice"`) is the widget kind. It **must match** the sub-bucket of `entry.static_value` the resolver looks in (see the two-level-lookup rule above).
+- Each `props.<name>.type` (`"string"`, `"imageurl"`, `"number"`, `"href"`, `"choice"`) is the widget kind. It **must match** the sub-bucket of `entry.static_value` the resolver looks in (`string` → `text`; other types use the same name; see the two-level-lookup rule above).
 
 ### The full CMA POST body
 

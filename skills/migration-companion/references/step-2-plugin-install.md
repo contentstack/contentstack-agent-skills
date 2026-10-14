@@ -24,8 +24,7 @@ elif [ -z "$INSTALLED" ]; then
 elif [ "$INSTALLED" = "$LATEST" ]; then
   echo "PLUGIN_UP_TO_DATE:$INSTALLED"
 else
-  csdx plugins:uninstall "$PLUGIN_NAME" \
-    && csdx plugins:install "$PLUGIN_NAME" \
+  csdx plugins:install "$PLUGIN_NAME@$LATEST" \
     && echo "PLUGIN_UPDATED:$INSTALLED→$LATEST" \
     || echo "PLUGIN_UPDATE_FAILED:$INSTALLED→$LATEST"
 fi
@@ -36,7 +35,7 @@ Interpret the last line:
 - **`PLUGIN_UP_TO_DATE:<version>`** → already on the latest version; proceed to the Eval. (Stay
   silent — don't report "already up to date" to the user.)
 - **`PLUGIN_INSTALLED:<version>`** → freshly installed. Briefly tell the user, then proceed.
-- **`PLUGIN_UPDATED:<old>→<new>`** → uninstalled old version and installed latest. Briefly tell
+- **`PLUGIN_UPDATED:<old>→<new>`** → installed the latest version over the old one. Briefly tell
   the user the plugin was updated, then proceed.
 - **`PLUGIN_INSTALL_FAILED`** / **`PLUGIN_UPDATE_FAILED:<old>→<new>`** → the install or
   reinstall errored. Show the user the error output, then display this message and wait:
