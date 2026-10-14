@@ -29,7 +29,7 @@ The 22 skills span five Contentstack product areas:
 | Product | Skills |
 | --- | --- |
 | **CMS** | Assets · Branches & Aliases · Data Modeling · Entries · Environments & Publishing · Localization · Releases · Roles & Permissions · Taxonomy · Tokens & Authentication · Variants & Personalization · Webhooks · Workflows |
-| **Developer Experience** | Delivery SDK · Contentstack Kickstart Next · Migrate JS→TS SDK · Live Preview & Visual Builder Support · Migration Companion |
+| **Developer Experience** | Delivery SDK · Contentstack Kickstart Next · Migrate JS→TS SDK · Live Preview & Visual Editor Support · Migration Companion |
 | **Launch** | Sync env vars from `.env.example` · Trigger & Monitor Deployments |
 | **Brand Kit** | Brand Kit Assistant |
 | **Developer Hub** | Developer Hub App Architect |

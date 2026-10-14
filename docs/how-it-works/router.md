@@ -38,7 +38,7 @@ Each description's "Use when…" clause lists the requests that should load it. 
 | Delivery SDK code, queries, Live Preview setup, SSR preview | [Delivery SDK](../skills/dx-delivery-sdk.md) |
 | Maintaining or extending the Next.js kickstart | [Contentstack Kickstart Next](../skills/dx-kickstart-next.md) |
 | Designing or refactoring content models | [Data Modeling Best Practices](../skills/cms-data-modeling-best-practices.md) |
-| Debugging Live Preview or Visual Builder | [Live Preview & Visual Builder Support](../skills/cms-live-preview-visual-builder-support-assistant.md) |
+| Debugging Live Preview or Visual Builder | [Live Preview & Visual Editor Support](../skills/cms-live-preview-visual-editor-support-assistant.md) |
 | Fetching entries, CDA queries, pagination, bulk ops | [Entries](../skills/cms-entries.md) |
 | Uploading, transforming, delivering assets | [Assets](../skills/cms-assets.md) |
 | Classifying content, category hierarchies | [Taxonomy](../skills/cms-taxonomy.md) |

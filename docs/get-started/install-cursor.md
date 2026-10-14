@@ -32,7 +32,7 @@ Ask Contentstack questions normally:
 
 > How do I set up Contentstack Live Preview for SSR in Next.js?
 
-Cursor matches the request to a skill description and applies it (here, **Live Preview & Visual Builder Support**).
+Cursor matches the request to a skill description and applies it (here, **Live Preview & Visual Editor Support**).
 
 ## Update
 

@@ -45,4 +45,4 @@ Never commits real Contentstack credentials. Uses `.env.example` and docs for pl
 
 ## Related
 
-- [Delivery SDK](dx-delivery-sdk.md) · [Live Preview & Visual Builder Support](cms-live-preview-visual-builder-support-assistant.md) · [Data Modeling Best Practices](cms-data-modeling-best-practices.md)
+- [Delivery SDK](dx-delivery-sdk.md) · [Live Preview & Visual Editor Support](cms-live-preview-visual-editor-support-assistant.md) · [Data Modeling Best Practices](cms-data-modeling-best-practices.md)

@@ -34,7 +34,7 @@ The bundle includes 22 skills across five Contentstack products. Each links to a
 | [Delivery SDK](dx-delivery-sdk.md) | `dx-delivery-sdk` | Production-ready TypeScript with `@contentstack/delivery-sdk` for entries, assets, queries, Live Preview. |
 | [Contentstack Kickstart Next](dx-kickstart-next.md) | `dx-kickstart-next` | Maintaining the Next.js kickstart: App Router, Delivery SDK setup, Live Preview, seed alignment, env vars, validation. |
 | [Migrate JS→TS SDK](dx-migrate-js-to-ts-sdk.md) | `dx-migrate-js-to-ts-sdk` | Migrating Delivery SDK code from the JavaScript SDK to the TypeScript SDK. |
-| [Live Preview & Visual Builder Support](cms-live-preview-visual-builder-support-assistant.md) | `cms-live-preview-visual-builder-support-assistant` | Diagnosing and implementing Live Preview / Visual Builder across CSR, SSR, SSG, BFF. |
+| [Live Preview & Visual Editor Support](cms-live-preview-visual-editor-support-assistant.md) | `cms-live-preview-visual-editor-support-assistant` | Diagnosing and implementing Live Preview / Visual Builder across CSR, SSR, SSG, BFF. |
 | [Migration Companion](migration-companion.md) | `migration-companion` | Guided Contentful → Contentstack migration: content and application code. |
 
 ## Launch

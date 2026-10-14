@@ -52,4 +52,4 @@ Prefers TypeScript and current `@contentstack/delivery-sdk` APIs. Never hardcode
 
 ## Related
 
-- [Entries](cms-entries.md) · [Live Preview & Visual Builder Support](cms-live-preview-visual-builder-support-assistant.md) · [Migrate JS→TS SDK](dx-migrate-js-to-ts-sdk.md)
+- [Entries](cms-entries.md) · [Live Preview & Visual Editor Support](cms-live-preview-visual-editor-support-assistant.md) · [Migrate JS→TS SDK](dx-migrate-js-to-ts-sdk.md)

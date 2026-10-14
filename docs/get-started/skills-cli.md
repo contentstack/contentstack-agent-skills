@@ -36,7 +36,7 @@ The slug is the skill's directory name (and its `name` field). Find it with `--l
 | `dx-delivery-sdk` | Delivery SDK |
 | `cms-entries` | Entries |
 | `cms-data-modeling-best-practices` | Data Modeling Best Practices |
-| `cms-live-preview-visual-builder-support-assistant` | Live Preview & Visual Builder Support |
+| `cms-live-preview-visual-editor-support-assistant` | Live Preview & Visual Editor Support |
 | `migration-companion` | Migration Companion |
 
 ## When to use this vs the full bundle

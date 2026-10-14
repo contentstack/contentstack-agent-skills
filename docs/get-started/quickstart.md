@@ -78,7 +78,7 @@ Ask a Contentstack question in natural language. The agent matches it to a skill
 
 - _"Write a Contentstack Delivery SDK query in TypeScript for blog posts, including the author reference."_ → loads **Delivery SDK**
 - _"Should product categories be a taxonomy, tags, or a referenced content type?"_ → loads **Taxonomy** / **Data Modeling**
-- _"My Live Preview iframe is blank. What should I check?"_ → loads **Live Preview & Visual Builder Support**
+- _"My Live Preview iframe is blank. What should I check?"_ → loads **Live Preview & Visual Editor Support**
 - _"What token should I use to read published content from my frontend?"_ → loads **Tokens & Authentication**
 
 You should get an answer that uses correct Contentstack patterns and follows the safety rules (for example, no hardcoded tokens).
