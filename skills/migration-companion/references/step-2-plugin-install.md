@@ -6,6 +6,10 @@ The `csdx migrate:*` commands come from `@contentstack/cli-external-migrate`. Ru
 install or update it automatically — it is intentionally silent unless something changes or fails:
 
 ```bash
+# Use the Node that Step 1 validated (NODE_BIN_DIR from the prereq check). Omit this line only if
+# the check reported no node.bin_dir.
+export PATH="<NODE_BIN_DIR>:$PATH"
+
 PLUGIN_NAME="@contentstack/cli-external-migrate"
 
 # Version currently installed (empty string if not installed)
@@ -44,8 +48,10 @@ Interpret the last line:
   > terminal, then click **Continue** when done:
   >
   > ```
-  > csdx plugins:install @contentstack/cli-external-migrate
+  > PATH="<NODE_BIN_DIR>:$PATH" csdx plugins:install @contentstack/cli-external-migrate
   > ```
+
+  Fill in `<NODE_BIN_DIR>` with the recorded value before showing this message.
 
   After the user clicks Continue, skip straight to the **Eval** below to verify the plugin is
   working before proceeding.
@@ -57,8 +63,10 @@ Interpret the last line:
   > in your terminal, then click **Continue** when done:
   >
   > ```
-  > csdx plugins:install @contentstack/cli-external-migrate
+  > PATH="<NODE_BIN_DIR>:$PATH" csdx plugins:install @contentstack/cli-external-migrate
   > ```
+
+  Fill in `<NODE_BIN_DIR>` with the recorded value before showing this message.
 
   After the user clicks Continue, proceed to the **Eval** below.
 

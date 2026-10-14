@@ -1,6 +1,6 @@
 ---
 title: Webhooks
-description: Configure and consume Contentstack webhooks: event channels, payloads, signature verification, retries, release-triggered storms, and reliable receiver design.
+description: "Configure and consume Contentstack webhooks: event channels, payloads, signature verification, retries, release-triggered storms, and reliable receiver design."
 ---
 
 # Webhooks

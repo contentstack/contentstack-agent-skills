@@ -1,6 +1,6 @@
 ---
 title: Taxonomy
-description: Use Contentstack Taxonomy for hierarchical content classification and delivery-side filtering: taxonomy vs tags/labels/references, hierarchy design, CDA operators, localization, import/export.
+description: "Use Contentstack Taxonomy for hierarchical content classification and delivery-side filtering: taxonomy vs tags/labels/references, hierarchy design, CDA operators, localization, import/export."
 ---
 
 # Taxonomy

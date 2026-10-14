@@ -1,6 +1,6 @@
 ---
 title: Data Modeling Best Practices
-description: Model Contentstack content with the simplest reusable structure: when to use content types, references, global fields, groups, modular blocks, JSON RTE, taxonomy, and tags.
+description: "Model Contentstack content with the simplest reusable structure: when to use content types, references, global fields, groups, modular blocks, JSON RTE, taxonomy, and tags."
 ---
 
 # Data Modeling Best Practices

@@ -1,6 +1,6 @@
 ---
 title: Workflows & Publish Rules
-description: Design Contentstack workflows and publish rules for content governance: stage design, approvals, self-approval prevention, publish governance, and automation.
+description: "Design Contentstack workflows and publish rules for content governance: stage design, approvals, self-approval prevention, publish governance, and automation."
 ---
 
 # Workflows & Publish Rules

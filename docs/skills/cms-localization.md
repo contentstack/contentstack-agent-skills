@@ -1,6 +1,6 @@
 ---
 title: Localization
-description: Design multilingual delivery in Contentstack: language setup, fallback chains, localized vs unlocalized entries, non-localizable fields, and multi-locale publishing.
+description: "Design multilingual delivery in Contentstack: language setup, fallback chains, localized vs unlocalized entries, non-localizable fields, and multi-locale publishing."
 ---
 
 # Localization

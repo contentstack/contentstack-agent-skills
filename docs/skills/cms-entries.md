@@ -1,6 +1,6 @@
 ---
 title: Entries
-description: Query, localize, version, publish, and structure Contentstack entries for efficient delivery: CDA usage, reference expansion, pagination, bulk ops, and the Sync API.
+description: "Query, localize, version, publish, and structure Contentstack entries for efficient delivery: CDA usage, reference expansion, pagination, bulk ops, and the Sync API."
 ---
 
 # Entries

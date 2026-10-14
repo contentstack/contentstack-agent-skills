@@ -1,6 +1,6 @@
 ---
 title: Developer Hub App Architect
-description: Turn Contentstack Developer Hub and Marketplace app ideas into concrete implementations: UI location choice, architecture, React/TypeScript scaffolding, manifest, proxy, and publishing.
+description: "Turn Contentstack Developer Hub and Marketplace app ideas into concrete implementations: UI location choice, architecture, React/TypeScript scaffolding, manifest, proxy, and publishing."
 ---
 
 # Developer Hub App Architect

@@ -1,6 +1,6 @@
 ---
 title: Assets
-description: Organize, deliver, and transform assets in Contentstack: folders, Image Delivery API, publishing lifecycle, CDN behavior, and limits.
+description: "Organize, deliver, and transform assets in Contentstack: folders, Image Delivery API, publishing lifecycle, CDN behavior, and limits."
 ---
 
 # Assets

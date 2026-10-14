@@ -1,6 +1,6 @@
 ---
 title: Migration Companion
-description: Guided Contentful → Contentstack migration: content (types, entries, assets, locales) and application code: with prerequisite checks and post-migration validation.
+description: "Guided Contentful → Contentstack migration: content (types, entries, assets, locales) and application code: with prerequisite checks and post-migration validation."
 ---
 
 # Migration Companion

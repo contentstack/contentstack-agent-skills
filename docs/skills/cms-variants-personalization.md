@@ -1,6 +1,6 @@
 ---
 title: Variants & Personalization
-description: Use Contentstack Variants and Personalize for audience-targeted content: variants vs separate entries, variant groups, A/B testing, and Personalize integration.
+description: "Use Contentstack Variants and Personalize for audience-targeted content: variants vs separate entries, variant groups, A/B testing, and Personalize integration."
 ---
 
 # Variants & Personalization

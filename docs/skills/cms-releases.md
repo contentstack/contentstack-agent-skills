@@ -1,6 +1,6 @@
 ---
 title: Releases
-description: Use Contentstack Releases for coordinated, atomic content deployment: creation, item management, staged deployment, webhook-storm prevention, and CI/CD.
+description: "Use Contentstack Releases for coordinated, atomic content deployment: creation, item management, staged deployment, webhook-storm prevention, and CI/CD."
 ---
 
 # Releases

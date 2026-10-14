@@ -1,6 +1,6 @@
 ---
 title: Concepts & terminology
-description: The core building blocks of Contentstack Agent Skills: skills, descriptions, references, bundled scripts, and plugin manifests.
+description: "The core building blocks of Contentstack Agent Skills: skills, descriptions, references, bundled scripts, and plugin manifests."
 ---
 
 # Concepts & terminology
@@ -41,7 +41,7 @@ Each tool discovers the bundle through its own small manifest at the repository 
 
 ## Product
 
-Each skill is tagged with a **product** area: `CMS`, `Developer Experience`, `Launch`, `Brand Kit`, or `Developer Hub`. Products carry shared safety defaults, for example, every CMS skill enforces "never expose management tokens" and "route CMA calls through a server-side proxy."
+Each skill is tagged with a **product** area: `CMS`, `Developer Experience`, `Studio`, `Launch`, `Brand Kit`, or `Developer Hub`. Products carry shared safety defaults, for example, every CMS skill enforces "never expose management tokens" and "route CMA calls through a server-side proxy."
 
 ## Advisory vs action skills
 

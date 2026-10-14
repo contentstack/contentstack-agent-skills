@@ -1,6 +1,6 @@
 ---
 title: Authoring conventions
-description: Conventions for writing Contentstack skills: structure, frontmatter, security, references, and examples.
+description: "Conventions for writing Contentstack skills: structure, frontmatter, security, references, and examples."
 ---
 
 # Authoring conventions

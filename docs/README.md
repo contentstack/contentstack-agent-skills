@@ -1,6 +1,6 @@
 ---
 title: Contentstack Agent Skills
-description: Documentation for the Contentstack agent skills bundle: Contentstack-aware instruction sets for Claude Code, claude.ai, Cursor, Codex, GitHub Copilot, Gemini, and the skills CLI.
+description: "Documentation for the Contentstack agent skills bundle: Contentstack-aware instruction sets for Claude Code, claude.ai, Cursor, Codex, GitHub Copilot, Gemini, and the skills CLI."
 ---
 
 # Contentstack Agent Skills

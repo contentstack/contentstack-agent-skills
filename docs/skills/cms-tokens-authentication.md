@@ -1,6 +1,6 @@
 ---
 title: Tokens & Authentication
-description: Choose the right Contentstack authentication method and token type for frontend, backend, automation, and third-party apps: with security, rate-limit, and SSO guidance.
+description: "Choose the right Contentstack authentication method and token type for frontend, backend, automation, and third-party apps: with security, rate-limit, and SSO guidance."
 ---
 
 # Tokens & Authentication

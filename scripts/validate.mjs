@@ -71,6 +71,18 @@ function markdownFiles(dir) {
   );
 }
 
+// --- Frontmatter in skills/ and docs/ -------------------------------------
+// A plain (unquoted) YAML value can't contain ": " or " #"; strict parsers reject the whole file.
+for (const md of [...markdownFiles(skillsDir), ...markdownFiles(join(root, "docs"))]) {
+  const fm = readFileSync(md, "utf8").match(/^---\n([\s\S]*?)\n---\n/);
+  for (const [, key, value] of fm?.[1].matchAll(/^([A-Za-z_-]+):[ \t]+(.+)$/gm) ?? []) {
+    if (/^["'>|[{]/.test(value)) continue;
+    if (/: | #/.test(value) || value.endsWith(":")) {
+      fail(`${md.slice(root.length + 1)}: frontmatter "${key}" must be quoted (contains ": " or " #")`);
+    }
+  }
+}
+
 // --- Manifests ------------------------------------------------------------
 const manifests = [
   ".claude-plugin/plugin.json",

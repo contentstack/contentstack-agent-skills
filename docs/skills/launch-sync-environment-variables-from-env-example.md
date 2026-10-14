@@ -1,6 +1,6 @@
 ---
 title: Sync Launch env vars from .env.example
-description: Compare a local .env.example with a Contentstack Launch environment and patch the environment to add any missing keys: without exposing secrets.
+description: "Compare a local .env.example with a Contentstack Launch environment and patch the environment to add any missing keys: without exposing secrets."
 ---
 
 # Sync Launch env vars from .env.example
