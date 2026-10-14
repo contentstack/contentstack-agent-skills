@@ -24,6 +24,8 @@ def find_token():
             d = json.loads(f.read_text())
         except (OSError, ValueError):
             continue
+        if not isinstance(d, dict):
+            continue
         for k in KEYS:
             if d.get(k):
                 return d[k]

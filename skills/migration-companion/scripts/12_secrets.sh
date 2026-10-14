@@ -19,13 +19,23 @@ fi
 
 # A migration log written inside the repo must not be committed. Check every location log.sh can
 # use (MIG_LOG_DIR, then SESSION_DIR/migration-log, then <target>/.migration).
-target_abs="$(cd "$TARGET" && pwd -P)"
+# Paths are checked even if log.sh hasn't created them yet (run-all.sh logs after the evals).
+abs_path() {   # absolute, symlink-resolved path, even when the leaf doesn't exist yet
+  local d="$1" rest=""
+  case "$d" in /*) ;; *) d="$PWD/$d" ;; esac
+  d="${d%/}"
+  while [ ! -d "$d" ]; do rest="/$(basename "$d")$rest"; d="$(dirname "$d")"; done
+  printf '%s%s\n' "$(cd "$d" && pwd -P)" "$rest"
+}
+target_abs="$(abs_path "$TARGET")"
 for logdir in "${MIG_LOG_DIR:-}" "${SESSION_DIR:+$SESSION_DIR/migration-log}" "$TARGET/.migration"; do
-  [ -n "$logdir" ] && [ -d "$logdir" ] || continue
-  log_abs="$(cd "$logdir" && pwd -P)"
+  [ -n "$logdir" ] || continue
+  # <target>/.migration is only used when neither override is set; skip it unless it exists.
+  [ "$logdir" = "$TARGET/.migration" ] && [ ! -d "$logdir" ] && continue
+  log_abs="$(abs_path "$logdir")"
   case "$log_abs/" in "$target_abs"/*) ;; *) continue ;; esac   # outside the repo: fine
   if git -C "$target_abs" rev-parse --git-dir >/dev/null 2>&1; then
-    git -C "$target_abs" check-ignore -q "$log_abs" && continue
+    git -C "$target_abs" check-ignore -q "${log_abs#"$target_abs"/}/" && continue
   elif [ -f "$TARGET/.gitignore" ] && grep -Eq "^/?${log_abs#"$target_abs"/}/?$" "$TARGET/.gitignore"; then
     continue
   fi

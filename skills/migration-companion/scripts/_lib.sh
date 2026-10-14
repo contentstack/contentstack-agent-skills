@@ -44,13 +44,15 @@ search() {
 # In .env-style files only the key is kept; elsewhere long quoted literals and Contentstack-shaped
 # tokens are masked. The file and line number stay, which is all a reviewer needs.
 redact() {
-  awk -F: '{
-    file=$1; n=split(file, parts, "/"); base=parts[n]
-    rest=substr($0, length($1)+2); line=substr(rest, 1, index(rest, ":")-1); text=substr(rest, index(rest, ":")+1)
-    if (base ~ /^\.env/) { sub(/[=:].*/, "=<redacted>", text) }
+  awk '{
+    gsub(/\\/, "/")                               # Windows paths: C:\repo\.env -> C:/repo/.env
+    if (!match($0, /:[0-9]+:/)) { print; next }   # split at ":<line>:", not the first colon (C:/...)
+    file=substr($0, 1, RSTART-1); line=substr($0, RSTART+1, RLENGTH-2); text=substr($0, RSTART+RLENGTH)
+    n=split(file, parts, "/"); base=parts[n]
+    if (base ~ /^\.env/ || base ~ /\.env$/) { sub(/[=:].*/, "=<redacted>", text) }
     else {
       gsub(/(cs[a-f0-9]{12,}|blt[a-z0-9]{12,})/, "<redacted>", text)
-      gsub(/["\047][A-Za-z0-9_\/+=.-]{16,}["\047]/, "\"<redacted>\"", text)
+      gsub(/["\047`][^"\047`]{8,}["\047`]/, "\"<redacted>\"", text)   # same 8-char floor as the checks
     }
     print file ":" line ":" text
   }'
