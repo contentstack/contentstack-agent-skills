@@ -1,6 +1,6 @@
 ---
 name: developer-hub-app-architect
-description: "Turn Contentstack Developer Hub and Marketplace app ideas into concrete implementations. Choose the right UI location, map the architecture, generate boilerplate-aligned React/TypeScript code, and troubleshoot setup, SDK, manifest, proxy, and publishing issues."
+description: "Turn Contentstack Developer Hub and Marketplace app ideas into concrete implementations. Choose the right UI location, map the architecture, generate boilerplate-aligned React/TypeScript code, and troubleshoot setup, SDK, manifest, proxy, and publishing issues. Use when a user needs help designing or building a Contentstack Developer Hub or Marketplace app."
 allowed-tools: Read Grep Glob
 context: fork
 agent: plan

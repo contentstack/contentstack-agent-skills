@@ -1,6 +1,6 @@
 ---
 name: cms-roles-permissions
-description: "Advise developers on designing roles, permissions, teams, and token access in Contentstack. Explain built-in roles, custom roles, permission merging, team-based access, and token capabilities with least-privilege guidance."
+description: "Advise developers on designing roles, permissions, teams, and token access in Contentstack. Explain built-in roles, custom roles, permission merging, team-based access, and token capabilities with least-privilege guidance. Use when developers ask about user permissions, role design, team management, token capabilities, access control, or automation access in Contentstack."
 allowed-tools: Read Grep Glob
 ---
 

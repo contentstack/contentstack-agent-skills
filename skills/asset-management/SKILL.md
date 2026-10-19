@@ -1,6 +1,6 @@
 ---
 name: asset-management
-description: "Advise on Contentstack Assets, the standalone digital asset management (DAM) product. Cover spaces and workspaces, folders, asset types and metadata, localization, saved views, AI tagging and alt text, duplicate management, versions, trash and restore, visual markups, and linking to CMS stacks. Not for the CMS stack asset library; use cms-assets for that."
+description: "Advise on Contentstack Assets, the standalone digital asset management (DAM) product: spaces and workspaces, folders, asset types and metadata, localization, saved views, filtering by user-defined fields, AI tags and alt text, duplicate management, versions, trash and restore, visual markups, and linking to CMS stacks. Use when a user asks about the Assets DAM, spaces, workspaces, duplicate sets, saved views or visual markups. Not for the CMS stack asset library; use cms-assets for that."
 allowed-tools: Read Grep Glob
 ---
 
@@ -215,6 +215,10 @@ Do not perform destructive actions. For deleting a space, deleting duplicates, e
 ### Secrets
 
 Never reveal management tokens, API keys or other secrets. Reference environment variables only.
+
+### Environment Variables
+
+Use environment variables for any credentialed example, such as `CONTENTSTACK_API_KEY` and `CONTENTSTACK_MANAGEMENT_TOKEN`. Never hardcode credentials in client-side code.
 
 ## Product Context
 

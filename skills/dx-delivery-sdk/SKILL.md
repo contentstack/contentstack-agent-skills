@@ -1,6 +1,6 @@
 ---
 name: dx-delivery-sdk
-description: "Help agents write correct, production-ready TypeScript using `@contentstack/delivery-sdk` for Contentstack entries, assets, references, filtering, sorting, pagination, locale, Live Preview, and Visual Builder support. Verify SDK behavior against the Delivery SDK Spec when method names, options, or chain order matter."
+description: "Help agents write correct, production-ready TypeScript using `@contentstack/delivery-sdk` for Contentstack entries, assets, references, filtering, sorting, pagination, locale, Live Preview, and Visual Builder support. Verify SDK behavior against the Delivery SDK Spec when method names, options, or chain order matter. Use when a user asks for Contentstack Delivery SDK code, query examples, helper functions, SDK setup, stack initialization, reference inclusion, filtering, sorting, pagination, typed entry fetching, asset fetching, Live Preview setup, Visual Builder support, SSR preview handling, or debugging SDK query chains."
 allowed-tools: Read Grep Glob
 ---
 

@@ -30,7 +30,7 @@ search() {
   if [ "$HAVE_RG" -eq 1 ]; then
     local exargs=(); local d
     for d in $EXCLUDE_DIRS; do exargs+=(-g "!$d/**"); done
-    rg --no-heading --line-number --color never "${exargs[@]}" -g "*.{$globs}" -e "$regex" "$TARGET" 2>/dev/null
+    rg --hidden --no-heading --line-number --color never "${exargs[@]}" -g "*.{$globs}" -e "$regex" "$TARGET" 2>/dev/null
   else
     local inc=() exc=() e d
     IFS=',' read -ra _exts <<< "$globs"
@@ -38,6 +38,26 @@ search() {
     for d in $EXCLUDE_DIRS; do exc+=(--exclude-dir="$d"); done
     grep -rEn "${inc[@]}" "${exc[@]}" -e "$regex" "$TARGET" 2>/dev/null
   fi
+}
+
+# redact — mask secret values in "file:line:match" output so reports and logs never carry them.
+# In .env-style files only the key is kept; elsewhere long quoted literals and Contentstack-shaped
+# tokens are masked. The file and line number stay, which is all a reviewer needs.
+redact() {
+  awk '{
+    gsub(/\\/, "/")                               # Windows paths: C:\repo\.env -> C:/repo/.env
+    if (!match($0, /:[0-9]+:/)) { print; next }   # split at ":<line>:", not the first colon (C:/...)
+    file=substr($0, 1, RSTART-1); line=substr($0, RSTART+1, RLENGTH-2); text=substr($0, RSTART+RLENGTH)
+    n=split(file, parts, "/"); base=parts[n]
+    if (base ~ /^\.env/ || base ~ /\.env$/) { sub(/[=:].*/, "=<redacted>", text) }
+    else {
+      gsub(/(cs[a-f0-9]{12,}|blt[a-z0-9]{12,})/, "<redacted>", text)
+      # Lines that name a credential: mask every quoted value, whatever its length.
+      if (tolower(text) ~ /(token|secret|password|passwd|api_?key|apikey|credential|auth)/) gsub(/["\047`][^"\047`]*["\047`]/, "\"<redacted>\"", text)
+      else gsub(/["\047`][^"\047`]{6,}["\047`]/, "\"<redacted>\"", text)   # lowest floor any check uses
+    }
+    print file ":" line ":" text
+  }'
 }
 
 # files_with REGEX [GLOBS] -> unique file list
@@ -56,7 +76,7 @@ add_finding() { printf '  ▸ %s\n' "$1" >> "$_TMP"; FINDINGS=$((FINDINGS+1)); }
 # check "description" REGEX [GLOBS] — flag every match of a pattern that should NOT exist
 check() {
   local desc="$1" regex="$2" globs="${3:-$CODE_EXT}" out n
-  out="$(search "$regex" "$globs")"
+  out="$(search "$regex" "$globs" | redact)"
   if [ -n "$out" ]; then
     n="$(printf '%s\n' "$out" | grep -c .)"
     { printf '  ▸ %s  [%s hit(s)]\n' "$desc" "$n"; printf '%s\n' "$out" | sed 's/^/      /'; } >> "$_TMP"

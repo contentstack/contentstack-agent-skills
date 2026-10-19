@@ -1,6 +1,6 @@
 ---
 name: cms-workflows
-description: "Advise developers on designing and configuring Contentstack workflows and publish rules for content governance. Cover stage design, transition restrictions, approval flows, publish governance, automation hooks, and common pitfalls."
+description: "Advise developers on designing and configuring Contentstack workflows and publish rules for content governance. Cover stage design, transition restrictions, approval flows, publish governance, automation hooks, and common pitfalls. Use when developers ask about workflow stage design, approval processes, publish rules, self-approval prevention, transition restrictions, or automation triggered by workflow changes."
 allowed-tools: Read Grep Glob
 ---
 

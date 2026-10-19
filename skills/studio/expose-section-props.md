@@ -1,0 +1,92 @@
+---
+name: expose-section-props
+---
+
+## When to use
+
+Expose individual component props on a Section so template authors can override them per instance. Use Studio UI, driven through Playwright per [`drive-studio-canvas-ui`](drive-studio-canvas-ui.md). Don't hand the clicks to the user or switch to the API unless they ask; that's [`author-composition-via-api`](author-composition-via-api.md).
+
+Use when a single value inside a section (headline, CTA label, image, href) needs to be overridable per template instance. Phrases: "expose this prop", "let authors override the headline", "per-instance override". Do NOT use for a swappable component subtree (use Section Slots) or a different entry list per page (Linked schema).
+
+> **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
+
+# Expose Section Props
+
+## Context
+
+> **Prerequisite: the canvas must render.** This is a canvas operation. If the section or template canvas is blank, the canvas chain isn't wired (route + Canvas URL path + the targeted environment's per-locale Base URL). Run [`setup-section-preview`](setup-section-preview.md) first: it walks the whole chain, including the env Base URL.
+
+Studio sections are reusable building blocks composed of one or more components. By default, every prop the section author bound or typed is locked: template authors can drop the section but cannot change anything inside it.
+
+**Exposing a prop** lifts a single component prop out of that locked interior and surfaces it on the section's right-panel Properties when the section is dropped onto a template. Template authors can then override the value as a literal or re-bind it to template data (e.g. `entry.title`).
+
+Three rules:
+
+- **Per-instance, not per-name.** If a section contains three Hero components, each Hero's `headline` toggles independently. Exposing one does not expose the others.
+- **Exposed As must be unique within the section.** Studio disables Save when two exposed props share the same label. Always qualify by position or role.
+- **Renaming the label is safe.** Existing template overrides keep their values. Only the displayed label changes.
+
+When the user is unsure whether they want Expose Props, use this decision table:
+
+| User wants… | Use |
+| --- | --- |
+| Different **value** per template instance (text, image, href) | Expose Prop |
+| Different **component subtree** per template instance | Section Slot |
+| Different **list of entries** per template instance | Linked schema |
+
+## Task
+
+1. **Open the section in the section canvas.** In Studio, switch to the Sections tab, find `sectionName` in the list, and open it. The section opens in its own canvas, distinct from a template canvas.
+
+2. **For each entry in `propsToExpose`, locate the component node.** Click the node on the canvas, or pick it in the Layers panel. Confirm in the right panel that the selected node is the right component instance, not its parent container, and not a sibling of the same component type.
+
+3. **(Optional) Pre-toggle exposure from the Settings tab.** With the node selected, open the right-panel **Settings** tab and toggle exposure for the props you'll expose. This pre-marks them so the Save-time modal opens with those rows already ON. Skip this if you prefer to do everything in the Save modal.
+
+4. **Click Save on the section.** The **Expose Props modal** opens, listing every candidate prop on every component in the section, grouped by component type.
+
+5. **For each candidate row, set three fields:**
+   - **Expose**: toggle ON for props in `propsToExpose`. Leave OFF for everything else. The section author's value stays locked.
+   - **Component Prop**: read-only internal prop name (e.g. `text`, `headline`, `src`, `href`). Use this to identify the row.
+   - **Exposed As**: the label template authors see. Rewrite to disambiguate in the context of the whole section: "Top hero headline", "Primary CTA label", "Card thumbnail image", not bare "headline" or "text".
+
+6. **Resolve duplicate labels.** If two exposed props end up with the same **Exposed As**, Studio disables Save. Qualify by position ("Top hero headline" / "Bottom hero headline") or by role ("Primary CTA label" / "Secondary CTA label").
+
+7. **Save the modal.** The section is persisted with its exposed-prop manifest.
+
+8. **Verify in a template.** Open any template, drag this section onto the canvas, select the section instance, and inspect the right-panel Properties. Every prop listed in `propsToExpose` must appear under its **Exposed As** label, pre-filled with the section's internal value as the starting value. Props you left OFF must NOT appear anywhere on the template-side panel.
+
+9. **Confirm per-instance isolation.** Drop the same section a second time on the same template. Override one exposed prop on instance A. Confirm that instance B and the section's internal value are unchanged.
+
+## Inputs needed from the user
+
+In this order. If unclear, ask before proceeding.
+
+1. `sectionName`: the section to edit
+2. `propsToExpose`: concrete list of `component → prop → friendly label` triples. Push back if the user says "expose everything". That defeats the purpose of a section.
+
+## Acceptance
+
+This skill succeeds only when ALL of the following are true:
+
+- [ ] The section's Save completed without a duplicate-label error
+- [ ] In the template canvas, the section instance's right-panel shows exactly the props listed in `propsToExpose`, each under its **Exposed As** label
+- [ ] Each exposed prop's input control matches the prop's type (string gets a text input, image gets an image picker, href gets a link picker)
+- [ ] Editing an exposed prop on template instance A does not affect template instance B or the section's internal value
+- [ ] Re-binding an exposed prop via the data picker (e.g. to `entry.title`) works exactly like binding a fresh component prop
+- [ ] Un-exposed props are not visible anywhere on the template-side panel
+
+If any check fails, do not claim success. Surface the failure and stop.
+
+## Common pitfalls
+
+| Pitfall | Why it bites | Fix |
+| --- | --- | --- |
+| Exposing too much | Section becomes a loose component bundle with no shape | Expose only what varies per instance. Leave structural/styling props internal |
+| Bare prop names as labels | Ambiguous once a section has multiple headings | Rename at Save time, costs nothing |
+| Confusing with Section Slots | Wrong mechanism for the need | A value per page needs Expose, a subtree per page needs a Slot, a list per page needs a Linked schema |
+| Section's internal value used as a placeholder ("TODO") | Becomes the default authors see on the template side | Set the in-section value to a sensible default |
+
+## See also
+
+- `use-section-slot` skill: for swappable component subtrees
+- `understand-linked-schemas` skill: for per-instance list data
