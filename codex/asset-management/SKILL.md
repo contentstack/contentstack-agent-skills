@@ -45,6 +45,7 @@ Teams adopting Contentstack Assets need to structure spaces and workspaces sensi
 - How do I add custom fields to my images?
 - How do I add a language to a workspace?
 - Can I save a set of filters and reuse it?
+- How do I search assets by a custom field value?
 - Can Assets tag my images and write alt text automatically?
 - How do I find and remove duplicate images?
 - I deleted a folder by mistake. Can I get it back?
@@ -98,6 +99,29 @@ Teams adopting Contentstack Assets need to structure spaces and workspaces sensi
   1. Add the language in product settings.
   2. Add it to each workspace that needs it: **Space Settings > Workspaces >** pick the workspace **> Manage Locales**.
 - Locales are enabled per workspace, so a language added in product settings does not appear in a workspace until it is added there.
+
+### Filtering assets by user-defined fields
+
+- To filter by a user-defined field in the Assets search API, send the condition in `query` and use the field's full path: `user_defined_fields.<group>.<field>`. Wrap conditions in `$and` or `$or` to combine them.
+- Every value must be an operator object, not a plain value. Supported operators are `$eq`, `$ne`, `$in`, `$nin`, `$contains`, `$lt`, `$lte`, `$gt`, `$gte`, `$exists`, `$range` and `$not`. `$regex` is not supported.
+- Each entry in `spaces` needs both a `space_uid` and a `workspace` string, for example `"main"`.
+- `search_field` only accepts `all`, `title`, `name`, `url` or `category`. It can't target user-defined fields, so use `query` for those.
+
+Example request body:
+
+```json
+{
+  "query": {
+    "$and": [
+      { "user_defined_fields.asset_rights.license_type": { "$eq": "Creative Commons" } }
+    ]
+  },
+  "limit": 50,
+  "spaces": [{ "space_uid": "<space_uid>", "workspace": "main" }]
+}
+```
+
+- Check the response body for errors after every search. Don't rely on the HTTP status alone to tell whether a request was valid.
 
 ### AI tags, alt text and colors
 
