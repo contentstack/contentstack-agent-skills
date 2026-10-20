@@ -17,7 +17,7 @@ When you ask about the Assets DAM: spaces and workspaces, folders, asset types a
 
 - **Spaces and workspaces**: a space is the top-level container, and workspaces are isolated environments inside it, created from the main workspace or a parent workspace.
 - **Folders and roles**: folder creation and least-privilege guidance.
-- **Asset types and metadata**: system, general and user-defined metadata. User-defined field types are single line text, number, select and group. Filters on user-defined fields can be saved as saved views.
+- **Asset types and metadata**: system, general and user-defined metadata. The currently supported user-defined field types are single line text, number, select and group. Filters on user-defined fields can be saved as saved views.
 - **Localization**: add a language in product settings, then add it per workspace under Space Settings > Workspaces > Manage Locales.
 - **Search**: the public Assets API search endpoint, required headers, and filtering by user-defined field.
 - **AI tags and alt text**: manual suggestions and auto-populate at upload, with their limits.

@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "contentstack-skills",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Contentstack agent skills for CMS modeling, Delivery SDK, Live Preview, Studio, Brand Kit, Developer Hub apps, Launch, and migrations.",
   "author": { "name": "Contentstack", "url": "https://www.contentstack.com" },
   "homepage": "https://developers.contentstack.com",

@@ -108,12 +108,13 @@ Teams adopting Contentstack Assets need to structure spaces and workspaces sensi
 
 Use the Assets API search endpoint. Full reference: https://www.contentstack.com/docs/developers/apis/assets-api/search
 
-- **Endpoint:** `POST https://am-api.contentstack.com/api/{object_type}/search`. `object_type` is required. Folders are not searchable here.
+- **Endpoint:** `POST <host>/api/{object_type}/search`. `object_type` is required. Folders are not searchable here.
+- **Host by region:** use the base URL for your region from the [Assets API overview](https://www.contentstack.com/docs/developers/apis/assets-api): AWS NA, AWS EU (`eu-am-api.contentstack.com`), Azure NA (`azure-na-am-api.contentstack.com`) or GCP NA (`gcp-na-am-api.contentstack.com`). The docs show the AWS NA host as `am-api.contentstack.io` on the overview and `am-api.contentstack.com` on the search page, so confirm it against the overview.
 - **Headers:** send either `authorization: Bearer <OAuth access token>` or `authtoken` (your Contentstack authtoken). A management token is not accepted. `x-cs-api-version` is required (default `4`). With `authtoken`, `organization_uid` is also required. Read tokens from environment variables.
 - **Text search:** `search_text`, `search_field` and `search_terms_operator` (`and` or `or`). `search_field` accepts only `all`, `title`, `name`, `url` or `category`, so it cannot target user-defined fields.
 - **Structured filters:** put conditions in `query`, combined with `$and` and `$or`. Filter a user-defined field by its full path: `user_defined_fields.<group>.<field>`.
 - **Operator objects:** write each condition as an operator object, for example `{ "$eq": "value" }`, not a bare value. Operators in use include `$eq`, `$ne`, `$in`, `$nin`, `$contains`, `$lt`, `$lte`, `$gt`, `$gte`, `$exists`, `$range` and `$not`. `$regex` is not supported. The public page documents `$and` and `$or` explicitly and does not list the comparison operators, so tell the user to test their filter.
-- **Scope and paging:** `spaces` limits the search. Give each entry a `space_uid` and a `workspace` string such as `"main"`. Use `limit` and `skip` for paging, and `fields` to trim the response.
+- **Scope and paging:** `spaces` limits the search and is a plain array of space UIDs, as in the docs example. Use `limit` and `skip` for paging, and `fields` to trim the response.
 - Deleted items are excluded unless `include_deleted_items` or `filter_only_deleted_items` is set.
 
 Example request body:
@@ -126,7 +127,7 @@ Example request body:
     ]
   },
   "limit": 50,
-  "spaces": [{ "space_uid": "<space_uid>", "workspace": "main" }]
+  "spaces": ["<space_uid>"]
 }
 ```
 
@@ -224,7 +225,7 @@ Never reveal management tokens, API keys or other secrets. Reference environment
 
 ### Environment Variables
 
-Use environment variables for any credentialed example, such as `CONTENTSTACK_API_KEY` and `CONTENTSTACK_MANAGEMENT_TOKEN`. Never hardcode credentials in client-side code.
+Use environment variables for any credentialed example, such as `CONTENTSTACK_AUTHTOKEN` or `CONTENTSTACK_OAUTH_ACCESS_TOKEN` and `CONTENTSTACK_ORGANIZATION_UID`. The Assets API does not accept management tokens. Never hardcode credentials in client-side code.
 
 ## Product Context
 
