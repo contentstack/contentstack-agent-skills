@@ -24,11 +24,12 @@ Agent skills close that gap. They give the assistant Contentstack-specific knowl
 
 ## What's in the bundle
 
-The skills span six Contentstack product areas:
+The skills span seven Contentstack product areas:
 
 | Product | Skills |
 | --- | --- |
 | **CMS** | Assets · Branches & Aliases · Data Modeling · Entries · Environments & Publishing · Localization · Releases · Roles & Permissions · Taxonomy · Tokens & Authentication · Variants & Personalization · Webhooks · Workflows |
+| **Assets** | Asset Management |
 | **Developer Experience** | Delivery SDK · Contentstack Kickstart Next · Migrate JS→TS SDK · Live Preview & Visual Editor Support · Migration Companion |
 | **Studio** | Contentstack Studio |
 | **Launch** | Sync env vars from `.env.example` · Trigger & Monitor Deployments |

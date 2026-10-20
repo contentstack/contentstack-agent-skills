@@ -59,7 +59,7 @@ Teams adopting Contentstack Assets need to structure spaces and workspaces sensi
 ## Workflow Summary
 
 1. Confirm the user means the Assets DAM, not the CMS asset library.
-2. Identify the topic: structure, metadata, AI, duplicates, versions, trash, markups, editing, or CMS integration.
+2. Identify the topic: structure, metadata, AI, duplicates, versions, trash, markups, or CMS integration.
 3. Answer with documented behavior using the product's terminology.
 4. Flag limits and irreversible actions.
 5. Link to the relevant docs page for anything undocumented or likely to change.
@@ -90,7 +90,7 @@ Teams adopting Contentstack Assets need to structure spaces and workspaces sensi
 
 - Metadata comes in layers: **system metadata** (read-only: file name, UID, URLs, MIME type, size, created and modified details), **general metadata**, and **user-defined metadata** from custom fields.
 - Each **asset type** maps to one MIME type and one file extension. On upload, a matching type applies automatically and its fields appear. System types cover images, audio, video, documents and archives, and you can add custom types.
-- User-defined fields are reusable across asset types. The supported field types are single line text, number, select and group. Do not suggest other types, such as multi line text, date, boolean or link.
+- User-defined fields are reusable across asset types. The currently supported field types are single line text, number, select and group. The product docs have listed this set differently over time, so point the user to the Asset Modeling docs if they need a type that isn't on this list.
 - Mandatory fields must be filled before an upload or save can finish. Use them sparingly so uploads are not blocked on optional information.
 - Edit metadata for an individual asset in the configurable metadata panel.
 - **Filters and saved views:** User-defined fields can be used as filters when browsing assets, so well-modeled fields make the library searchable. A filter combination can be saved as a **saved view** and reused later instead of rebuilding the filters each time. Advise modeling fields with filtering in mind, for example a select field for campaign or usage rights.
@@ -103,12 +103,17 @@ Teams adopting Contentstack Assets need to structure spaces and workspaces sensi
   2. Add it to each workspace that needs it: **Space Settings > Workspaces >** pick the workspace **> Manage Locales**.
 - Locales are enabled per workspace, so a language added in product settings does not appear in a workspace until it is added there.
 
-### Filtering assets by user-defined fields
+### Searching assets and filtering by user-defined fields
 
-- To filter by a user-defined field in the Assets search API, send the condition in `query` and use the field's full path: `user_defined_fields.<group>.<field>`. Wrap conditions in `$and` or `$or` to combine them.
-- Every value must be an operator object, not a plain value. Supported operators are `$eq`, `$ne`, `$in`, `$nin`, `$contains`, `$lt`, `$lte`, `$gt`, `$gte`, `$exists`, `$range` and `$not`. `$regex` is not supported.
-- Each entry in `spaces` needs both a `space_uid` and a `workspace` string, for example `"main"`.
-- `search_field` only accepts `all`, `title`, `name`, `url` or `category`. It can't target user-defined fields, so use `query` for those.
+Use the Assets API search endpoint. Full reference: https://www.contentstack.com/docs/developers/apis/assets-api/search
+
+- **Endpoint:** `POST https://am-api.contentstack.com/api/{object_type}/search`. `object_type` is required. Folders are not searchable here.
+- **Headers:** send either `authorization: Bearer <OAuth access token>` or `authtoken` (your Contentstack authtoken). A management token is not accepted. `x-cs-api-version` is required (default `4`). With `authtoken`, `organization_uid` is also required. Read tokens from environment variables.
+- **Text search:** `search_text`, `search_field` and `search_terms_operator` (`and` or `or`). `search_field` accepts only `all`, `title`, `name`, `url` or `category`, so it cannot target user-defined fields.
+- **Structured filters:** put conditions in `query`, combined with `$and` and `$or`. Filter a user-defined field by its full path: `user_defined_fields.<group>.<field>`.
+- **Operator objects:** write each condition as an operator object, for example `{ "$eq": "value" }`, not a bare value. Operators in use include `$eq`, `$ne`, `$in`, `$nin`, `$contains`, `$lt`, `$lte`, `$gt`, `$gte`, `$exists`, `$range` and `$not`. `$regex` is not supported. The public page documents `$and` and `$or` explicitly and does not list the comparison operators, so tell the user to test their filter.
+- **Scope and paging:** `spaces` limits the search. Give each entry a `space_uid` and a `workspace` string such as `"main"`. Use `limit` and `skip` for paging, and `fields` to trim the response.
+- Deleted items are excluded unless `include_deleted_items` or `filter_only_deleted_items` is set.
 
 Example request body:
 

@@ -35,4 +35,5 @@ Read-only advisory. Never uploads, deletes, publishes, or modifies assets. Deliv
 
 ## Related
 
+- For the standalone Assets DAM (spaces, workspaces, duplicate sets), see [Asset Management](asset-management.md).
 - [Environments & Publishing](cms-environments-publishing.md) · [Entries](cms-entries.md) · [Data Modeling Best Practices](cms-data-modeling-best-practices.md)

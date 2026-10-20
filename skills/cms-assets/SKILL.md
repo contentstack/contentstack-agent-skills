@@ -1,6 +1,6 @@
 ---
 name: cms-assets
-description: "Advise developers on organizing, delivering, and transforming assets in Contentstack. Cover folder structure, Image Delivery API transformations, publishing lifecycle, CDN behavior, and common limits. Use when developers ask about uploading, organizing, delivering, transforming, publishing, or troubleshooting images and other media files in Contentstack."
+description: "Advise developers on organizing, delivering, and transforming assets in Contentstack. Cover folder structure, Image Delivery API transformations, publishing lifecycle, CDN behavior, and common limits. Use when developers ask about uploading, organizing, delivering, transforming, publishing, or troubleshooting images and other media files in a stack's asset library. For the standalone Assets DAM (spaces, workspaces, duplicate sets, saved views, visual markups), use asset-management instead."
 allowed-tools: Read Grep Glob
 ---
 
@@ -12,7 +12,9 @@ Advise developers on organizing, delivering, and transforming assets in Contents
 
 ## When to Use
 
-Use when developers ask about uploading, organizing, delivering, transforming, publishing, or troubleshooting images and other media files in Contentstack.
+Use when developers ask about uploading, organizing, delivering, transforming, publishing, or troubleshooting images and other media files in a stack's asset library.
+
+For the standalone Assets DAM product (spaces, workspaces, duplicate sets, saved views, visual markups), use the `asset-management` skill instead.
 
 ## User Problem
 
