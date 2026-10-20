@@ -93,6 +93,7 @@ Teams adopting Contentstack Assets need to structure spaces and workspaces sensi
 - User-defined fields are reusable across asset types. The currently supported field types are single line text, number, select and group. The product docs have listed this set differently over time, so point the user to the Asset Modeling docs if they need a type that isn't on this list.
 - Mandatory fields must be filled before an upload or save can finish. Use them sparingly so uploads are not blocked on optional information.
 - Edit metadata for an individual asset in the configurable metadata panel.
+- User-defined fields exist only in the Assets (DAM) product. The CMS stack asset library and its Management API don't read or update them, so direct any request to read or write custom metadata from code to the Assets (DAM) API. See the Assets API reference at https://www.contentstack.com/docs/developers/apis/assets-api for the current endpoints.
 - **Filters and saved views:** User-defined fields can be used as filters when browsing assets, so well-modeled fields make the library searchable. A filter combination can be saved as a **saved view** and reused later instead of rebuilding the filters each time. Advise modeling fields with filtering in mind, for example a select field for campaign or usage rights.
 
 ### Localization

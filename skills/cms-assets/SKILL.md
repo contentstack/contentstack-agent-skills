@@ -1,6 +1,6 @@
 ---
 name: cms-assets
-description: "Advise developers on organizing, delivering, and transforming assets in Contentstack. Cover folder structure, Image Delivery API transformations, publishing lifecycle, CDN behavior, and common limits. Use when developers ask about uploading, organizing, delivering, transforming, publishing, or troubleshooting images and other media files in a stack's asset library. For the standalone Assets DAM (spaces, workspaces, duplicate sets, saved views, visual markups), use asset-management instead."
+description: "Advise developers on organizing, delivering, and transforming assets in Contentstack. Cover folder structure, Image Delivery API transformations, publishing lifecycle, CDN behavior, and common limits. Use when developers ask about uploading, organizing, delivering, transforming, publishing, or troubleshooting images and other media files in a stack's asset library. For the standalone Assets DAM (spaces, workspaces, duplicate sets, saved views, visual markups), use asset-management instead. Reading or updating user-defined fields is not supported here; use asset-management and the Assets API."
 allowed-tools: Read Grep Glob
 ---
 
@@ -15,6 +15,8 @@ Advise developers on organizing, delivering, and transforming assets in Contents
 Use when developers ask about uploading, organizing, delivering, transforming, publishing, or troubleshooting images and other media files in a stack's asset library.
 
 For the standalone Assets DAM product (spaces, workspaces, duplicate sets, saved views, visual markups), use the `asset-management` skill instead.
+
+This skill does not cover reading or updating user-defined fields (custom metadata). The stack asset library doesn't support them. Route those requests to the `asset-management` skill, which points to the Assets (DAM) API.
 
 ## User Problem
 
