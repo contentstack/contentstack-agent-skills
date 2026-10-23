@@ -8,7 +8,7 @@
       "name": "contentstack-skills",
       "source": "./",
       "description": "Contentstack agent skills for CMS modeling, Delivery SDK, Live Preview, Studio, Brand Kit, Developer Hub apps, Launch, and migrations.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "category": "development",
       "tags": ["contentstack", "cms", "headless-cms", "studio"]
     }

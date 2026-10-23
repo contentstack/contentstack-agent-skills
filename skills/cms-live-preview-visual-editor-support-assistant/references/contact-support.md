@@ -12,7 +12,7 @@ with Contentstack Support.
 
 | Symptom | What it actually is |
 |---|---|
-| The Visual Experience or builder-mode option is absent from navigation | The plan or org flag was never enabled for that stack. |
+| The Visual Experience or builder-mode option is absent from navigation | First check the one gate the user can see: Live Preview enabled on the stack under Settings → Visual Experience. If it is on, the plan or org flag was never enabled for that stack. See `visual-experience-navigation-missing-for-the-stack` in faq-integration.md. |
 | Custom Preview URLs or Open in New Tab are unavailable | Both are plan-gated. |
 
 ## Not Contentstack at all
@@ -20,7 +20,7 @@ with Contentstack Support.
 | Symptom | What it actually is |
 |---|---|
 | A previously working `localhost` preview stops working, console shows a local network access error | Chrome's Local Network Access policy now blocks the app origin from framing localhost. Only the user can grant the permission, in the browser. |
-| Preview pane blank, and the site sits behind platform password protection or third-party SSO | Those screens set `X-Frame-Options: DENY` on themselves. Contentstack cannot inject headers into a browser-originated iframe request. Workarounds, cheapest first: enable **Open in New Tab**, which renders the site outside the iframe so frame headers stop applying; otherwise disable protection on the preview deployment, or front the **preview deployment only** with a server-side proxy that replaces the header with `Content-Security-Policy: frame-ancestors 'self' https://app.contentstack.com` using the exact app host for the stack's region (for example `https://eu-app.contentstack.com`), not a `https://*.contentstack.com` wildcard (never just strip it: that makes the protected site frameable by any origin). A bypass token in the Base URL does not work: see `base-url-query-string-corrupts-preview-url` in faq-integration.md. |
+| Preview pane blank, and the site sits behind platform password protection or third-party SSO | Those screens set `X-Frame-Options: DENY` on themselves. Contentstack cannot inject headers into a browser-originated iframe request. Workarounds, cheapest first: for Live Preview, enable **Open in New Tab**, which renders the site outside the iframe so frame headers stop applying (Visual Editor does not support it, so this does not help there); otherwise disable protection on the preview deployment, or front the **preview deployment only** with a server-side proxy that replaces the header with `Content-Security-Policy: frame-ancestors 'self' https://app.contentstack.com` using the exact app host for the stack's region (for example `https://eu-app.contentstack.com`), not a `https://*.contentstack.com` wildcard (never just strip it: that makes the protected site frameable by any origin). A bypass token in the Base URL does not work: see `base-url-query-string-corrupts-preview-url` in faq-integration.md. |
 | Ad slots, consent widgets, or other host-dependent third-party scripts misbehave in the pane | Those scripts key off the top-level origin, which is the Contentstack app inside an iframe. Expected, not a preview defect. |
 
 ## How to hand it over
