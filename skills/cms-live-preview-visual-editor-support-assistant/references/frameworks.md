@@ -29,7 +29,7 @@ export function LivePreviewInit() {
     ContentstackLivePreview.init({
       ssr: false,
       mode: "builder",
-      stackSdk: stack.config,
+      stackSdk: stack.config, // @contentstack/delivery-sdk; with the legacy contentstack SDK pass the Stack instance
       stackDetails: { apiKey: API_KEY, environment: ENVIRONMENT },
     });
   }, []);
@@ -115,7 +115,7 @@ render:
 ContentstackLivePreview.init({
   ssr: false,
   mode: "builder",
-  stackSdk: stack.config,
+  stackSdk: stack.config, // @contentstack/delivery-sdk; with the legacy contentstack SDK pass the Stack instance
   stackDetails: { apiKey: API_KEY, environment: ENVIRONMENT },
 });
 ```
