@@ -140,8 +140,8 @@ the fixes here will help.
 - **root_cause**: The preview renders inside a cross-origin iframe. Third-party scripts whose targeting or delivery logic depends on the top-level host, referrer, or first-party storage see the iframe context instead of the real site and behave differently. Not a Contentstack request failure: the calls fire and fail at the third party's delivery stage. This is inherent to rendering the site in an iframe and there is no product-side fix for it.
 - **fix**:
   1. Where the third party allows it, add the Contentstack app origin to its allowed-referrer or allowed-domain configuration.
-  2. Use **Open in New Tab**, which renders the preview outside the iframe so the third party sees the real host. It is plan-gated; if it is missing, see `contact-support.md`.
+  2. In Live Preview, use **Open in New Tab**, which renders the preview outside the iframe so the third party sees the real host. It is plan-gated; if it is missing, see `contact-support.md`. Visual Editor does not support it and always renders in its canvas iframe, so use step 1 or 3 there.
   3. Where neither is possible, exclude those third-party scripts when the preview parameters are present, so authors preview content without them rather than with a broken version of them.
-- **verification**: Use Open in New Tab rather than the preview panel and confirm the third-party content renders. That difference confirms the iframe context is the trigger.
+- **verification**: In Live Preview, use Open in New Tab rather than the preview panel and confirm the third-party content renders. That difference confirms the iframe context is the trigger.
 
 ---
