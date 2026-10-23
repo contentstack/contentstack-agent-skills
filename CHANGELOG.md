@@ -2,6 +2,16 @@
 
 All notable changes to the Contentstack agent skills bundle. Versions match the `version` field in every plugin manifest that declares one.
 
+## 0.3.0
+
+### New skills
+
+- `asset-management`: advisory guidance for the standalone Assets (DAM) product: spaces and workspaces, folders, asset types and user-defined fields, localization, saved views, searching the Assets API, AI tags and alt text, duplicate management, versions, trash and restore, visual markups and CMS integration.
+
+### Changed skills
+
+- **`cms-assets` routing:** scoped to the stack asset library. Assets DAM questions, and any request to read or update user-defined fields, now route to `asset-management`, since the stack asset library doesn't support user-defined fields.
+
 ## 0.2.0
 
 ### Install anywhere, from one source
