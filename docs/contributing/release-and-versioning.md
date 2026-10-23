@@ -39,7 +39,7 @@ There are no generated artifacts, so any validated commit on `main` is a coheren
 3. Add a section for the new version to [`CHANGELOG.md`](../../CHANGELOG.md), calling out renamed or removed skills.
 4. Run `node scripts/validate.mjs`.
 5. Confirm CI passes on the pull request.
-6. Merge to `main` and tag the release.
+6. Merge to `main`, tag `vX.Y.Z` on the merge commit, and publish a GitHub release whose notes are the version's `CHANGELOG.md` section.
 
 ## How updates reach users
 
