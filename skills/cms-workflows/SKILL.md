@@ -6,58 +6,35 @@ allowed-tools: Read Grep Glob
 
 # Workflows & Publish Rules
 
-## Description
+Advise on content governance with workflows and publish rules: stage design, transition restrictions, approvals, publish governance, automation hooks and common pitfalls.
 
-Advise developers on designing and configuring Contentstack workflows and publish rules for content governance. Cover stage design, transition restrictions, approval flows, publish governance, automation hooks, and common pitfalls.
+## When to use
 
-## When to Use
+- Designing workflow stages and transitions.
+- Setting up approval flows and preventing self-approval.
+- Choosing between workflows and publish rules.
+- Automating actions when content reaches a stage.
+- Understanding how workflows behave across branches.
 
-Use when developers ask about workflow stage design, approval processes, publish rules, self-approval prevention, transition restrictions, or automation triggered by workflow changes.
+Use another skill for:
 
-## User Problem
+- Roles and who can do what → `cms-roles-permissions`
+- Webhook receivers for workflow events → `cms-webhooks`
+- No-code automation on workflow events → `automations`
+- Scheduling and bundling publishes → `cms-releases`
+- Environments and publishing mechanics → `cms-environments-publishing`
 
-Developers need to design content governance flows that match their review process without adding unnecessary complexity or creating permission gaps.
+## Before you answer
 
-## Success Criteria
-
-Recommend the simplest workflow that satisfies the business requirement.
-Explain how stages, transitions, approvals, and publish rules differ.
-Call out limits, scope, and permission constraints clearly.
-Warn against over-engineering and unsupported assumptions.
-Suggest integration patterns when automation is needed.
-
-## Expected Inputs
-
-- Content approval process requirements
-- Team roles and responsibilities
-- Compliance or audit requirements
-- Branch or multi-environment publishing needs
-
-## Expected Outputs
-
-- Workflow stage design recommendations
-- Publish rule configuration guidance
-- Approval flow patterns
-- Integration recommendations using webhook events
-- Warnings about complexity and permission limitations
-
-## Example User Requests
-
-- How many workflow stages should I have?
-- How do I prevent an author from approving their own content?
-- How do publish rules differ from workflows?
-- Can I automate actions when content reaches a workflow stage?
-- How do workflows work across branches?
-
-## Workflow Summary
-
-Understand the approval process and team structure.
-Design the simplest workflow that meets the requirement.
-Add publish rules only when additional governance is needed.
-Describe integration points for automation and auditability.
-Warn about complexity, scope, and permission limitations.
+Find out the approval process, the team structure and who approves, the content types and branches involved, and any automation or audit requirements.
 
 ## Instructions
+
+1. Understand the approval process and team structure.
+2. Design the simplest workflow that meets the requirement.
+3. Add publish rules only when more governance is needed.
+4. Describe integration points for automation and auditability.
+5. Warn about complexity, scope and permission limitations.
 
 ### Keep workflows simple
 
@@ -69,7 +46,7 @@ Explain that each stage defines who can advance entries, which stages are allowe
 
 ### Prevent self-advancement
 
-Explain that prevent-self-advancement requires at least two distinct reviewers. The last editor cannot advance the entry. Recommend at least two approvers or a role with multiple members.
+Prevent-self-advancement is an option you turn on per stage, not a default for every workflow. When it is on, the person who submitted the entry cannot also approve it, so at least two distinct reviewers are needed. Recommend at least two approvers or a role with multiple members for those stages.
 
 ### Publish rules are separate
 
@@ -77,40 +54,37 @@ Clarify that publish rules govern publish and unpublish conditions independently
 
 ### Automation
 
-Recommend webhook events such as entries.workflow_stage_change for external automation. Mention that the publish queue tracks pending actions and status.
+Recommend webhooks on workflow stage events for external automation. These come from the workflow module, so select them in the webhook UI instead of guessing a channel name. Mention that the publish queue tracks pending actions and status.
 
 ### Permission limitations
 
 State that only owners, admins, and developers can create workflows and publish rules. Management tokens cannot change workflow stages or configure rules that require user approval; user-scoped auth or OAuth tokens are needed for programmatic stage transitions.
 
-## Output Format
+## MCP tools
 
-Be concise and practical.
-Prefer recommendations over theory.
-Use bullets when listing options or rules.
-Call out constraints and limits explicitly.
-Do not provide instructions to create, modify, or delete workflows or publish rules.
+When the Contentstack MCP server is connected, these tools read the governance setup (local server group in brackets):
 
-## Tooling Notes
+- Inspect: `get_all_workflows`, `get_a_single_workflow`, `get_publish_rules`, `get_publish_queue_activity`, `get_audit_log` (`cma-extended`); `get_publish_queue` (`cma`)
 
-Read-only advisory.
-Use Read, Grep, and Glob only.
-Do not create, modify, or delete workflows or publish rules.
-Use webhook and publish queue concepts only for explanation.
+No MCP tool creates or changes workflows, stages or publish rules, or moves an entry between stages. Make those changes in stack Settings → Workflows and Publish Rules, or with the Content Management API using user-scoped auth or OAuth.
+
+## Output
+
+Be concise and practical, with recommendations over theory. Use bullets when listing options or rules, and call out constraints and limits explicitly.
 
 ## Security
 
 ### Defaults
 
-Never expose tokens or API keys.
-Use environment variables for credentials in example code.
-Do not perform destructive actions.
-Do not recommend hardcoding secrets in client-side code.
-Route any CMA-related examples through server-side proxies when relevant.
+- Advisory by default. This skill does not create, modify, or delete workflows or publish rules.
+- Never expose tokens or API keys.
+- Use environment variables for credentials in example code.
+- Do not recommend hardcoding secrets in client-side code.
+- Route any CMA-related examples through server-side proxies when relevant.
 
 ### Destructive Actions
 
-Do not create, update, publish, unpublish, or delete workflows or publish rules. If the user asks for a procedure that would change production configuration, provide advisory guidance only.
+Do not create, update, publish, unpublish, or delete workflows or publish rules. If the user asks for a procedure that would change production configuration, give the steps and name the stack, branch and content types affected for them to apply.
 
 ### Secrets
 
@@ -119,14 +93,3 @@ Never reveal management tokens, API keys, or auth tokens. Use placeholders and e
 ### Environment Variables
 
 Use environment variables for any credentials or secret values in examples. Prefer server-side access patterns for CMA-related operations.
-
-## Product Context
-
-- - Product: CMS
-- - Description: Contentstack headless CMS: content types, entries, assets, environments, publishing, workflows, webhooks, and the Content Management API (CMA).
-- - Product safety rules: - Never expose management tokens or API keys.
-- Always use environment variables for credentials.
-- Route all CMA calls through server-side proxies in browser apps.
-- Never hardcode stack API keys in client-side code.
-- - Default tools: ["CMA API", "Content Types", "Entries", "Assets", "Workflows", "Webhooks", "Environments", "Releases", "Publish Queue"]
-- - Default connectors: ["CMA Proxy", "Webhooks"]

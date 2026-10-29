@@ -5,7 +5,7 @@ description: Maintain Contentstack's Next.js kickstart with guidance for App Rou
 
 # Contentstack Kickstart Next
 
-**Slug:** `dx-kickstart-next` · **Product:** Developer Experience · **Type:** Advisory (gated repo and stack changes) · **Ships references**
+**Slug:** `dx-kickstart-next` · **Product:** Developer Experience · **Type:** Advisory (acts through MCP tools on request) · **Ships references**
 
 Helps agents build, review, debug, and extend Contentstack's `kickstart-next` repository or a close fork. It routes work into focused reference files for Next.js behavior, Contentstack delivery and preview setup, the seeded content model, local workflow, and PR review checks.
 
@@ -39,9 +39,13 @@ Ships focused reference files in `references/`:
 - `workflow.md` for setup, validation, CI, docs, and dependency work.
 - `review.md` for review severity and pre-PR checks.
 
+## MCP tools
+
+With the MCP server connected, the agent checks that the code matches your stack: content types and global fields from `cma` and published entries from `cda`. It changes content types or entries only when you ask. Seeding uses `csdx cm:stacks:seed`, not MCP.
+
 ## Safety notes
 
-Never commits real Contentstack credentials. Uses `.env.example` and docs for placeholders, keeps runtime behavior grounded in the current checkout, and verifies scripts and CI workflows before claiming they exist.
+Never commits real Contentstack credentials. Uses `.env.example` and docs for placeholders, keeps runtime behavior grounded in the current checkout, and verifies scripts and CI workflows before claiming they exist. Confirms before seeding, schema changes or any MCP write.
 
 ## Related
 

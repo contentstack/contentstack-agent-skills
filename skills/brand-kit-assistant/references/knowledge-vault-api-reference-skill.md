@@ -18,9 +18,11 @@ Operate Contentstack Knowledge Vault through the API and mapped MCP tools with r
 
 ## Behavior
 - Select the correct regional base URL.
-- Include authtoken and brand_kit_uid headers.
+- Include organization_uid and brand_kit_uid headers, plus the auth header the current API docs require.
 - Validate required IDs and payload fields before calling the API.
 - Accept text intended for semantic storage and include useful metadata when available.
+- Use `external_uid` as an upsert key when syncing from another system, so re-ingesting updates instead of duplicating.
+- Supported sources include PDF and TXT files, crawled websites and Contentstack entries. Items can be organized in folders, and search can be semantic or hybrid.
 - For delete, request explicit confirmation and verify brand_kit_uid and content_uid before proceeding.
 - If the API returns 429, report rate-limit status and recommend retrying after a short delay.
 - Support mapped MCP operations where available.

@@ -23,9 +23,13 @@ When a request touches Contentstack Studio: the Studio SDK, canvas, compositions
 
 It prefers Contentstack MCP tools when they are connected and falls back to OAuth-authenticated API calls for missing operations.
 
+## MCP tools
+
+Studio is MCP-first for the operations the server supports: content types, entries and publishing through the `cma` group. Its `install-contentstack-mcp` guide discovers and verifies the server. The Studio API project list and configuration, and some token and Live Preview operations, still need OAuth HTTP or the Studio UI.
+
 ## Safety notes
 
-Resolves credentials OAuth-first: it asks before reading or refreshing a stored OAuth session from another tool, and uses a session `authtoken` only as a last resort. Confirms before creating or changing stacks, content types, entries, compositions or Studio projects. Never prints tokens or `.env` contents, never weakens TLS verification, and never ships permissive frame headers outside the canvas route.
+Resolves credentials OAuth-first: it asks before reading or refreshing a stored OAuth session from another tool, and uses a session `authtoken` only as a last resort. Verifies the target stack with a read call before MCP work. Confirms before creating or changing stacks, content types, entries, compositions or Studio projects, whether through MCP or HTTP. Never prints tokens or `.env` contents, never weakens TLS verification, and never ships permissive frame headers outside the canvas route.
 
 ## Example prompts
 

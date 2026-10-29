@@ -18,7 +18,7 @@ When you want to migrate Delivery SDK code from JavaScript to TypeScript, compar
 - **Packages & imports**: install `@contentstack/delivery-sdk@latest`; switch imports; add `@contentstack/persistence-plugin` for cache and `@contentstack/utils` for utils.
 - **Key API mappings**: `contentstack.stack(...)` (not `Stack(...)`); `stack.contentType(...).entry(...).asset(...).query().fetch().find()`, plus `paginate()`, `next()`, `previous()`, `locale()`, `includeReference()`, `includeEmbeddedItems()`, `includeContentType()`, `includeCount()`, and taxonomy methods.
 - **Typed results**: generics on `fetch<BlogEntry>()`.
-- **Cache**: install the persistence plugin and pass `cacheOptions` for policies other than `Policy.IGNORE_CACHE`.
+- **Cache**: install `@contentstack/persistence-plugin` and pass a `PersistenceStore` as `cacheOptions.persistenceStore` for policies other than `Policy.IGNORE_CACHE`.
 - **Utils**: install `@contentstack/utils` separately and call `Utils.jsonToHTML(...)`.
 - **Sync**: TypeScript uses `stack.sync({ locale })` without `init: true`.
 - **Limitations**: 8KB URL limit; no multiple content-type references in a single query; no direct Global Field schema querying (use `include_global_field_schema`); `assetFields` support is region-limited to NA.
@@ -31,9 +31,13 @@ When you want to migrate Delivery SDK code from JavaScript to TypeScript, compar
 - "How do I rewrite cache policy usage for the TypeScript SDK?"
 - "Convert this taxonomy query from the JavaScript SDK to TypeScript."
 
+## MCP tools
+
+The migration is a code transformation and needs no MCP tools. If the server is connected, `get_all_entries_cdn` (`cda`) can confirm a rewritten query returns the same entries, and `get_a_single_content_type` (`cma`) shows the field UIDs the code relies on.
+
 ## Safety notes
 
-Never invents SDK methods not present in the reference docs. Replaces any secrets in samples with placeholders; uses environment variables for credentials.
+Never invents SDK methods not present in the reference docs. Replaces any secrets in samples with placeholders; uses environment variables for credentials. Uses MCP tools only to read the stack.
 
 ## Related
 
