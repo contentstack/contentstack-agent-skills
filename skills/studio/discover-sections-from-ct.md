@@ -44,7 +44,7 @@ This skill is **discovery, not authoring**. It doesn't write any composition. It
      | `data_type: "json_rte"` | **`rich-text`** | `json_rte` |
      | `data_type: "text"` + `field_metadata.allow_rich_text` (HTML RTE) | **`rich-text`** | `any` |
      | `data_type: "text"` + `field_metadata.markdown` | **`rich-text`** | `any` |
-     | `data_type: "text"` + `multiline`, no rich-text flags | `Text` | `plaintext` |
+     | `data_type: "text"` + `multiline`, no rich-text flags | `text` | `plaintext` |
 
      Choose **`collapsible-text`** instead wherever the design truncates the copy ("read more", accordion). If any such field permits **embedded entries or assets**, record it. The project needs one `registerRTERenderer` call, and unregistered embeds render as bare delivery-API spans. See [`register-json-rte`](register-json-rte.md#rte-field-to-component).
    - `body` / `content` / `description` that is plain long text maps to a Text component, **and record it as an upgrade candidate** (below).
