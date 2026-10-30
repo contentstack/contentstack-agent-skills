@@ -41,7 +41,8 @@ Each description's "Use when…" clause lists the requests that should load it. 
 | Designing or refactoring content models | [Data Modeling Best Practices](../skills/cms-data-modeling-best-practices.md) |
 | Setting up or debugging Live Preview, Visual Editor (Visual Builder) or Timeline | [Live Preview & Visual Editor Support](../skills/cms-live-preview-visual-editor-support-assistant.md) |
 | Fetching entries, CDA queries, pagination, bulk ops | [Entries](../skills/cms-entries.md) |
-| Uploading, transforming, delivering assets | [Assets](../skills/cms-assets.md) |
+| Uploading, transforming, delivering assets in a stack | [Assets](../skills/cms-assets.md) |
+| Assets DAM: spaces, workspaces, duplicate sets, saved views, visual markups | [Asset Management](../skills/asset-management.md) |
 | Classifying content, category hierarchies | [Taxonomy](../skills/cms-taxonomy.md) |
 | Workflow stages, approvals, publish rules | [Workflows & Publish Rules](../skills/cms-workflows.md) |
 | Environments, publishing, delivery/preview tokens, Sync API | [Environments & Publishing](../skills/cms-environments-publishing.md) |

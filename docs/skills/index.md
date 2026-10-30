@@ -5,7 +5,7 @@ description: The full catalog of Contentstack Agent Skills, grouped by product.
 
 # Skills reference
 
-The bundle includes 23 skills across six Contentstack products. Each links to a dedicated page with what it does, when it triggers, example prompts, and its safety notes.
+The bundle includes 24 skills across seven Contentstack products. Each links to a dedicated page with what it does, when it triggers, example prompts, and its safety notes.
 
 > Each skill page mirrors its canonical `skills/<slug>/SKILL.md`. The slug is the skill's identifier: use it with the [`skills` CLI](../get-started/skills-cli.md).
 
@@ -36,6 +36,12 @@ The bundle includes 23 skills across six Contentstack products. Each links to a 
 | [Migrate JS→TS SDK](dx-migrate-js-to-ts-sdk.md) | `dx-migrate-js-to-ts-sdk` | Migrating Delivery SDK code from the JavaScript SDK to the TypeScript SDK. |
 | [Live Preview & Visual Editor Support](cms-live-preview-visual-editor-support-assistant.md) | `cms-live-preview-visual-editor-support-assistant` | Setting up or debugging Live Preview, Visual Editor (Visual Builder) or Timeline across CSR, SSR, SSG, BFF. |
 | [Migration Companion](migration-companion.md) | `migration-companion` | Guided Contentful → Contentstack migration: content and application code. |
+
+## Assets
+
+| Skill | Slug | What it helps with |
+| --- | --- | --- |
+| [Asset Management](asset-management.md) | `asset-management` | Assets DAM spaces and workspaces, metadata, localization, saved views, AI tags, duplicates, versions, trash and restore, visual markups. |
 
 ## Studio
 

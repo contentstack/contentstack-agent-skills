@@ -64,6 +64,7 @@ Use `--list` to see every skill, or leave out `--skill` to install them all. The
 
 | Slug | Title | Product | What it helps with |
 | --- | --- | --- | --- |
+| `asset-management` | Asset Management | Assets | Assets DAM spaces and workspaces, folders, asset types and metadata, localization, saved views, AI tagging and alt text, duplicate management, versions, trash and restore, visual markups, and CMS integration. |
 | `brand-kit-assistant` | Brand Kit Assistant | Brand Kit | Brand Kit concepts, setup, governance, Voice Profiles, Knowledge Vault, on-brand AI generation, and API-task routing. |
 | `cms-assets` | Contentstack Assets | CMS | Asset organization, image transformations, publishing lifecycle, CDN behavior, and asset limits. |
 | `cms-branches-aliases` | Branches & Aliases | CMS | Isolated content development, alias-based deployments, CI/CD integration, merge behavior, and rollback patterns. |
