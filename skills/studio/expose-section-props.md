@@ -62,7 +62,7 @@ When the user is unsure whether they want Expose Props, use this decision table:
 In this order. If unclear, ask before proceeding.
 
 1. `sectionName`: the section to edit
-2. `propsToExpose`: concrete list of `component → prop → friendly label` triples. Push back if the user says "expose everything". That defeats the purpose of a section.
+2. `propsToExpose`: concrete list of `component → prop → friendly label` triples. Take it from the approved plan: every Section in the [`plan-studio-architecture`](plan-studio-architecture.md) build sheet carries an `author can change` line, decided at plan time with the primitive library's design props (Step 2c). If the plan has none for this Section, ask rather than invent one. Push back if the user says "expose everything". That defeats the purpose of a section.
 
 ## Acceptance
 

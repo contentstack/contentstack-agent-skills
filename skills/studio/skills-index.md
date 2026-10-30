@@ -14,13 +14,13 @@ Every name below is written `<name>` for readability. Apply this rule to each. R
 
 If the user's message contains any phrase in the left column, Read the skill in the right column and follow it.
 
-> **Mandatory atomic-and-reusable rule: applies to EVERY row below.** Never register or author a component that renders more than one piece of content. Decompose it first (`decompose-jsx-to-atomics`). Check for an existing atomic or Section before creating one. Header / footer / nav / menus are shared Sections with their menus as **Repeaters over a field**, never hardcoded lists. One atomic prop binds one CT field. See the `studio` router § Standing rule.
+> **Mandatory atomic-and-reusable rule: applies to EVERY row below.** One Section per page region, always. Inside a Section, reuse a production component whole only when it is interactive or computes its values. Decompose everything else (`decompose-jsx-to-atomics`) into the primitive library (`design-component-library`). This is the Section rule, defined once in the `studio` router (`SKILL.md` § Standing rule: atomic and reusable): read it there. Check for an existing atomic or Section before creating one. Header / footer / nav / menus are shared Sections with their menus as **Repeaters over a field**, never hardcoded lists. One atomic prop binds one CT field. See the `studio` router § Standing rule.
 >
 > **Mandatory plan-first rule: applies before every build row below.** If the request is to build/create/implement anything larger than one already-scoped piece ("build me a rewards page", "implement this design", "add this page to Studio", "build the site", "migrate this route"), Read [`plan-studio-architecture`](plan-studio-architecture.md) **first** and get the plan explicitly approved. Only then run the build skills it names. Skipping this is what produces a single monolithic template with no Sections, no Section Slots and no reuse, forcing the user to re-prompt. Straight to a build skill only when the user is iterating on a piece from an already-approved plan. **Exception: a whole-project ask** ("convert my project to Studio", "make it Studio-compatible") routes to [`convert-project-to-studio`](convert-project-to-studio.md) and its scoping gate first. `plan-studio-architecture` runs only if the user picks the one-page or full-site option there.
 
 > **Mandatory auth preflight: applies before every row below.** Settle the credential before the first API call, OAuth-first per `authenticate-cma`: `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, hand the user `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (interactive, so it cannot be run for them). `403 error_code 316` means wrong org, not missing auth.
 
-> **Mandatory done-rule: applies after every build row below.** Eight deliverables are mandatory on every build and all eight fail silently: `cslp.appendTags`, `studioAttributes` + `$`-twins per component, `thumbnailUrl` per registration, `ui_preview` per Section, stack Live Preview + preview token, the `/canvas` route, **publishing every Section and Template** (an edit creates an unpublished version. Delivery keeps serving the old one), and **a template actually composed of Sections**. A single component bound to the whole page body renders perfectly and fails no other check, so count `section-composition` nodes before reporting done. Read `complete-the-build`. It is the handover gate, and `plan-studio-architecture` commits to it up front. Never report a build finished with any row outstanding.
+> **Mandatory done-rule: applies after every build row below.** Ten deliverables are mandatory on every build and all ten fail silently. They are listed once, with owners and checks, in `complete-the-build`: read the list there. It is the handover gate, and `plan-studio-architecture` commits to it up front. Never report a build finished with any row outstanding.
 
 | If the user says… | Read |
 |---|---|
@@ -60,8 +60,10 @@ If the user's message contains any phrase in the left column, Read the skill in 
 | variant alias, Personalize-driven render, cookie/header variant | `wire-variant-alias` |
 | share state between sections, cart count in Studio, use my Redux store, Bring Your Own State, BYOS, stateVariable, getState/setState, action prop, author should pick which function the button calls | `wire-studio-state` |
 | set up canvas route, MISSING_CANVAS_URL, where does StudioCanvas mount, canvas iframe is blank in Studio | `setup-section-preview` |
-| make every URL go through Studio, wire catch-all template route, template URL 404s, wildcard or single page, header/footer disappeared after adding Studio, duplicate header on Studio pages, my 404 page stopped working | `setup-template-preview-routes` |
+| make every URL go through Studio, wire catch-all template route, template URL 404s, wildcard or single page, header/footer disappeared after adding Studio, duplicate header on Studio pages | `setup-template-preview-routes` |
 | CSR or SSR, Next App Router setup, hydration mismatch, SEO meta missing, Live Preview broken after switching render mode | `configure-csr-vs-ssr` |
+| what does a CSR page need, what does an SSR page need, CSR vs SSR with Live Preview, Visual Editor with SSR, convert to SSR, switch to CSR, Live Preview doesn't update, Visual Editor doesn't show my edits, Edit button shows in Visual Editor, Edit button missing on the preview site, Visual Editor shows Live Preview behaviour | `csr-and-ssr-requirements` |
+| 404 page, not found page, unknown URL shows 500 / a blank page / an error, bad slug, my 404 page stopped working after adding Studio, Studio-authored 404 | `handle-404-pages` |
 | here's the design, here's a Figma link, here's a screenshot, map this design to Studio, decompose this design, how would I build this in Studio, what components do I need for this design | `decompose-design` |
 | here are all the page designs, decompose this whole site, multi-page decomposition, site-wide plan, build the marketing site, N templates | `decompose-site` |
 | here's the whole Figma board, build every section in this file, all the hero variants, turn this design file into sections, decompose the whole design file | `decompose-site` |
@@ -140,7 +142,7 @@ If the user's message contains any phrase in the left column, Read the skill in 
 | give me a Studio tour, walk me through Studio | `studio-tour` |
 | plan a Studio project, architecture plan, sections vs templates for my app, **build me a page, implement this design in Studio, add this page to Studio, build the site, create a page in Studio** | `plan-studio-architecture` (**first, then the build skills it names**) |
 
-If several rows match, follow the ordering the sequence implies: `analyze-project-fit` first, then provisioning, install, configure, register, author, verify, and troubleshoot. `enable-visual-experience` gates install. `install-studio` gates everything after.
+If several rows match, follow the ordering the sequence implies (§ Ordering hints): `analyze-project-fit` first, because it is read-only and every state change after it depends on what it finds. Then Live Preview, provisioning, install, configure, the primitive library, register, author, verify, and troubleshoot. `enable-visual-experience` gates install. `install-studio` gates everything after.
 
 ---
 
@@ -179,7 +181,7 @@ Grouped by intent. Use when the user's message is Studio-shaped but no trigger p
 
 ### 4. Components — plan and register
 
-- **design-component-library**: meta-planning skill. Apply the atom + layout taxonomy to the user's design system BEFORE any registration is written. Emits a decomposition sheet with the 10-primitive proposal and DS token gaps flagged. Run first when a project is starting fresh with a component library or when the user asks "what should I register".
+- **design-component-library**: meta-planning skill. Apply the atom + layout taxonomy to the user's design system BEFORE any registration is written. Emits a decomposition sheet with the 10-primitive proposal and DS token gaps flagged. Required on every build (`plan-studio-architecture` Step 2c), fresh or migration, and whenever the user asks "what should I register".
 - **classify-existing-component**: diagnostic. Runs Q1 of the four-question framework on **one** component and stops: Atom, Layout, or Compound. Routes to the right next skill (`register-component` for atoms/layouts, `decompose-jsx-to-atomics` for JSX compounds, `decompose-design` for design-input compounds). Use when auditing an existing registry, sanity-checking before registration, or triaging "authors can't rearrange this" reports.
 - **decompose-jsx-to-atomics**: break an existing React component (often a whole page in one file) into Layer-1 atomics, Layer-2 containers and Layer-3 Sections so its parts become reusable. Run before `discover-sections` on an existing codebase. The code-input twin of `decompose-design`.
 - **register-component**: read a React component, infer prop schema, emit a `registerComponent` call.
@@ -235,8 +237,10 @@ Grouped by intent. Use when the user's message is Studio-shaped but no trigger p
 ### 10. Routes and template URLs
 
 - **setup-section-preview**: mount `<StudioCanvas />` in the app + set Canvas URL on the project.
-- **setup-template-preview-routes**: wildcard (catch-all) vs dedicated routes. Wildcard also wires site-chrome preservation + 404 handling.
+- **setup-template-preview-routes**: wildcard (catch-all) vs dedicated routes. Wildcard also wires site-chrome preservation; the 404 branch itself is `handle-404-pages`.
 - **configure-csr-vs-ssr**: choose CSR (`useCompositionData`) vs SSR (`sdk.fetchCompositionData`).
+- **csr-and-ssr-requirements**: what a CSR or SSR page needs on the visitor site, the Live Preview pane, Visual Editor and the canvas: the five Live Preview settings, `mode`/`ssr`, the Edit button, which refetch to call, converting between modes.
+- **handle-404-pages**: unknown URLs and bad slugs render the site's 404 page (real 404 on SSR, `noindex` on CSR), decided by `isCompositionNotFound` only.
 
 ### 11. Data binding
 
@@ -274,7 +278,7 @@ Grouped by intent. Use when the user's message is Studio-shaped but no trigger p
 
 ### 14. Ship and verify
 
-- **complete-the-build**: the ten always-mandatory deliverables (CSLP tags, `studioAttributes`, component + section thumbnails, Live Preview, `/canvas`, publishing, a template actually composed of Sections, builder mode, and new entries editable in Visual Editor) and the verification block that proves them. Run at the end of every build, and cite it in the plan at the start.
+- **complete-the-build**: the definition of done. Lists the ten always-mandatory deliverables, once, and the verification block that proves them. Run at the end of every build, and cite it in the plan at the start.
 - **verify-setup**: layered smoke test (Delivery / Live Preview / Visual Editor / Studio).
 - **verify-visual-parity**: brownfield migration: drive a browser to compare composed vs production Section-by-Section, classify drift by cause class, fix at the source (adapter / registration / wrapper CSS).
 - **deploy-studio-site**: Contentstack Launch project, environments and env vars, composition Deploy, Live Preview gating, region config.
@@ -310,13 +314,17 @@ Grouped by intent. Use when the user's message is Studio-shaped but no trigger p
 Some skills gate others. When multiple are relevant, run in this order:
 
 ```
-enable-visual-experience  →  provision-studio-{stack,project}  →  analyze-project-fit
+analyze-project-fit  (read-only: runs before anything that changes state)
+                                    ↓
+enable-visual-experience  →  provision-studio-{stack,project}
                                     ↓
                               convert-project-to-studio  (existing app: drives the next four)
                                     ↓
                               install-studio
                                     ↓
                               configure-studio  →  register-breakpoints
+                                    ↓
+                              design-component-library  (the primitive library, every build)
                                     ↓
                               register-component  (+ register-json-rte if json_rte fields)
                                     ↓

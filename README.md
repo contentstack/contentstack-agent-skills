@@ -87,7 +87,7 @@ Use `--list` to see every skill, or leave out `--skill` to install them all. The
 | `launch-sync-environment-variables-from-env-example` | Sync Launch environment variables from .env.example | Launch | Comparing a local `.env.example` with Launch environment variables and patching missing keys without printing secrets. |
 | `launch-trigger-and-monitor-launch-deployments` | Trigger and Monitor Launch Deployments | Launch | Triggering Launch deployments, polling deployment status, retrieving failure logs, and summarizing likely causes and next steps. |
 | `migration-companion` | Contentstack Migration Companion | Developer Experience | Guided Contentful-to-Contentstack migration workflow covering prerequisites, content migration, code migration, bundled validation scripts, and completion reporting. |
-| `studio` | Studio (preview) | Studio | Contentstack Studio end to end: SDK install, project provisioning, component registration, sections and templates, data binding, canvas and preview routes, verification, and troubleshooting. A router skill that loads one of 109 bundled specialist files per task. |
+| `studio` | Studio (preview) | Studio | Contentstack Studio end to end: SDK install, project provisioning, component registration, sections and templates, data binding, canvas and preview routes, verification, and troubleshooting. A router skill that loads one of 111 bundled specialist files per task. |
 
 ## How it works
 

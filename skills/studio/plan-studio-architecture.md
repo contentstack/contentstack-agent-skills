@@ -113,7 +113,7 @@ whenever the listing above returns any composition at all.
 
 Routing "decompose the coarse ones" isn't coverage: coarse is a judgment call, and the component that quietly holds four atomics is exactly the one that gets waved through. **Walk the whole component inventory and record a verdict for each**, using one test:
 
-> **Does it render more than one heading / image / body / list?** If yes it is **coarse**: read its render tree via [`decompose-jsx-to-atomics`](decompose-jsx-to-atomics.md). If no, it is genuinely atomic: register it as-is.
+> Apply the [Section rule](SKILL.md#section-rule) (defined once in the `studio` router). **Does it render more than one heading / image / body / list?** If no, it is genuinely atomic: it maps to a library atom (Step 2c) or registers as-is. If yes, it is **coarse**: it is **kept whole** inside its Section only if it is interactive or computes its values, and otherwise its render tree is read via [`decompose-jsx-to-atomics`](decompose-jsx-to-atomics.md).
 
 ```bash
 # Every component file, with a rough leaf count to triage by
@@ -130,7 +130,8 @@ Print the verdict table in the plan. **An unclassified component is an incomplet
 |---|---|---|---|
 | `<RewardsPage>` | 9 | coarse | decompose into 3 Sections |
 | `<Marquee>` | 1 | atomic | register as-is |
-| `<Header>` | 6 | coarse **+ shared** | decompose into one shared Section (see 0b) |
+| `<RewardsSignupForm>` | 5 | coarse, **interactive** | keep whole inside its own Section |
+| `<Header>` | 6 | coarse **+ shared** | decompose into one shared Section (see 0c) |
 
 #### 0c. Shared shells first: header, footer, nav, menus
 
@@ -202,7 +203,7 @@ Three conditions make a Section **mandatory**, but the default already is a Sect
 1. **Reuse across Templates.** A bound compound component appearing on more than one Template MUST become a Section. Otherwise every Template repeats the drop-and-bind work and any binding tweak is applied N times. **Reuse count 1 does not exempt a piece from being a Section**. It only lowers its build priority.
 2. **Schema iteration with bindings.** Any Modular Block field, multi-Reference field, group with `multiple: true`, or otherwise-iterated collection whose items need bound rendering MUST become a **List Section**, not authored inline on the Template. The iteration wiring belongs at the Section layer where it's reusable and testable. Putting it at Template level fragments it across every Template that needs the same iteration.
 
-   **A List Section has TWO build paths: pick by layout fidelity, don't default to Repeater.** If the collection has a **bespoke or asymmetric layout** (a mosaic, a feature strip, a carousel), or you are **migrating and must preserve an existing design**, build it by binding the whole array to the real production component (`type: "array"`, see [`register-component-prop-contracts`](register-component-prop-contracts.md) § Array & object props), so the component's own layout renders pixel-identically on the first pass. Use a **Repeater + Condition Block** only when the list is a **uniform** grid/row, OR items are **polymorphic** and need per-item authoring. A Repeater renders items uniformly in sequence. Choosing it for a bespoke layout is the #1 cause of first-render design drift (the "why is it a plain sequence?" re-prompt).
+   **A List Section has TWO build paths, and the [Section rule](SKILL.md#section-rule) picks between them.** If the production list component is **interactive** (a carousel, a filterable list) or **computes its layout from the items** (a mosaic whose tile sizes depend on position or count), bind the whole array to that component (`type: "array"`, see [`register-component-prop-contracts`](register-component-prop-contracts.md) § Array & object props), so its own layout renders identically. Every other list is a **Repeater** (+ **Condition Block** for polymorphic items) over the library's primitives. A Repeater renders items in sequence inside the layout primitive you give it (a grid or stack), so a uniform grid stays a grid.
 3. **Any bound region an author should be able to move, swap, or remove.** If it's a recognizable page part (hero, form band, feature grid, CTA) it's a Section, reuse count irrelevant.
 
 Build the Section first (`build-section` for Simple, `build-repeating-section` for List), THEN drop it on the Template. Direct-drop of registered components on a Template is reserved for genuine one-offs that are not a page part (a stray spacer, a single decorative element) and should be a rare line in the plan, called out as an exception with a reason.
@@ -229,28 +230,29 @@ Setting `selectedField` on a multi-field Section loses access to everything outs
 
 **The failure mode this prevents:** everything becomes a registered component, because registering is the easiest thing to do. The plan then looks complete while the author ends up with a page they can only re-bind (no reordering, no swapping, no restyling, no reuse) and never discovers that Studio had a primitive for what they wanted. Registering is one tool out of many, and it is the least author-editable of them.
 
-**Migrating an existing design? Fidelity outranks editability on the first pass.** Pick the primitive that reproduces the current render exactly, usually reuse the real production component whole (`object` / `array` binding), because its own markup + CSS already are the design. Introduce built-in decomposition and Repeaters as a SECOND, opt-in phase, once the user has confirmed the render matches and explicitly asks for per-field / per-item authoring. Decomposing on the first pass is what forces the user to re-prompt "the design doesn't match". Get parity first, add editability second.
+**Migrating an existing design follows the same [Section rule](SKILL.md#section-rule).** One Section per page region, on the first pass too. Inside each Section, the production component stays whole only when it is interactive or computes its values. Presentational markup is rebuilt from the primitive library (Step 2c), whose design props carry the existing classes and tokens, so parity comes from the library rather than from keeping the component whole. Verify parity with [`verify-visual-parity`](verify-visual-parity.md) before reporting done.
 
-**This governs a Section's internals. It never governs the page.** Keeping a carousel or a card grid whole is fidelity. Binding one component to the page's entire body is a monolith. The two are easy to confuse when the body happens to be a single modular-blocks field. Fidelity-first means this Section keeps the production component inside it. It is not permission for the Template to hold one node. A Template still gets one Section per schema scope on the first pass ([`decompose-blocks-page`](decompose-blocks-page.md)), each of which may keep its production component whole. Parity and decomposition are not in tension at that level. The measured proof is that splitting a blocks page into one Section per block type leaves the rendered output byte-identical.
+**The rule governs the page as well as each Section's internals.** Keeping a carousel whole inside its Section is allowed. Binding one component to the page's entire body is a monolith. The two are easy to confuse when the body happens to be a single modular-blocks field. A Template gets one Section per schema scope ([`decompose-blocks-page`](decompose-blocks-page.md)). The measured proof that this costs no fidelity: splitting a blocks page into one Section per block type leaves the rendered output byte-identical.
 
 Work through each piece from Steps 1 to 2 and pick from **evidence**, not convenience:
 
 | Evidence in the code / design / content model | Primitive | Skill |
 |---|---|---|
-| Plain copy (headline, body, caption, CTA label) mapping 1:1 to a field | **Built-in field component** (`Heading` / `Paragraph` / `Text` / `Image` / `Link` / `RichText`) | `build-section-component-choice` § Basic field components vs custom |
-| Interactive: local state, handlers, cookies, modals, carousel logic | **Registered component** (mandatory, built-ins can't express behavior) | `register-component` |
-| Pixel-sensitive: bespoke CSS, animation, layering | **Registered component** | `register-component` |
-| Static presentational layout (image + heading + body + link) | **Decompose into built-ins**: authors get full editing. This is the case most often wrongly registered | `build-section-component-choice` § Register it whole, or decompose it |
+| Plain copy (headline, body, caption, CTA label) mapping 1:1 to a field | **The library's content atom** (`heading`, `body-string`, `cta-button`, `media`). A **built-in** only when the library has no matching atom: `header`, `text`, `image`, `link` (names below) | `design-component-library`, `build-section-component-choice` |
+| Interactive: local state, handlers, cookies, modals, carousel logic, script-driven animation | **Registered production component, kept whole** (built-ins and atoms can't express behavior) | `register-component` |
+| Computes its values: formatters, totals, sorting, a layout derived from item count or position | **Registered production component, kept whole** | `register-component` |
+| Bespoke styling with no behavior (custom CSS, layering) | **Library primitives with design props** that carry the classes: not a whole-component registration | `design-component-library` |
+| Static presentational layout (image + heading + body + link) | **Decompose into library atoms + layout primitives**: authors get full editing. This is the case most often wrongly registered | `decompose-jsx-to-atomics` |
 | A styled shell wrapping editable content | **Registered component with a `slot` prop** + built-ins inside | `register-component`, `use-section-slot` |
 | A recognizable page part (hero, form band, feature grid, CTA) | **Section**: regardless of reuse count | `build-section` |
-| Multi-valued field with a **uniform** grid/row, OR polymorphic items needing per-item authoring | **List Section via Repeater** (+ **Condition Block** per block or CT for refs/MBs) | `build-repeating-section`, `use-repeater`, `use-condition-block` |
-| Multi-valued field with a **bespoke layout**, or **migrating an existing design** | **List Section via array-prop reuse**: bind the whole array to the real component. Its own layout renders identically, first pass | `register-component-prop-contracts` § Array & object props, `build-repeating-section` § array-prop alternative |
+| Multi-valued field rendered by presentational markup (uniform grid/row, polymorphic items needing per-item authoring) | **List Section via Repeater** (+ **Condition Block** per block or CT for refs/MBs) | `build-repeating-section`, `use-repeater`, `use-condition-block` |
+| Multi-valued field rendered by an **interactive** component (carousel) or one that **computes its layout** from the items (mosaic) | **List Section via array-prop reuse**: bind the whole array to the real component | `register-component-prop-contracts` § Array & object props, `build-repeating-section` § array-prop alternative |
 | A region a template author must fill differently per instance | **Section Slot** (filled by a Section, not a raw component) | `use-section-slot` |
 | One prop an author should override per template instance | **Exposed section prop**: cheaper than forking the Section | `expose-section-props` |
 | Same field set across several CTs | **Global Field** (+ a Slot on the Section that renders it) | `plan-studio-architecture` § Step 4 |
-| **Any rich text**: JSON RTE, HTML RTE or Markdown | **`RichText` component** (never `Heading`/`Paragraph`, which show markup as literal characters) | `register-json-rte` § Which component for which field |
-| Rich text that **truncates behind "read more" / an accordion** | **`CollapsibleText`**: same content model, plus expand/collapse | `register-json-rte` |
-| Rich text that **embeds entries or assets** | `RichText` **+ `registerRTERenderer` with `embeddedEntry` / `embeddedAsset` handlers**. Unregistered, an embedded entry renders as a bare delivery-API span (title only) | `register-json-rte` § Embedded entries and embedded assets |
+| **Any rich text**: JSON RTE, HTML RTE or Markdown | **`rich-text`** built-in (palette name "Rich Text") or the library's rich-text atom, never `header`/`text`, which show markup as literal characters | `register-json-rte` § Which component for which field |
+| Rich text that **truncates behind "read more" / an accordion** | **`collapsible-text`**: same content model, plus expand/collapse | `register-json-rte` |
+| Rich text that **embeds entries or assets** | `rich-text` **+ `registerRTERenderer` with `embeddedEntry` / `embeddedAsset` handlers**. Unregistered, an embedded entry renders as a bare delivery-API span (title only) | `register-json-rte` § Embedded entries and embedded assets |
 | One-off page owning its own copy, no CT worth creating | **Freeform template** + **Pinned Entries** | `build-freeform-template`, `pin-entry-to-freeform` |
 | "Show the latest / top N / filtered X" on a Freeform page | **Pinned Query** as a Repeater source | `pin-query-to-freeform` |
 | Data outside Contentstack (pricing, geo, inventory) | **`data` prop on `<StudioComponent>`**: not a fake CT | `wire-external-data` |
@@ -261,10 +263,33 @@ Work through each piece from Steps 1 to 2 and pick from **evidence**, not conven
 | Brand spacing / color / type scale the author should reuse | **Design tokens** registered with Studio | `import-design-tokens` |
 | Author needs to see tablet/mobile | **Breakpoints** registered at boot | `register-breakpoints` |
 
+<a id="built-in-names"></a>
+
+**Built-in components use the SDK's type names.** These are the `type` values in a composition's `ui` tree and in `BUILT_IN_COMPONENTS` / the basic-component registry of `@contentstack/studio-react` 2.0.1. The palette shows a different display name, so write both in the plan:
+
+| `type` | Palette name | Renders |
+|---|---|---|
+| `header` | Header | `<h1>`…`<h6>`, level chosen by a prop |
+| `text` | Paragraph | `<p>` with plain text |
+| `plain-text` | Text | the bare string, **no element**: it cannot take a class or carry an edit tag. Avoid it for anything an author styles or clicks |
+| `rich-text` | Rich Text | `<div>` holding the rendered rich text |
+| `collapsible-text` | Collapsible Text | rich text with expand/collapse |
+| `image` | Image | `<img>` (`imageurl` + alt text) |
+| `link` | Link | `<a>` (`href` + label + new-tab flag) |
+| `link-container`, `button`, `video`, `embed` | Link Container, Button, Video, Embed | as named |
+| `box` | Box | `<div>` with a children slot |
+| `hstack` | Columns | `<div>` laying out N columns |
+| `vstack` | Rows | `<div>` laying out N rows |
+| `repeater`, `condition-block`, `section-slot` | Repeater, Condition Block, Section Slot | structural, no markup of their own to style |
+
+`section` is deprecated (hidden from the palette, still registered so old compositions render). Never write `Heading`, `Paragraph` or `RichText` as a `type`: no component is registered under those names.
+
 **Bias check before printing the plan.** Count the primitives you selected:
 
 - **Every interactive component's behavior hardcoded, no `action` props?** Authors can place it but not wire it. If the page has buttons that should do something the author picks, that's a function + `action` prop.
-- **One Section covering a whole page?** A defect, not a shortcut. Nothing to reorder, nothing reusable, and the author never meets slots or repeaters. Run [`decompose-jsx-to-atomics`](decompose-jsx-to-atomics.md) and re-plan. A single-Section page needs a stated reason, not silence.
+- **One Section covering a whole page?** A defect under the [Section rule](SKILL.md#section-rule). Nothing to reorder, nothing reusable, and the author never meets slots or repeaters. Run [`decompose-jsx-to-atomics`](decompose-jsx-to-atomics.md) and re-plan. A single-Section page needs a stated reason (the page genuinely has one region), not silence.
+- **A production component kept whole that is neither interactive nor computing its values?** Decompose it into library primitives.
+- **Sections composed of `box` + hard-coded CSS classes instead of library primitives?** The library step (Step 2c) was skipped. Authors can't pick a spacing or a variant from a menu, so nothing is composable.
 - **Any Section whose binding is one coarse prop taking a whole object?** Decomposition was skipped. Atomic props bind one CT field each. A single prop swallowing a group renders blank when typed `any` (the binder recursively unwraps single-key objects for every type except `object`/`array`).
 - **Only registered components?** Almost certainly wrong. Re-walk the table. Plain copy belongs in built-ins, lists belong in a List Section, per-instance variation belongs in a Slot or an exposed prop.
 - **No Section Slots anywhere?** Legitimate for a small, fully-fixed page, but state that you checked and why none is needed. Silence reads as "not considered".
@@ -272,6 +297,18 @@ Work through each piece from Steps 1 to 2 and pick from **evidence**, not conven
 - **A one-off page modelled as a Connected CT with a single entry** is fine and often right. A campaign page with no owned copy is the Freeform case. Decide, don't drift.
 
 **Name the features you ruled out.** The plan prints a "Studio features considered" line listing what you rejected and why (e.g. "Pinned Query: not needed, the list is a Modular Block on the page entry"). This is how the user learns the primitive exists at all. A plan that silently omits half of Studio teaches them Studio is just component registration.
+
+### Step 2c: Plan the primitive library. Required on every build.
+
+**The failure this prevents:** going straight from existing components to Sections. Measured on a migration that skipped it: Sections made of generic `box` nodes plus hard-coded CSS classes, 6 one-off helper components and 1 exposed prop. It rendered, and the user rejected it as "not composable": an author could not pick a spacing, a variant or a column count, only retype text.
+
+Run [`design-component-library`](design-component-library.md) and put its output in the plan, whatever the starting point (fresh build, existing codebase, migration). On a project that already has a library, list it and mark the gaps. The library is:
+
+- **Atoms**: one content unit each (`heading`, `body-string`, `body-json-rte`, `cta-button`, `media`, …), content props bound to CT fields.
+- **Layout primitives**: arrange children through slots (`section-shell`, `stack`, `split-row`, `grid`, …).
+- **Design props as menus, with defaults.** Every visual choice an author may make is a `choice` prop whose options map to the project's existing classes or tokens, with a `defaultValue` that reproduces today's design (`gap: tight | normal | loose`, default `normal`). Not a free-text class field and not a CT field. A `choice` or `string` prop marked `design: true` is the SDK's per-breakpoint CSS variant of the same idea (see `design-component-library`).
+
+Every Section in Step 5 is composed from these primitives, plus any production component the [Section rule](SKILL.md#section-rule) keeps whole. **For each Section, name the props a template author can change** (its exposed props, see [`expose-section-props`](expose-section-props.md)), so the approver sees the editing surface before it is built.
 
 ### Step 3: Classify each page as a Connected template
 
@@ -316,9 +353,9 @@ Content model:
 
 | The copy is… | Field type | Renders through |
 |---|---|---|
-| A heading, label, name, short value | `text` (single-line) | `Heading` / `Text` |
-| Body copy, description, prose an author may want to **bold, link, list, or embed into** | **`json_rte`** (or multiline + rich-text / markdown to match the team's editing convention) | **`RichText`** |
-| Long prose the design **truncates**: "read more", accordion, "show details" | same rich-text type | **`CollapsibleText`** |
+| A heading, label, name, short value | `text` (single-line) | library `heading` atom, or built-in `header` / `text` |
+| Body copy, description, prose an author may want to **bold, link, list, or embed into** | **`json_rte`** (or multiline + rich-text / markdown to match the team's editing convention) | library rich-text atom, or built-in **`rich-text`** |
+| Long prose the design **truncates**: "read more", accordion, "show details" | same rich-text type | **`collapsible-text`** |
 
 **Propose the rich-text type by default for body copy**, and say so in the plan: "`body` is `json_rte` so authors can format and embed. If it will only ever be a flat paragraph, tell me and I'll make it plain text." Choosing plain text silently is the costlier mistake. An author who later needs a link in a sentence needs a schema migration, whereas an over-provisioned rich-text field is merely unused.
 
@@ -373,7 +410,7 @@ Templates:
   Connected /                       homepage CT (single)        → Hero + FeaturedCategories
   Connected /category/{{slug}}      category CT                 → Hero + ProductGrid
   Connected /product/{{slug}}       product CT                  → ProductDetailHero + ProductSpecsTable + RelatedProducts
-  Connected /blog/{{slug}}          blog_post CT                → BlogHeader + RichText + RelatedPosts
+  Connected /blog/{{slug}}          blog_post CT                → BlogHeader + BlogBody + RelatedPosts
 ```
 
 ### Step 7: Build order
@@ -388,7 +425,10 @@ Build order:
                                          setup-section-preview for the COMPULSORY /canvas route;
                                          skip any step Step 0's inventory shows is already in place)
   1. Create / update CTs and Global Fields  (in the Contentstack web app)
-  2. Register atomic React components       (lazy by default; layout-agnostic — see register-component)
+  2. Register the primitive library from Step 2c (atoms + layout primitives, menu-style design props
+                                         with defaults — design-component-library -> register-component;
+                                         lazy by default, layout-agnostic), then any production
+                                         component the Section rule keeps whole
                                          every registration ships thumbnailUrl, every component spreads
                                          studioAttributes + its $-twins — same step, never a follow-up
   3. Import design tokens                   (before any Section is authored — see import-design-tokens)
@@ -401,7 +441,7 @@ Build order:
 Run `byoc-end-to-end` to walk this in execution mode.
 ```
 
-The inline notes on steps 0, 2, 4 and 7 are the six deliverables from [`complete-the-build`](complete-the-build.md): CSLP tags, component thumbnails, section thumbnails, Live Preview, the `/canvas` route. **Print them in the build order, don't leave them implied.** Each is invisible to a developer loop (the page renders fine without all six) and each breaks the editor for the non-developer this plan exists to serve, so a plan that omits them gets approved as complete and delivered incomplete.
+The inline notes on steps 0, 2, 4 and 7 carry the ten deliverables listed in [`complete-the-build`](complete-the-build.md). **Print them in the build order, don't leave them implied.** Each is invisible to a developer loop (the page renders fine without them) and each breaks the editor for the non-developer this plan exists to serve, so a plan that omits them gets approved as complete and delivered incomplete.
 
 ### Step 8: Sanity checks before handoff
 
@@ -413,7 +453,8 @@ Before printing the final plan, flag any of these at the top:
 - Global Field shared by ≥2 CTs without its own Section.
 - Connected page without an identified backing CT.
 - Child Section whose linked schema doesn't match its parent Repeater's iterated CT.
-- Any of the six in [`complete-the-build`](complete-the-build.md) missing from the plan, or an `[exists]` component carrying no `thumbnailUrl` / no `studioAttributes` (it's `[modify]`).
+- No primitive library (Step 2c) in the plan, or a Section composed of `box` + hard-coded classes.
+- Any of the ten deliverables in [`complete-the-build`](complete-the-build.md) missing from the plan, or an `[exists]` component carrying no `thumbnailUrl` / no `studioAttributes` (it's `[modify]`).
 
 ### Step 9. Print the plan in TWO layers: plain language first, build sheet second
 
@@ -459,7 +500,7 @@ How you'll edit it:
   • Click any text or image on a preview of the real page and change it right there.
   • Every building block and reusable block shows a picture of itself, so you can
     tell them apart when adding one — no blank tiles to guess at.
-  <these two lines are ALWAYS included and always true — they are the six
+  <these two lines are ALWAYS included and always true — they are the
    deliverables in complete-the-build, which the build order commits to>
 
 Size of the job:
@@ -494,7 +535,7 @@ Already in place / being reused:
 - **"You can edit" and "Fixed for now" are the point.** That's the line a non-technical approver actually cares about, and it's what makes the A-vs-B choice in Step 10 meaningful rather than abstract.
 - **No counts without meaning.** "2 reusable blocks" is fine. "4 `linked_schemas`" is not.
 - **Say what's reused.** If Step 0 found existing pieces, name them here. Otherwise the reader assumes everything is new and the size looks wrong.
-- **"How you'll edit it" is not optional and is not a promise you can drop.** It is the plan's commitment to the six deliverables in [`complete-the-build`](complete-the-build.md). Say it in the words in that skill's plain-language table, never as `data-cslp`, `thumbnailUrl`, `ui_preview` or "Live Preview".
+- **"How you'll edit it" is not optional and is not a promise you can drop.** It is the plan's commitment to the ten deliverables in [`complete-the-build`](complete-the-build.md). Say it in the words in that skill's plain-language table, never as `data-cslp`, `thumbnailUrl`, `ui_preview` or "Live Preview".
 - **Keep it short.** A wall of plain text is no more approvable than a wall of jargon. If Layer 1 runs past roughly a screen, the plan is probably too big to approve in one go. Split the work.
 
 #### Layer 2: Build sheet (technical. The build steps read this, not the user)
@@ -513,22 +554,32 @@ Sanity flags (reconsider before proceeding):
 Content model:
   <CT and GF listing from Step 4>
 
+Primitive library (Step 2c — required):
+  <one line per primitive — name [exists|create] atom|layout
+     content props -> CT field type
+     design props  -> menu options (default)>
+  <heading     [create] atom    content: text          design: level h1..h4 (h2), align (left)>
+  <stack       [create] layout  slot: children         design: gap tight|normal|loose (normal)>
+
 Sections (build in this order):
   <for EACH Section from Step 5, print EVERY line below — never just the name.
    `atomics` is what build-section and register-component consume: one atomic,
    one prop, one CT field. A Section with no atomics line was not decomposed.>
   - <Section name>  [exists|modify|create]   shared: <yes — rendered from layout | no>
       linked schema : <CT / Global Field / Group / Modular Block / Block / Reference> (+ selectedField set|unset)
-      components    : <registered: Hero, ProductCard | built-in: Heading, Paragraph, Image>
+      components    : <library: heading, media, stack | kept whole (interactive/computes): SignupForm
+                       | built-in (SDK type): header, text, image>
       atomics       : <one line per atomic — atomic -> prop -> CT field (type)>
-                      <Image      -> image    -> entry.hero.image      (imageurl)>
-                      <Heading    -> headline -> entry.hero.headline    (string)>
+                      <media      -> image    -> entry.hero.image.url  (imageurl)>
+                      <heading    -> headline -> entry.hero.headline    (string)>
       rich text     : <every RTE field on this Section — field (json_rte|html rte|markdown)
-                       -> RichText|CollapsibleText -> embeds: entries <CT list>|assets|none
-                       | none. NEVER map rich text to Heading/Paragraph.>
+                       -> rich-text|collapsible-text (or the library's rich-text atom)
+                       -> embeds: entries <CT list>|assets|none
+                       | none. NEVER map rich text to header/text.>
       repeaters     : <field iterated -> child Section -> Condition Blocks needed | none>
       section slots : <slot name -> what a template author drops there | none, and why>
       bindings      : <any binding NOT covered by the atomics lines above | none>
+      author can change: <exposed props, each with its label — "Hero headline", "Card columns" | none, and why>
 
 Templates:
   <Template inventory from Step 6 — for EACH: kind (Connected|Freeform), connected CT,
@@ -540,17 +591,17 @@ Registered components needed:
    with no thumbnail or no studioAttributes is [modify], not [exists]>
 
 Built-in (field) components used:
-  <Heading / Paragraph / Text / Image / Link / RichText -> which Section, bound to which field>
+  <SDK type names (header / text / image / link / rich-text — see Step 2b) -> which Section, bound to which field>
   <if this list is empty, say why — a plan where every visible element is a custom
    registered component is usually over-registered; plain copy belongs in built-ins>
 
 Suggested upgrades (recommendations — the build proceeds without them if declined):
   <existing rich-text field rendered through a plain text component
-     -> switch to RichText — no schema change, fixes markup showing as literal text>
+     -> switch to rich-text — no schema change, fixes markup showing as literal text>
   <plain multiline text field holding prose
      -> consider json_rte so authors can format and embed — schema change on N live
         entries via migrate-ct-schema>
-  <long prose the design truncates -> CollapsibleText>
+  <long prose the design truncates -> collapsible-text>
   <or "None — the existing model already types its rich text correctly">
 
 RTE renderer (omit ONLY if the model has no rich-text field anywhere):
@@ -565,7 +616,7 @@ Studio features considered:
               exposed props, Global Fields, pinned entry/query, external data, variants, tokens>
   ruled out: <primitive -> one-line reason it isn't needed here>
 
-Editing experience (mandatory — the six from complete-the-build; never listed as optional):
+Editing experience (mandatory — the ten from complete-the-build; never listed as optional):
   preflight    : Live Preview + preview token <on | to enable> · cslp.appendTags <on | to enable>
                  · /canvas route <exists | to add>
   per component: thumbnailUrl + studioAttributes/$-twins on every registration above
@@ -659,7 +710,8 @@ The last question is Connected vs Freeform. Ask it that way, never by those name
 - [ ] **Every Section row names its Section Slots and its built-in (field) components, not just registered components.** A plan listing only `registerComponent` work is incomplete. Say explicitly where plain copy uses built-ins and where a template author needs a swap point.
 - [ ] **Each page has an explicit Connected-vs-Freeform decision** with the connected CT (or the reason there isn't one), never left implicit.
 - [ ] **The plan was printed in full and explicitly approved before any build skill ran.** Every Section line carries linked schema + components + slots + bindings. Every Template carries kind + URL + its Section list. No piece was created on an unapproved or half-filled plan.
-- [ ] **The plan commits to the six deliverables in [`complete-the-build`](complete-the-build.md)**: Layer 1 carries the "How you'll edit it" lines, Layer 2 carries the Editing experience block, and the build order names them on steps 0, 2, 4 and 7. A plan that covers only Sections, bindings and templates describes something that renders but that a marketer cannot use.
+- [ ] **The plan lists the primitive library (Step 2c)**, with menu-style design props and defaults, and every Section names the props a template author can change.
+- [ ] **The plan commits to the ten deliverables in [`complete-the-build`](complete-the-build.md)**: Layer 1 carries the "How you'll edit it" lines, Layer 2 carries the Editing experience block, and the build order names them on steps 0, 2, 4 and 7. A plan that covers only Sections, bindings and templates describes something that renders but that a marketer cannot use.
 - [ ] **The A-vs-B architecture choice was put to the user** (decomposed Sections vs a single template with components dropped in) and their answer recorded. If B was chosen, its cost is written into the plan.
 
 The skill succeeds when:
@@ -687,10 +739,10 @@ The skill succeeds when:
 
 ## See also
 
-- [`design-component-library`](design-component-library.md): foundational pattern doc. Before this skill's build order sequences the work, that doc decides what to register: atomic + layout primitives instead of monolithic Sections. Read alongside [`decompose-design`](decompose-design.md) when the plan will produce a fresh component library.
+- [`design-component-library`](design-component-library.md): run in Step 2c on every build. It decides what to register: atomic + layout primitives instead of monolithic Sections. Read alongside [`decompose-design`](decompose-design.md) when the plan will produce a fresh component library.
 - `start-here-zero-knowledge`: the conceptual prerequisite (run BEFORE this skill if the user is new)
 - `understand-templates`, `understand-sections`, `understand-section-slots`, `understand-linked-schemas`, `understand-auto-binding`: the concept ladder this skill assumes is internalised
 - `byoc-end-to-end`: the procedural macro that walks the plan in execution mode
 - `complete-the-build`: the ten always-mandatory deliverables this plan commits to and the handover gate that verifies them
-- `enable-visual-experience`, `install-live-preview`: the preflight half of those six
+- `enable-visual-experience`, `install-live-preview`: the preflight items among those ten
 - `build-section`, `build-connected-template`, `build-repeating-section`, `use-section-slot`: the implementation skills the build order references

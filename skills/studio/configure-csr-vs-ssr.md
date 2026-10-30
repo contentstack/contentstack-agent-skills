@@ -79,19 +79,34 @@ It answers *did we establish that nothing is here?* and is the only thing that s
 Also on the error: `err.code` (the precise case, for logs and support) and `err.errorClass`, of which only `NOT_FOUND` is a 404. `err.causes` carries `{ cause, fix }` pairs for that failure, most likely first: log it in dev, it is the fastest diagnosis available.
 
 ```ts
-// lib/resolve-composition.ts
-import { isCompositionNotFound } from "@contentstack/studio-react";
+// lib/resolve-composition.ts — server-only
+import { isCompositionNotFound, type studioSdk } from "@contentstack/studio-react";
+// The Delivery stack your Studio sdk was initialized with (`stackSdk`). On the
+// minimal-add branch that module is lib/studio.ts.
+import { stack } from "@/lib/contentstack";
 
-export async function resolveComposition(sdk, args, opts = {}) {
+type StudioSdk = ReturnType<typeof studioSdk.init>;
+type FetchArgs = Parameters<StudioSdk["fetchCompositionData"]>;
+
+export async function resolveComposition(sdk: StudioSdk, args: FetchArgs[0], opts: FetchArgs[1] = {}) {
+  // The stack is shared by every request this server handles. The SDK SETS a
+  // request's preview hash on it but never clears it, so without this line the
+  // next visitor is served the last editor's drafts. Clearing first is always
+  // safe: when this request carries a hash, the SDK sets it again itself.
+  stack.livePreviewQuery({ live_preview: "" });
   try {
     const specOptions = await sdk.fetchCompositionData(args, opts);
-    return { specOptions, notFound: false }; // resolved ⇒ renderable
+    return { specOptions, notFound: false as const }; // resolved ⇒ renderable
   } catch (err) {
-    if (isCompositionNotFound(err)) return { specOptions: null, notFound: true };
+    if (isCompositionNotFound(err)) return { specOptions: null, notFound: true as const };
     throw err;   // real failure — must stay a 500
   }
 }
 ```
+
+**Every call on one request must forward the same `searchQuery`.** A layout or an embedded composition that passes `""` while the page passes the preview hash clears the hash the page's fetch just set, since both run concurrently on the same stack, and part of the page renders published content inside the editor ([`troubleshoot-canvas`](troubleshoot-canvas.md) § Live Preview state resets mid-request). Thread the page's query string down to them.
+
+The `as const` flags let TypeScript narrow `specOptions` to non-null after `if (miss) notFound()`. [`install-studio`](install-studio.md) emits this file next to the SDK init, so every route that uses it gets the hash reset without thinking about it (§ A server with a preview token can serve drafts to visitors).
 
 **Do not blanket-catch.** A bare `try { … } catch { notFound() }` turns every CDA outage, expired delivery token, and network blip into a silent 404. The site looks empty instead of broken, and monitoring sees nothing. Ask the predicate. Rethrow the rest.
 
@@ -105,14 +120,7 @@ Every fetch snippet below is written against `resolveComposition`. If you copy a
 
 The Delivery stack is shared by every request on a server process. `fetchCompositionData` sets a request's preview hash on it and never clears it when the next request has none (by design), so later visitor requests go to the preview host with the last hash. Measured: one request with `?live_preview=<hash>`, then the next plain request went to `rest-preview.contentstack.com`. Mechanism: [`troubleshoot-canvas`](troubleshoot-canvas.md) § shared stack instance hazard.
 
-A deployment with **no** preview token is safe ([`deploy-studio-site`](deploy-studio-site.md)). On a preview deployment, clear the hash when a request has none:
-
-```ts
-// `stack` is the Delivery stack your Studio sdk was initialized with
-// (contentstack.stack({...}) in lib/studio.server.ts); `searchQuery` is the raw request query string.
-const q = new URLSearchParams(searchQuery);
-if (!q.get("hash") && !q.get("live_preview")) stack.livePreviewQuery({ live_preview: "" });
-```
+A deployment with **no** preview token is safe ([`deploy-studio-site`](deploy-studio-site.md)). Everywhere else, [`resolveComposition`](#resolve-composition-helper) clears the hash before every fetch: `stack.livePreviewQuery({ live_preview: "" })`, after which the SDK re-applies the request's own `hash` / `live_preview` param when there is one (it only ever sets a hash that is present). A route that calls `sdk.fetchCompositionData` or `sdk.fetchComposition` directly needs that same line in front of the call.
 
 Measured: the plain request then stayed on the CDN. Requests in flight at the same time still share the stack, so on a preview server under concurrent load, create the stack and the Studio sdk **per request** instead of sharing one module-level instance:
 
@@ -131,6 +139,20 @@ export function createStudioSdk() {
   return studioSdk.init({ stackSdk: stack, contentTypeUid: "<compositions-CT-uid>" });
 }
 ```
+
+With a per-request stack nothing carries over between requests, so the reset in `resolveComposition` has nothing to clear on it. Keep the helper for its 404 classification.
+
+<a id="static-generation-and-caching"></a>
+
+## Static generation and caching on a Studio route (Next.js)
+
+Three things change when a route starts rendering Studio compositions. None of them errors; they show up as a slower site or stale pages.
+
+- **Reading the request query makes the render dynamic.** Studio needs the query string (editor mode, preview hash, locale, variant) on server-rendered routes, and awaiting `searchParams` in an App Router page (or using `getServerSideProps` in Pages Router) opts that render out of static prerendering. A greenfield catch-all is dynamic, and that is the price of in-place editing. On an app whose catch-all also serves its own pages, read `searchParams` only inside the Studio branch ([`setup-template-preview-routes`](setup-template-preview-routes.md) § Existing catch-all), so the app's own pages keep rendering the way they did.
+- **Studio's fetches bypass Next's data cache.** The Delivery SDK uses axios, not `fetch`, so `fetch`-level `revalidate` and cache tags never apply to composition or entry reads. Cache at the route level (`export const revalidate = <seconds>` on a route that doesn't read `searchParams`, or the host's CDN). Don't expect a tag-based `revalidateTag` to touch Studio content.
+- **The app's publish webhook doesn't cover compositions.** Compositions are entries of the compositions content type, and an author publishing a page publishes those entries, often without touching any entry the existing webhook listens for. If the app revalidates on publish, add the compositions content type to the webhook and revalidate the composition's `url` (or the whole catch-all) when one is published. A composition with a URL pattern (`/blog/{{entry.url}}`) also changes every page its template serves, so revalidate that path prefix.
+
+Preview and editor requests must never be served from a cache: they carry `hash` / `live_preview` / `cs-composable-studio` params, and a cached copy shows the wrong draft or no editor at all. Keep any CDN rule keyed on the full query string, or bypass the cache when one of those params is present.
 
 ## Task
 
@@ -280,7 +302,7 @@ export function createStudioSdk() {
    ```
    Component: `const { specOptions } = useLoaderData(); return <StudioComponent specOptions={specOptions} />;`
 
-6. **SSG / ISR.** Pass `searchQuery: ""` (no Studio iframe at build time), set `revalidate: 60` for ISR, and wire a Contentstack publish webhook to `res.revalidate(path)` for instant invalidation. Live Preview won't update SSG output until revalidation. If that matters, move the route to SSR.
+6. **SSG / ISR.** Pass `searchQuery: ""` (no Studio iframe at build time), set `revalidate: 60` for ISR, and wire a Contentstack publish webhook to `res.revalidate(path)` for instant invalidation. The webhook must fire on the compositions content type too ([§ Static generation and caching](#static-generation-and-caching)). Live Preview won't update SSG output until revalidation. If that matters, move the route to SSR.
 
 7. **Hydration discipline.** Pass the **same** `specOptions` the server fetched straight to the client wrapper. Do **not** re-fetch on mount with `useCompositionData` after an SSR fetch. That produces a hydration mismatch. Pin `locale` and `variantAlias` to identical values on both sides.
 
@@ -360,7 +382,7 @@ If acceptance fails, report exactly which step broke and stop.
 | **`transpilePackages: ['@contentstack/studio-*']` on App Router** | 500 with `Cannot read properties of null (reading 'useContext')` at `useData → RepeaterPreview` during the RSC server prerender | Don't transpile the SDK on App Router. It defeats the SDK's safe client-deferral (the basics resolve to real components, run on the server, and read a null React dispatcher). On Pages Router, transpiling is fine. |
 | **Coexisting `app/` dir while SSR-ing a `pages/` route** | The Pages-Router SDK React resolves to the app-page runtime, which gives a null dispatcher and a crash | Make the project Pages-Router-only for the Studio SSR route (remove `app/` from that workspace). |
 | **Judging SSR from `next dev`**: Repeater items intermittently render field defaults ("Your text here") | Per-boot dev race (recompile + module-init order + React StrictMode double-invoke) | Verify and ship from a **prod build**: `next build && next start`. Prod is deterministic. Dev is racy. |
-| **`dynamic(() => import('@contentstack/studio-react'))` for the canvas, prod build fails** | `Package path "." is not exported from package` | `studio-react`'s `exports` map only exposes `.` under the `import` condition. Dynamic-import a **local wrapper** that statically imports `StudioCanvas`. |
+| **`dynamic(() => import('@contentstack/studio-react'))` for the canvas, prod build fails** | `Package path "." is not exported from package` | Older `studio-react` releases exposed `.` only under the `import` condition (2.0.1 adds `default`). On 2.x the dynamic import isn't needed at all: `StudioCanvas` is a client component that renders `null` until mount ([`setup-section-preview`](setup-section-preview.md) step 2). On an older SDK, dynamic-import a **local wrapper** that statically imports `StudioCanvas`. |
 | **Bare `await sdk.fetchCompositionData(...)` with an `if (!hasSpec) notFound()` guard below it** | Every unmatched URL returns **500, not 404**. The fetch rejects, so the guard line never executes. Error boundary shows a generic failure. Nothing names the missing composition | Wrap with [`resolveComposition`](#resolve-composition-helper). The guard was written for a resolve-with-falsy contract the SDK doesn't have |
 | Blanket `try { … } catch { notFound() }` around the fetch | Every CDA outage, expired delivery token, and network blip silently becomes a 404. The site reads as "empty" instead of "broken" and monitoring stays green | Ask `isCompositionNotFound(err)`: true is a 404. Rethrow the rest so real failures stay 500s |
 | Testing 404 handling only with a totally unmatched URL | Passes, while every bad slug under a `content_type_url_pattern` template still 500s if you hand-rolled a list of names. That path matches the pattern and fails later, at entry lookup, with a different code | Test both shapes. Use the predicate rather than a list, and both are covered |
@@ -369,11 +391,13 @@ If acceptance fails, report exactly which step broke and stop.
 | Pages Router reads `context.req.url` | 404 on client-side navigation: `req.url` is `/_next/data/<build>/....json` | Use `context.resolvedUrl` |
 | Pages Router returns raw `specOptions` | `next dev`: "Error serializing ... `undefined` cannot be serialized as JSON" | Return `JSON.parse(JSON.stringify(specOptions))` |
 | **Every bound image 400s through `next/image`** (`"hostname … is not configured under images"`) | Assets come from a Contentstack CDN host the optimizer doesn't trust by default. Nothing in the composition is wrong | Add the asset hosts to `images.remotePatterns` in `next.config.mjs`: `images.contentstack.io` plus your region's `*-images.contentstack.com`. Region-dependent, so read the URL the binding actually returned rather than guessing |
-| SSG never updates after publish | Stale content | Configure ISR `revalidate` or wire a publish webhook to `res.revalidate(path)` |
+| SSG never updates after publish | Stale content | Configure ISR `revalidate` or wire a publish webhook to `res.revalidate(path)`, including publishes of the compositions content type ([§ Static generation and caching](#static-generation-and-caching)) |
 | Management token in client module | Token shipped to browser | Move sdk init into `*.server.ts` / non-`"use client"` module |
 
 ## See also
 
 - `install-studio`: installs the three SDKs and wires `studioSdk.init`
+- [`csr-and-ssr-requirements`](csr-and-ssr-requirements.md): what each mode needs in Live Preview, Visual Editor and the canvas, and converting between them
+- [`handle-404-pages`](handle-404-pages.md): the 404 branch on every framework
 - `setup-section-preview`: adds the `<StudioCanvas />` route
 - `troubleshoot-canvas`: when the iframe still doesn't render after both skills are run

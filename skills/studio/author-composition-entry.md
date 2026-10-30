@@ -21,12 +21,39 @@ A composition is a single entry on the compositions CT. The fields (see [`author
 | `place_composition_as` | string | `"page"` for a template composition (Connected or Freeform). `"section"` for a section composition. `"template"` also legal but not what Studio writes for the top-level template composition. The Compositions tab lists `"page"` entries under Templates |
 | `schema_version` | string | Composition schema version stamped by Studio (`"1.0.0"`, `"1"`, `"2"`, …), a **string**, not a number |
 | `ui` | string | The compressed composition tree, `zlib:<base64>` (see `troubleshoot-canvas` § Diagnostic tooling) |
-| `data_sources` | JSON string | The stringified `resolvedReferences` map + pinned data-source list. Wire shape is `"[]"` when empty, not `[]` |
+| `data_sources` | JSON string (raw CMA) | The `resolvedReferences` map + pinned data-source list. Shape per API: § [Wire shapes](#wire-shapes) |
 | `static_value` | group | Per-key literal store. Every `binding.type: "static_value"` on a node references a **key** here. The actual literal lives in `static_value.<subtype>[]` under that key. See [`author-composition-static-values`](author-composition-static-values.md) |
 | `url_metadata` | group | **Required on every template composition** (`place_composition_as: "page"`): `url_source` + `url_queries`. Never write `url` without it. See § `url` + `url_metadata`: a matched pair below. Sections carry neither `url` nor `url_metadata` |
 | `linked_schemas` | **group-multiple** | Sections only. Declares parent CT + `selectedField` the section scopes to. `[]` for templates / freeform |
 | `linked_sections` | reference (multiple) | Template's references to section-composition entries placed in its `ui` tree. `[]` for freeform / sections |
 | `ui_preview` | file (asset uid) | **Required on every section composition** (`place_composition_as: "section"`). The editor writes this for itself by screenshotting the canvas on save. **The CMA never populates it**, so an API-created Section stays blank in the Sections palette forever and nothing errors. Supply an asset uid. See [`author-composition-thumbnails`](author-composition-thumbnails.md) § Fix C for the calls. Templates don't need it |
+
+<a id="wire-shapes"></a>
+
+### Wire shapes: raw CMA vs Compositions API
+
+This is the one definition of each shape. Every other file links here. The raw CMA is this skill's path. The managed Compositions API is [`use-compositions-api`](use-compositions-api.md).
+
+| Field | Raw CMA (`POST /v3/content_types/<ct>/entries`) | Compositions API (`POST /v1/projects/<p>/compositions`) |
+|---|---|---|
+| Body envelope | `{ "entry": { … } }` | The fields directly, no `entry` wrapper |
+| `ui` | String `"zlib:<base64>"` you compress yourself | Uncompressed node **object**. A `zlib:` string fails validation |
+| Where `ui` sits | Top-level entry field, sibling of `static_value`. **Never inside `static_value`** | Same |
+| `data_sources` | JSON-encoded **string**: `"[]"`, `"[{\"uid\":\"template\",…}]"` | Plain **array**: `[]`, `[{ "uid": "template", … }]`. A string answers `400` |
+| `resolvedReferences` key (template data source) | `"template"`. The SDK ignores the key's content, but write `"template"`: it is what Studio writes. Never `"root.<field>"` | Same |
+| `resolvedReferences` key (`contentstack` pinned data source) | The pinned **entry uid**: the SDK looks it up by that key | Same |
+| `static_value.number[].value` | Must match the compositions CT's `static_value.number.value` field type. The schema [`provision-studio-project`](provision-studio-project.md) ships makes it **text**, so write `"49"`. A CT whose field is `number` (a measured `422 … is not number`) needs `49`. Read the CT before the first write | Same: the service forwards to the CMA |
+| `static_value.choice[].value` | List: `["h1"]` | Same |
+| `static_value.object` / `.array` values | JSON-encoded string | Same |
+
+One data source, both forms:
+
+```jsonc
+// raw CMA
+"data_sources": "[{\"uid\":\"template\",\"data\":null,\"resolvedReferences\":{\"template\":[\"products\"]}}]"
+// Compositions API
+"data_sources": [{ "uid": "template", "data": null, "resolvedReferences": { "template": ["products"] } }]
+```
 
 After write, publish the entry. Studio queries by `composable_uid` + published status. An unpublished entry won't appear in the project's Compositions list or load in the canvas.
 

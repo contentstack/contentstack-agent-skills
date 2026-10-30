@@ -83,16 +83,33 @@ curl -X POST "$STUDIO_API/v1/projects/$PROJECT/compositions" \
         "place_composition_as": "page",
         "url": "/blog/{{entry.slug}}",
         "connected_content_type": "blog_post",
-        "ui": { "uid": "root", "type": "page", "props": {}, "slots": {}, "metadata": {} },
+        "ui": { "uid": "root", "type": "page", "attrs": {}, "metadata": {},
+                "props": {}, "slots": {}, "styles": {} },
         "data_sources": []
       }'
 ```
+
+Body shapes (`ui` as an object, `data_sources` as an array, no `entry` wrapper) differ from the raw CMA: [`author-composition-entry`](author-composition-entry.md#wire-shapes) § Wire shapes is the one definition. Every node carries all seven keys (`uid`, `type`, `attrs`, `metadata`, `props`, `slots`, `styles`).
 
 On success (`201`) the response is `{ notice, composition, warnings? }`. The returned `composition.ui` is the **compressed** string as stored. `composable_uid` equals the entry uid unless you supplied one. Non-blocking findings ride along in `warnings[]`.
 
 ### Step 3: Handle validation
 
 Blocking problems return **`422` `composition_invalid`** with every failing path at once: `errors: { "<path>": ["<message>"] }`. Fix each path and resend. Warnings don't block, surface them but proceed.
+
+A common `422`: `Empty slots crash the renderer.` on a `slots` entry holding `[]`, most often a `section-slot` node written as `{ "<own-uid>": [] }`. Write `"slots": {}` ([`author-composition-sections`](author-composition-sections.md) § `section-slot` node shape).
+
+<a id="expected-validator-warnings"></a>
+
+#### Expected validator warnings {#expected-validator-warnings}
+
+Three warnings show up on correct compositions. Report them as expected, don't "fix" them:
+
+| Warning | Why it appears on a correct composition | Act only if |
+|---|---|---|
+| `unknown_type` on a registered component's node | Components are registered in the browser (`registerComponent` in the app), so the service never sees the registry. It flags every non-built-in `type` | The `type` string differs from the one in the app's `registerComponent` call. Check that by hand |
+| `linked_sections_required` on a template | Raised even when every placed section is already in `linked_sections` | A `section-composition` node's `metadata.compositionUID` is missing from `linked_sections`. Compare the two sets |
+| "items won't render" on the item Box under a Repeater | The [canonical list recipe](author-composition-repeater-recipes.md#canonical-list-recipe) puts a Box between the Repeater and its Condition Blocks so Visual Editor gets item tags | The Box holds no Condition Block on a reference or modular-block list |
 
 ### Step 4: Read, list, reference
 
@@ -137,7 +154,8 @@ A composition created through this API is not finished when the write returns `2
 | Pitfall | Why it bites | Fix |
 |---|---|---|
 | Sending `ui` pre-compressed | The service compresses for you. A `zlib:` string is treated as the tree and fails validation | Send the **uncompressed node object** |
-| `data_sources` as a JSON string | The service stringifies it. A string answers `400` | Send a plain **array** |
+| `data_sources` as a JSON string | The service stringifies it. A string answers `400` | Send a plain **array** ([Wire shapes](author-composition-entry.md#wire-shapes)) |
+| Treating `unknown_type` or `linked_sections_required` as errors | They fire on correct compositions | See § Expected validator warnings |
 | Blank `composable_uid` | A whitespace-only value is rejected, not backfilled | Omit it, or send a real slug. A blank value gives `422` |
 | Duplicate `composable_uid` in another locale | Uniqueness is content-type-wide, not per-locale | Expect `409` at create. Pick a unique slug |
 | Treating `422 stack_not_found` as "missing" | It's the **access-denied** code (Studio convention, not 403) | Check the caller's rights on the project's stack |

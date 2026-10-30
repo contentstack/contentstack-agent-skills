@@ -37,25 +37,25 @@ This skill is **discovery, not authoring**. It doesn't write any composition. It
 4. **Propose a component structure per Section.** Best-effort inference from field names + types:
    - `title` / `headline` / `heading` maps to a Heading component with `text` bound to the field.
    - `image` / `cover_image` / `hero_image` maps to an Image component.
-   - **Rich text: decide by `data_type`/`field_metadata`, never by field name.** These carry formatting, so `Text`/`Heading` would render markup as literal characters:
+   - **Rich text: decide by `data_type`/`field_metadata`, never by field name.** These carry formatting, so `text`/`header` would render markup as literal characters:
 
      | Schema shape | Component | Prop type |
      |---|---|---|
-     | `data_type: "json_rte"` | **`RichText`** | `json_rte` |
-     | `data_type: "text"` + `field_metadata.allow_rich_text` (HTML RTE) | **`RichText`** | `any` |
-     | `data_type: "text"` + `field_metadata.markdown` | **`RichText`** | `any` |
+     | `data_type: "json_rte"` | **`rich-text`** | `json_rte` |
+     | `data_type: "text"` + `field_metadata.allow_rich_text` (HTML RTE) | **`rich-text`** | `any` |
+     | `data_type: "text"` + `field_metadata.markdown` | **`rich-text`** | `any` |
      | `data_type: "text"` + `multiline`, no rich-text flags | `Text` | `plaintext` |
 
-     Choose **`CollapsibleText`** instead wherever the design truncates the copy ("read more", accordion). If any such field permits **embedded entries or assets**, record it. The project needs one `registerRTERenderer` call, and unregistered embeds render as bare delivery-API spans. See [`register-json-rte`](register-json-rte.md#rte-field-to-component).
+     Choose **`collapsible-text`** instead wherever the design truncates the copy ("read more", accordion). If any such field permits **embedded entries or assets**, record it. The project needs one `registerRTERenderer` call, and unregistered embeds render as bare delivery-API spans. See [`register-json-rte`](register-json-rte.md#rte-field-to-component).
    - `body` / `content` / `description` that is plain long text maps to a Text component, **and record it as an upgrade candidate** (below).
 
    **Rich-text upgrade candidates: always surface these, never apply them silently.** An existing model often holds prose in a plain text field simply because that was the quickest thing to pick when it was created. Report them and let the user decide:
 
    | What you found | Suggest | Cost to accept |
    |---|---|---|
-   | Field is **already** `json_rte` / rich text, but the current code renders it through a plain text component | Switch the component to `RichText` | **None**: no schema change, no migration. Free correctness win |
+   | Field is **already** `json_rte` / rich text, but the current code renders it through a plain text component | Switch the component to `rich-text` | **None**: no schema change, no migration. Free correctness win |
    | Plain **multiline `text`** field holding body copy, description or prose | Consider `json_rte` so authors can bold, link, list and embed | A schema change on a live CT. See [`migrate-ct-schema`](migrate-ct-schema.md). Existing entry values carry over as plain paragraphs |
-   | Long prose the site truncates behind "read more" / an accordion | `CollapsibleText` over the same field | None if the field is already rich text |
+   | Long prose the site truncates behind "read more" / an accordion | `collapsible-text` over the same field | None if the field is already rich text |
 
    Phrase it as a recommendation with the cost attached ("`summary` is plain text today. Making it `json_rte` would let authors add links, but it's a schema change on N live entries. Want it?") and proceed with the existing type if they decline. Never migrate a field as a side effect of a discovery run.
    - `cta_label` + `cta_url` (or `link`) maps to a Button component.

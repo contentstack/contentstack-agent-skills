@@ -37,28 +37,26 @@ Fallback: if `<name>.md` isn't there, try `../<name>/SKILL.md` (a host that inst
 
 Before creating, registering, or authoring anything:
 
-1. **Decompose first.** Never register or build a component that renders more than one piece of content. The test: does it render more than one heading / image / body / list? If yes, run [`decompose-jsx-to-atomics`](decompose-jsx-to-atomics.md) before anything else. One Section per page, or one component swallowing a whole page, is a defect, not a shortcut.
-2. **Compose from atoms by default: do NOT reach for a pre-composed composite.** A palette usually contains both **atoms + layout primitives** (`*-atom-heading`, `*-stack`, `*-row`, `*-grid`, `*-section-shell`) and **composites** that already bundle a whole shape (`*-feature-card`, `*-hero`, `*-card-grid`). Dropping one composite is faster and looks identical on the canvas, and it is the wrong default: its internals are fixed in code, so the author cannot restructure it, the spacing inside it cannot be matched to a comp, and the design is no longer expressed as a composition. **Build the shape out of atoms unless the user explicitly asks to reuse an existing component.** If a composite would clearly save real work, say so and let them choose. Do not decide it silently.
-3. **Reuse atoms, not shapes.** Reuse means the same `*-atom-heading` everywhere, not a ready-made card. Two things differing only in spacing are one Section plus an exposed prop, never two.
-4. **Shared shells are Sections.** Header, footer, nav, menus, breadcrumbs render on every page and are the highest-value reusable pieces in any project. They are never "atomic, no binding". Their menus are **Repeaters over a field**, never hardcoded lists. Otherwise an author cannot add a menu item without a developer.
-5. **One atomic prop maps to one CT field.** A single prop taking a whole object is how binding breaks: the binder recursively unwraps single-key objects for every type except `object`/`array`, so a coarse prop renders blank with no error.
+<a id="section-rule"></a>
+
+1. **The Section rule (defined here only; every other skill links to it): one Section per page region, always. Inside a Section, reuse a production component whole only when it is interactive or computes its values.**
+   - **Region**: a part of the page a person can point at and name (header, hero, form band, feature grid, card list, footer). A Template is a stack of these Sections, whether it is a new build or a migration, and whatever the reuse count. One Section for a whole page, or one component bound to the whole page body, is a defect.
+   - **Interactive**: local state, event handlers, forms, carousels, modals. Built-ins and atoms cannot express behavior, so the app's component stays whole inside its Section.
+   - **Computes its values**: it derives what it renders instead of printing fields (formatting, totals, sorting or filtering, a layout that depends on item count or position). Keep it whole too, or the logic has nowhere to live.
+   - **Everything else** (presentational markup that prints fields) is decomposed into the primitive library's atoms and layout primitives, one prop per CT field: run [`decompose-jsx-to-atomics`](decompose-jsx-to-atomics.md). The test for "everything else": does it render more than one heading / image / body / list and do nothing else? Then it is not registered whole.
+2. **Plan the primitive library before any Section.** Every build has a library of atoms and layout primitives with menu-style design props and defaults ([`design-component-library`](design-component-library.md)), and Sections are composed from it. Sections built from generic boxes plus hard-coded CSS classes render, and an author cannot compose anything with them. [`plan-studio-architecture`](plan-studio-architecture.md) makes this a required step.
+3. **Compose from atoms by default: do NOT reach for a pre-composed composite.** A palette usually contains both **atoms + layout primitives** (`*-atom-heading`, `*-stack`, `*-row`, `*-grid`, `*-section-shell`) and **composites** that already bundle a whole shape (`*-feature-card`, `*-hero`, `*-card-grid`). Dropping one composite is faster and looks identical on the canvas, and it is the wrong default: its internals are fixed in code, so the author cannot restructure it, the spacing inside it cannot be matched to a comp, and the design is no longer expressed as a composition. **Build the shape out of atoms unless the user explicitly asks to reuse an existing component.** If a composite would clearly save real work, say so and let them choose. Do not decide it silently.
+4. **Reuse atoms, not shapes.** Reuse means the same `*-atom-heading` everywhere, not a ready-made card. Two things differing only in spacing are one Section plus an exposed prop, never two.
+5. **Shared shells are Sections.** Header, footer, nav, menus, breadcrumbs render on every page and are the highest-value reusable pieces in any project. They are never "atomic, no binding". Their menus are **Repeaters over a field**, never hardcoded lists. Otherwise an author cannot add a menu item without a developer.
+6. **One atomic prop maps to one CT field.** A single prop taking a whole object is how binding breaks: the binder recursively unwraps single-key objects for every type except `object`/`array`, so a coarse prop renders blank with no error.
 
 If the user's request would skip this ("just register the page component", "make the whole page one section"), say what it costs (nothing reusable, authors can't reorder, bindings break) and propose the decomposed shape instead. Do it their way only if they confirm after hearing that.
 
 ## Standing rule: definition of done
 
-**Also every Studio turn.** Eight deliverables decide whether what you built is usable by a marketer rather than only by a developer. Every one fails silently. The page still renders, nothing errors, and the gap surfaces only when a non-developer opens Studio:
+**Also every Studio turn.** Ten deliverables decide whether what you built is usable by a marketer rather than only by a developer. They are listed once, with owners and checks, in [`complete-the-build`](complete-the-build.md). Every one fails silently: the page still renders, nothing errors, and the gap surfaces only when a non-developer opens Studio.
 
-1. `cslp: { appendTags: true }` in the SDK init, once per project.
-2. `studioAttributes` on the root + `wrap: false` in the register entry + `$prop` twins, **every** registered component.
-3. `thumbnailUrl`, **every** `registerComponent` call.
-4. `ui_preview`, **every** Section composition. The editor writes this for itself by screenshotting the canvas on save. **A CMA-authored Section has it empty forever** unless you supply an asset uid explicitly. So "at write time" means have the asset ready and include it, not "the create call handles it". See [`author-composition-via-api`](author-composition-via-api.md) § Section thumbnails for the three ways to do it. Scripted authoring is exactly where this gets skipped, and the only signal is a blank tile in the palette.
-5. Live Preview enabled on the stack + preview token, once per project.
-6. The `/canvas` route mounted, once per project.
-7. **Published** to the environment the project targets, every Section and Template, and again after every tree edit. Delivery otherwise serves the old version while the CMA and canvas both look correct.
-8. **Composed of Sections**: every Template. Read the saved composition back and count `section-composition` nodes. Zero means the page is one component bound to the whole body. The standing rule above already forbids that shape, and a build still reached it, because a monolith renders correctly and fails no other check here. Counting is the only thing that catches it.
-
-Read [`complete-the-build`](complete-the-build.md) for the how and the verification block. The runnable node count is in [`build-connected-template`](build-connected-template.md) § Post-build structural check. Never report a build done with any of these outstanding. Say "created, thumbnail pending" and then finish it. State them in the plan up front too, so what the user approves is what they get.
+Read that list before you plan, and again before you report done. State the ten in the plan up front, so what the user approves is what they get. Never report a build done with any of them outstanding: say "created, thumbnail pending" and then finish it.
 
 ## Standing rule: auth preflight
 

@@ -190,12 +190,14 @@ The `ui` value on the wire is the tree above, JSON-stringified, `zlib.compress`e
       "datestring":[],
       "json_rte":  [],
       "html_rte":  [],
-      "object":    [],
-      "ui": "zlib:eNqtlFtvgjAUgP9L…"
-    }
+      "object":    []
+    },
+    "ui": "zlib:eNqtlFtvgjAUgP9L…"
   }
 }
 ```
+
+`ui` is a top-level entry field, a sibling of `static_value`, never inside it. The `number` value is a bare `49` because this stack's compositions CT types `static_value.number.value` as `number`. On a CT built from [`provision-studio-project`](provision-studio-project.md) it is text, so write `"49"` ([`author-composition-entry`](author-composition-entry.md#wire-shapes) § Wire shapes).
 
 Studio-generated `_metadata.uid` on each `static_value.*` entry is added by the CMA on write. Do not populate it yourself.
 
@@ -246,7 +248,7 @@ body = {
         {"key": "mHjnXsgKbBlj_PZ-ctaHref", "value": ""},
         {"key": "Wo-7Ly0xHXWsOXQ-ctaHref", "value": "https://example.com"},
       ],
-      "number":   [{"key": "Wo-7Ly0xHXWsOXQ-price",    "value": 49}],
+      "number":   [{"key": "Wo-7Ly0xHXWsOXQ-price",    "value": 49}],  # "49" if the CT types it as text
       "choice":   [{"key": "Wo-7Ly0xHXWsOXQ-badge",    "value": []}],
       "array": [], "boolean": [], "any": [], "datestring": [],
       "json_rte": [], "html_rte": [], "object": [],
