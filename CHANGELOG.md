@@ -2,6 +2,18 @@
 
 All notable changes to the Contentstack agent skills bundle. Versions match the `version` field in every plugin manifest that declares one.
 
+## 0.2.1
+
+### Changed skills
+
+- **`studio` matches Studio SDK 2.0.** Brought in the Studio team's latest guide fixes and checked them against the released SDK.
+  - Missing built-ins now surface as `COMPONENT_NOT_REGISTERED` ("Studio's own components are not registered"). The fix is to import `@contentstack/studio-react` above the fetch, not to upgrade. Updated in `troubleshoot-canvas`, `troubleshoot-ssr-rendering` and `byoc-end-to-end`.
+  - Key and token failures are named `STACK_NOT_FOUND_ON_HOST`. Entry lookups that miss are `URL_MATCHED_NO_ENTRY`. Log lines start with `[Contentstack Studio]`.
+  - `configure-csr-vs-ssr`: server styles come from `getSSRStyles`, computed on the server only. `isCompositionNotFound` is imported from `@contentstack/studio-react`. The Pages Router recipe reads `resolvedUrl`, not `req.url`. The RSC entry renders `<StudioServerComponent />`, and its components register through `@contentstack/studio-react/rsc` from a server module.
+  - The four-question framework is defined once, in `design-component-library`. Other guides link to it.
+  - Router triggers added for pinned Site Settings entries, Repeater recipes by API and App Router SSR crashes. `troubleshoot` stops after its clarifying question. `provision-studio-stack` waits for an explicit go on plan-only requests. `gate-third-party-scripts` covers analytics loader tags.
+  - `use-compositions-api` says Studio API service and drops two endpoints the service doesn't have.
+
 ## 0.2.0
 
 ### Install anywhere, from one source

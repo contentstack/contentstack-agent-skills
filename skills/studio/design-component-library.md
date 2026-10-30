@@ -20,10 +20,10 @@ The trap is registering either (a) one giant Hero with 20 props, or (b) ten diff
 
 This skill walks the four-question framework below. **The framework is an open validator**. It works on any input (React component, Figma frame, verbal description) regardless of what's already registered:
 
-- **Q1. Classify: Atom, Layout, or Compound?** Look at the input in isolation. A component that carries a single content unit is an Atom. One that arranges children via slots is a Layout. One that does both content AND arrangement is a Compound (refuse and decompose recursively). This is a validator question. It tells you what shape the component actually is.
+- **Q1. Classify: Atom, Layout, or Compound?** Look at the input in isolation. A component that carries a single content unit is an Atom. One that arranges children via slots is a Layout. One that does both content AND arrangement is a Compound (refuse and decompose recursively).
 - **Q2. Does the library already have it?** Only after Q1 confirms atom or layout, check reuse. On a fresh project the answer is trivially "no" for the first primitives. In an existing library, check the registry. With legacy monoliths, check the atom/layout registry, not the monolith list.
-- **Q3. Which props?** For each proposed prop, does it vary per-instance AND represent functional/content intent (not visual polish)?
-- **Q4. Which are Exposed?** For each schema prop, is it author-understandable AND DS-portable?
+- **Q3. Which props?** For each proposed prop, does it vary per-instance AND represent functional/content intent (not visual polish)? Refuse props that fail either half.
+- **Q4. Which are Exposed?** For each schema prop, is it author-understandable AND DS-portable? Never expose atom props.
 
 **Halt if any answer is ambiguous.** Never guess. Ask the user to disambiguate before proceeding.
 

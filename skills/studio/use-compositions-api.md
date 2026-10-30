@@ -4,9 +4,9 @@ name: use-compositions-api
 
 ## When to use
 
-Create, read, list, update, or delete Studio compositions through the **managed Composable Studio API service**, the REST layer that validates the layout, compresses the `ui` spec, and forwards the caller's identity, so you don't hand-encode entries against the raw CMA.
+Create, read, list, update, or delete Studio compositions through the **managed Studio API service**, the REST layer that validates the layout, compresses the `ui` spec, and forwards the caller's identity, so you don't hand-encode entries against the raw CMA.
 
-Use when the project talks to the Composable Studio API service (`/v1/projects/:projectUid/compositions`) and you want guardrails: server-side Studio validation, automatic `ui` compression, `composable_uid` backfill, a referenced-guard on delete, and list/references endpoints. Phrases: "compositions REST API", "Studio API service", "create composition endpoint", "list compositions", "composition references API", "managed composition API". Do NOT use for: raw-CMA / seed-pipeline / migration authoring where you hold a management token and encode the `ui` yourself. That's `author-composition-via-api`. Do NOT use for interactive UI authoring. That's `build-section` / `build-connected-template`. The `ui`-tree shapes themselves are NOT redefined here. They live in `author-composition-via-api`.
+Use when the project talks to the Studio API service (`/v1/projects/:projectUid/compositions`) and you want guardrails: server-side Studio validation, automatic `ui` compression, `composable_uid` backfill, a referenced-guard on delete, and list/references endpoints. Phrases: "compositions REST API", "Studio API service", "create composition endpoint", "list compositions", "composition references API", "managed composition API". Do NOT use for: raw-CMA / seed-pipeline / migration authoring where you hold a management token and encode the `ui` yourself. That's `author-composition-via-api`. Do NOT use for interactive UI authoring. That's `build-section` / `build-connected-template`. The `ui`-tree shapes themselves are NOT redefined here. They live in `author-composition-via-api`.
 
 > **Auth preflight: settle the credential before the first API call.** The service accepts OAuth Bearer. Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
@@ -14,7 +14,7 @@ Use when the project talks to the Composable Studio API service (`/v1/projects/:
 
 ## Context
 
-The **Composable Studio API service** is a REST wrapper over the CMS. Instead of building a composition entry by hand, you `POST` the layout and the service does the mechanical work:
+The **Studio API service** is a REST wrapper over the CMS. Instead of building a composition entry by hand, you `POST` the layout and the service does the mechanical work:
 
 - **You send the `ui` tree uncompressed** (a JSON object). The service compresses it to `zlib:<base64>`. You never touch zlib.
 - **The service validates** the tree against Studio's structural rules and returns all problems at once, field-anchored.
@@ -43,8 +43,6 @@ All routes are prefixed with `/v1` and nested under the project. Base URL per re
 | Create a section | `POST …/compositions/sections` |
 | List / query | `GET …/compositions` |
 | Fetch one | `GET …/compositions/{uid}` |
-| Fetch, assert template | `GET …/compositions/{uid}/template` |
-| Fetch, assert section | `GET …/compositions/{uid}/section` |
 | List references | `GET …/compositions/{uid}/references` |
 | Update (partial merge) | `PUT …/compositions/{uid}` |
 | Delete (guarded) | `DELETE …/compositions/{uid}` |
@@ -139,7 +137,7 @@ A composition created through this API is not finished when the write returns `2
 | Pitfall | Why it bites | Fix |
 |---|---|---|
 | Sending `ui` pre-compressed | The service compresses for you. A `zlib:` string is treated as the tree and fails validation | Send the **uncompressed node object** |
-| `data_sources` as a JSON string | The service stringifies it. A string double-encodes | Send a plain **array** |
+| `data_sources` as a JSON string | The service stringifies it. A string answers `400` | Send a plain **array** |
 | Blank `composable_uid` | A whitespace-only value is rejected, not backfilled | Omit it, or send a real slug. A blank value gives `422` |
 | Duplicate `composable_uid` in another locale | Uniqueness is content-type-wide, not per-locale | Expect `409` at create. Pick a unique slug |
 | Treating `422 stack_not_found` as "missing" | It's the **access-denied** code (Studio convention, not 403) | Check the caller's rights on the project's stack |

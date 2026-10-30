@@ -55,7 +55,7 @@ Regional hosts: see Step 10 below (Studio API hosts mirror the CMA region prefix
    | **A project's `connectedStackApiKey` matches the target stack** | **Almost certainly the one they want.** Say so and default to reusing it: "Project `<name>` (`<uid>`) is already connected to this stack with `contentTypeUid: <ct>`. Reuse it, or create a second project against the same stack?" A second project on one stack is legal but rarely intended. It splits compositions across two projects |
    | **Projects exist, none on this stack** | Present the numbered list below and **ask**: reuse one (repointing it, see the warning at the end) or create new. Don't assume new just because the stack differs |
    | **No projects at all** | Proceed to create, and say that's what you're doing |
-   | **`GET` fails** (401/422) | **Stop.** An auth failure is not evidence that no project exists. Resolve auth per step 10's ladder, then re-check |
+   | **`GET` fails** (401) | **Stop.** An auth failure is not evidence that no project exists. Resolve auth per step 10's ladder, then re-check |
 
    ### Present the list as a numbered choice: never ask for a project id
 
@@ -252,7 +252,7 @@ The picker's "Static Value" branch enumerates these sub-groups by uid. Missing s
 | JSON-RTE static values fail to embed correctly | JSON-RTE embeds carry `attrs.locale`, missing in API-authored payloads | Set `attrs.locale` on every embedded entry/asset in `static_value.json_rte[*].value` |
 | Wrong region host | CT creation 404s | Use the region-specific CMA and Studio API hosts (Step 10) |
 | Live Preview not enabled on stack | Canvas iframe hangs on "Loading composition…". Rest-preview CORS preflight fails | `POST /v3/stacks/settings` with `live_preview.enabled`, `default-env` and `default-url` (step 5). `PUT /v3/stacks` answers `200` and changes nothing |
-| Studio project configured with environment **name** instead of **uid** | Studio API accepts the PUT but environment binding silently misses. Compositions never resolve | Look up env uid via `GET /v3/environments`, pass `settings.configuration.environment = <uid>` |
+| Studio project configured with environment **name** instead of **uid** | Routes work. Studio finds no Base URL, so the canvas uses the Playground | Look up env uid via `GET /v3/environments`, pass `settings.configuration.environment = <uid>` |
 | Re-using a Studio project across stacks (name match, stale `connectedStackApiKey`) | Project surfaces last stack's compositions. Current stack invisible in canvas | On every provision, `GET` the project and compare its `connectedStackApiKey` with the current stack. If it differs, show the user the before/after and get approval, then PUT to re-bind |
 | Mixed CMA + Studio API hosts (e.g. NA Studio API with EU CMA) | 401/404s with no clear error | Pick a region and use BOTH region-matched hosts |
 | Including `linked_sections` in the initial `POST /v3/content_types` | `error_code 115: linked_sections.reference_to: content type does not exist`. CMA validates reference targets at create time. A CT can't self-reference before it exists | Two-step: POST without `linked_sections`, then PUT with the full schema (step 8) |

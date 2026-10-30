@@ -89,7 +89,7 @@ If the user's message contains any phrase in the left column, Read the skill in 
 | build a blog template, PDP template, connected to a content type | `build-connected-template` |
 | build a freeform template, static page in Studio, one-off landing page | `build-freeform-template` |
 | page builder, section picker, authors choose the sections, reorder sections per page, modular page, one template many layouts, let marketing add sections | `build-page-builder-template` |
-| pin an entry to freeform, additional entry data | `pin-entry-to-freeform` |
+| pin an entry to freeform, additional entry data, pin an entry to a template or Section, header and footer blank on new pages, shared Site Settings entry for a header or footer | `pin-entry-to-freeform` |
 | pin a query, iterate latest entries, filtered list on freeform | `pin-query-to-freeform` |
 | expose this prop, let authors override the headline, per-instance override | `expose-section-props` |
 | repeat per item, list of blocks, iterate references | `use-repeater` |
@@ -104,7 +104,7 @@ If the user's message contains any phrase in the left column, Read the skill in 
 | static_value binding by API, static value renders the default, where the literal goes | `author-composition-static-values` |
 | binding types list, node anatomy, where bindings live in the ui tree, repeater binding shape | `author-composition-bindings` |
 | compress the ui spec, zlib encode composition, preflight validate the ui tree | `author-composition-encoding` |
-| repeat a card over a multi-reference, repeat over group-multiple, repeater recipe by API | `author-composition-repeater-recipes` |
+| repeat a card over a multi-reference, repeat over group-multiple, repeater recipe by API, loop over a reference field via the API, a different card per content type via the API, Condition Blocks by API | `author-composition-repeater-recipes` |
 | nested repeaters by API, list inside each iterated item, repeaterUID chain | `author-composition-nested-repeaters` |
 | author a section by API, selectedField priority, section scoping, section-slot node shape | `author-composition-sections` |
 | Pattern B by API, fill a section slot by API, wrapper section with a slot | `author-composition-section-slot-fill` |
@@ -126,7 +126,7 @@ If the user's message contains any phrase in the left column, Read the skill in 
 | cookie banner in canvas, chat widget over the panel, hide analytics in Studio, gate GTM, isStudioCanvas | `gate-third-party-scripts` |
 | URL renders the homepage, two templates match the same pattern, /blog/post-1 404s, wildcard stopped matching | `troubleshoot-composition-resolution` |
 | binding shows nothing, wrong value rendering, literal {{ | `troubleshoot-data-binding` |
-| SSR render failure, use client mismatch, hydration Studio, registry undefined in server | `troubleshoot-ssr-rendering` |
+| SSR render failure, use client mismatch, hydration Studio, registry undefined in server, App Router route 500s, "Cannot read properties of null (reading 'useContext')", crash at useData / RepeaterPreview, `transpilePackages` lists `@contentstack/studio-*` | `troubleshoot-ssr-rendering` |
 | what's a slot, swap point, drop zone | `understand-section-slots` |
 | what's a Section, Section vs Template, reusable page parts | `understand-sections` |
 | what's a Template, template vs section, one template N pages | `understand-templates` |
@@ -229,7 +229,7 @@ Grouped by intent. Use when the user's message is Studio-shaped but no trigger p
 - **build-connected-template**: content-type-bound template. Every entry renders at a derived URL.
 - **build-freeform-template**: static template with Pinned Entries and Pinned Queries.
 - **build-page-builder-template**: the author-composes-the-page pattern: a Modular Block of section types, one Section per block, one template with a Repeater + a Condition Block per block. One template renders every layout.
-- **pin-entry-to-freeform**: pin one entry to a freeform template as a Pinned Entry.
+- **pin-entry-to-freeform**: pin one entry as a Pinned Entry on a Freeform or Connected template or a Section (e.g. a header or footer Section reading a shared Site Settings entry).
 - **pin-query-to-freeform**: pin a CDA query so a Repeater source iterates dynamic content.
 
 ### 10. Routes and template URLs

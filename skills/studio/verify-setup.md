@@ -74,7 +74,7 @@ Use existing compositions for verification where possible. Any temporary authori
    - Fail modes:
      - A blank canvas means the canvas iframe address is wrong. Check both halves: the **Canvas URL** (path) on the Studio project must match the mounted route, AND the **targeted environment's per-locale Base URL** (origin) must be non-empty and reachable. An empty env Base URL is the most common cause and surfaces as a "no base URL"-style error pointing at the Studio project, not the environment.
      - "Component Loading Error" means the section ref's `compositionUID` doesn't resolve (sections not preloaded or fetched from CDA)
-     - "Authentication failed" means the Delivery or Preview token in `.env` is wrong or revoked. In the stack, open Settings, then Tokens, then the token itself to read its current values, paste those into `.env`, and restart the dev server
+     - `STACK_NOT_FOUND_ON_HOST` or 401/412: a key or token in `.env` is wrong. In the stack, open Settings, then Tokens, then the token itself to read its current values, paste those into `.env`, and restart the dev server
 
    ### Expected (not-a-failure) console messages when verifying
 

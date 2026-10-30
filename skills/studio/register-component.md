@@ -22,9 +22,9 @@ Use when the user wants Studio's palette to surface their components: "make my H
 
 This skill runs the last three questions of the [four-question decision framework](design-component-library.md). Q1 (classify: atom, layout, or compound?) is answered before you land here. If the input is a compound, `decompose-jsx-to-atomics` or `decompose-design` decomposes it into atoms + layouts before registration. If the input is already a valid atom or layout, proceed.
 
-- **Q2: Does the registry already have it?** Before writing a `registerComponent` call, check whether an existing primitive covers the shape. If yes, reuse (don't re-register). If not, proceed to Q3.
-- **Q3: Which props?** For each proposed prop: does it vary per-instance AND represent functional/content intent (not visual polish)? If either is no, refuse the prop. Let a DS token decide.
-- **Q4: Which are Exposed?** For each schema prop: is it author-understandable AND DS-portable? If either is no, keep static per-Section. Never expose atom props.
+- **Q2** — if an existing primitive covers the shape, reuse it; don't re-register.
+- **Q3** — a prop that fails either half is refused here. Let a DS token decide instead.
+- **Q4** — a prop that fails either half stays static per-Section.
 
 If any answer is ambiguous, halt and ask the user to disambiguate. Never silently register a prop that fails Q3 or expose a prop that fails Q4.
 

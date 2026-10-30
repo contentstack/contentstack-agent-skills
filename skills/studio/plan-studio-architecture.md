@@ -20,10 +20,12 @@ Given requirements, classify Sections, Connected templates, the content model, a
 
 Every component in the emitted plan carries a Q1 to Q4 verdict from the [decision framework](design-component-library.md). The plan produces the sequence: "here's what to register, in what order, with what shape". The framework's four questions decide the shape.
 
-- **Q1. Classify: Atom, Layout, or Compound?** For each component in the plan's inventory, classify what shape it is. Atom means a single content unit. Layout means a slot-carrying arrangement. Compound means refuse. Decompose into atoms + layouts, add each fragment to the inventory, and reclassify. The plan's component list has zero compounds.
-- **Q2. Does the registry already have it?** Check the existing project registry AND earlier steps of THIS plan's build order. If a primitive matching the classified shape exists, the plan marks it as reused. If not, it adds a new-registration step to the build order before any Section that depends on it.
-- **Q3. Which props?** Each primitive's proposed schema is emitted with a per-prop check against the varies-per-instance-AND-functional-intent rule. Refuse polish props at plan time, cheaper than discovering them in code review.
-- **Q4. Which are Exposed?** Each schema prop's exposure status is emitted at plan time. This lets the design review sign off on the exposure surface BEFORE registration ships.
+The four questions are defined once in [`design-component-library`](design-component-library.md) § The four-question decision framework. What the plan does with each verdict:
+
+- **Q1** — a compound is decomposed, each fragment added to the inventory and reclassified, so the plan's component list has zero compounds.
+- **Q2** — checks the existing project registry AND earlier steps of THIS plan's build order, then adds a new-registration step before any Section that depends on it.
+- **Q3** — each primitive's schema is emitted with a per-prop check, so polish props are refused at plan time rather than in code review.
+- **Q4** — each prop's exposure status is emitted at plan time, so design review signs off on the exposure surface BEFORE registration ships.
 
 **The plan halts** if any component's Q1 to Q4 verdict is ambiguous. Ask the user to disambiguate. Add the resolution to the plan. Only then proceed to the build order.
 
