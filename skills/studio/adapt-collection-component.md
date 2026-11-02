@@ -16,7 +16,7 @@ Use when the production wrapper's leaf takes an object shape that can't easily b
 
 Studio has two ways to render a CMS collection through a production wrapper. Pick before writing any adapter:
 
-**Path A: native array prop** (`build-repeating-section` § array-prop alternative). Register the production wrapper with a `type: "array"` prop, bind that prop to a Reference field on the section's linked schema, populate `data_sources.resolvedReferences`. The SDK's data-binder reads the bound array and delivers full resolved entries. The component does its own `.map()`. No Repeater, no Condition Block. Simpler and native.
+**Path A: native array prop** (`build-repeating-section` § array-prop alternative). Register the production wrapper with a `type: "array"` prop, bind that prop to a Reference field on the section's linked schema, populate `data_sources.resolvedReferences`. The SDK's data-binder reads the bound array and delivers the resolved entries, but on the live site only with the fields your bindings name (see [`register-component-prop-contracts`](register-component-prop-contracts.md) § Studio fetches only the fields your bindings name). The component does its own `.map()`. No Repeater, no Condition Block. Simpler and native.
 
 Use Path A when: the production wrapper already accepts an `array` prop of full entry-like objects. The list iterates a **single Reference field** (one CT, no per-item polymorphism). Template authors don't need to swap the child Section per template instance. You don't need Studio Preview Mode to show N rendered children on the canvas.
 

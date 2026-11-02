@@ -67,7 +67,7 @@ Design mode keeps the drop zone on purpose: design is for building, preview is f
    - Drop a real component or section into the slot, and it replaces the default.
    - Delete that content, and the default reappears.
 
-8. **Verify the whitelist** (only if set). Drag a section that is not on the list into the slot. Studio rejects it with "This section isn't allowed in this slot. Choose one of the slot's allowed sections, or drop a different component." and nothing is placed. The in-canvas **Select section** button and the right-panel picker offer only the allowed sections. A plain component still drops in: the gate is sections-only.
+8. **Verify the whitelist** (only if set). Drag a section that is not on the list into the slot. Studio rejects it with "This section isn't allowed in this slot. Choose one of the slot's allowed sections, or drop a different component." and nothing is placed. The slot's **+** Insert handle opens **Insert component**, which offers only the allowed sections. A plain component still drops in: the gate is sections-only.
 
 ## Nested defaults
 

@@ -81,7 +81,7 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
    | Route found, Canvas URL not set in Studio | Run [`setup-section-preview`](setup-section-preview.md) step 4. The file alone is half the wiring. |
    | **Nothing found** | **Run [`setup-section-preview`](setup-section-preview.md) now, in full, then come back.** Do not emit any template route first. |
 
-   `setup-section-preview` owns this route and everything around it: framework-correct file path, the client-only `dynamic({ ssr: false })` wrapper, chrome isolation, iframe-allowed headers, and the Canvas URL setting in Studio. Don't hand-roll a `/canvas` file here. Delegate.
+   `setup-section-preview` owns this route and everything around it: framework-correct file path, the client component, chrome isolation (without losing the site's CSS and providers), iframe-allowed headers, and the Canvas URL setting in Studio. Don't hand-roll a `/canvas` file here. Delegate.
 
    **Why this is compulsory in wildcard mode specifically.** A catch-all matches `/canvas` like any other URL. With no canvas route registered, `<Route path="*">` / `app/[[...slug]]/page.tsx` claims it, Studio's section iframe loads the catch-all, `fetchCompositionData({ url: "/canvas" })` finds no composition, and the author gets a blank frame, or (once step 5a's 404 handling lands) **your 404 page rendered inside Studio's section-authoring canvas**. Every Section in the project looks broken, and no error message points at routing. In dedicated mode nothing claims `/canvas`, so the shadowing failure doesn't occur. The route is still mandatory, just for the ordinary reason that Section authoring needs it.
 
@@ -146,13 +146,19 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
    // app/[[...slug]]/page.tsx — Server Component
    import { sdk } from "@/lib/contentstack";
    import { StudioRender } from "./StudioRender";
-   export default async function Page({ params, searchParams }) {
+
+   type Props = {
+     params: Promise<{ slug?: string[] }>;
+     searchParams: Promise<Record<string, string>>;
+   };
+
+   export default async function Page({ params, searchParams }: Props) {
      // Same fetch for visitor + in-Studio iframe — StudioComponent picks the
      // right render path internally. Forward the full request searchQuery so
      // Studio's iframe overrides (locale / variant / preview entry) reach the SDK.
      const { slug } = await params;   // a Promise on Next 15+
      const url = "/" + (slug ?? []).join("/");
-     const searchQuery = new URLSearchParams((await searchParams) as Record<string, string>).toString();
+     const searchQuery = new URLSearchParams(await searchParams).toString();
      // Unwrapped for clarity — this call THROWS when no composition matches, so
      // shipping it as-is returns 500 on every unclaimed URL. Step 5a (iii) has
      // the production form using resolveComposition.
@@ -164,56 +170,31 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
    ```tsx
    // app/[[...slug]]/StudioRender.tsx — Client Component
    "use client";
-   import { StudioComponent } from "@contentstack/studio-react";
+   import { StudioComponent, type StudioComponentSpecOptions } from "@contentstack/studio-react";
 
-   export function StudioRender({ specOptions, editorMode = false }: { specOptions?: any; editorMode?: boolean }) {
-     // Missing options on a VISITOR render is a real bug — fail loudly rather than
-     // serving an empty 200. Inside Studio's iframe the same state is legitimate:
-     // an unsaved template has no published spec yet, so the editor path passes
-     // `editorMode` and the guard stands down. Throwing there would turn the
-     // editor exemption below (§ 5a) into a render-time error on every unsaved
-     // template — the opposite of what that path exists to do.
-     if (!editorMode && !specOptions?.fetchOptions) throw new Error("Studio render options are missing; verify editor bootstrap for the installed SDK.");
-     // StudioComponent handles iframe context internally — same component on
-     // visitor routes and inside Studio's preview iframe. Mount it even with no
-     // spec: a bare `<div />` returns 200 without starting the editor bridge.
-     // Confirm the no-spec form against the installed SDK (§ Editor-mode
-     // detection) instead of fabricating options.
+   export function StudioRender({ specOptions }: { specOptions: StudioComponentSpecOptions }) {
+     // Same component on visitor routes and inside Studio's preview iframe: it
+     // picks the render path itself. `spec: null` (the editor branch in step 5a)
+     // means "ask Studio for the draft". Mount it even then: a bare `<div />`
+     // returns 200 without starting the editor bridge.
      return <StudioComponent specOptions={specOptions} />;
    }
    ```
+
+   `specOptions` is required and typed: a visitor render always has the object `resolveComposition` returned, and the editor branch builds a complete one with `spec: null`. Don't loosen it to `any` to make the editor branch compile.
 
    **App Router CSR variant (SPAs only (no SEO requirement)**) emit at `app/_components/LinkedRoute.tsx`, marked `"use client"`. Skip this for any visitor-facing site. The SSR pattern above is the default:
 
    ```tsx
    "use client";
-   import { usePathname, useSearchParams } from "next/navigation";
+   import { usePathname } from "next/navigation";
    import { StudioComponent, useCompositionData } from "@contentstack/studio-react";
 
    export function LinkedRoute() {
      const pathname = usePathname();
-     const searchParams = useSearchParams();
-     return <VisitorComposition url={pathname} searchParams={searchParams} />;
-   }
-
-   function VisitorComposition({ url, searchParams }: {
-     url: string;
-     searchParams: URLSearchParams;
-   }) {
-     // Pass `searchQuery` as the raw URLSearchParams OBJECT — NOT a stringified
-     // form and NOT omitted. Studio's editor-mode detection reads editor params
-     // (see § Editor-mode detection below) directly off this object. The 1.5.x
-     // .d.ts type says `URLSearchParamsString` but the object is what actually
-     // works; passing the string form or omitting the arg breaks editing of
-     // unsaved compositions.
-     //
-     // `extendQuery` merges into the CDA fetch. Keeping locale-only avoids
-     // hydration mismatches from server-included fields.
-     const { specOptions, isLoading, error } = useCompositionData({
-       url,
-       searchQuery: searchParams,
-       extendQuery: { blog_post: { only: ["locale"] } },   // one entry per connected CT
-     });
+     // No searchQuery argument: the hook reads Studio's iframe params (editor
+     // mode, preview hash, locale, variant) off window.location itself.
+     const { specOptions, isLoading, error } = useCompositionData({ url: pathname });
      if (isLoading) return <div>Loading…</div>;
      if (error) return <div />;                            // empty div, NOT null
      if (!specOptions?.spec) return <div />;               // canvas host needs a mount target
@@ -221,11 +202,11 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
    }
    ```
 
-   ### Why the `searchQuery` object + empty `<div>` matter
+   ### Why the query string and the empty `<div>` matter
 
-   - **`searchQuery` = raw URLSearchParams object.** When Studio's iframe loads the template URL, it appends editor-mode params. The SDK reads them off `searchQuery` to switch from "render deployed composition" to "render unsaved working spec." Omit `searchQuery` and the SDK falls through to the deployed path, which returns `null` on a not-yet-saved composition, so you get **"Template Did Not Load."**
-   - **Return an empty `<div />` (not `null`) when there's no spec.** Studio's canvas host queries the mount target after route render. If there's nothing in the DOM it can't drive it, and Studio shows "SDK Not Initialized" or a blank error. An empty div gives it something to attach to. **In wildcard mode this applies to the editor iframe only**, for real visitors the no-spec branch must render the 404 page instead, or the site never 404s. Step 4a (iii) has the gated version. Use that one.
-   - **`extendQuery` per connected CT.** Recommended; older docs snippets omit it. Restrict to `only: ["locale"]` to avoid over-fetching.
+   - **The query string carries editor mode.** When Studio's iframe loads the template URL, it appends its params (`cs-composable-studio`, `hash`, locale, variant). On the server, forward the raw request query string as `searchQuery` (a string or `URLSearchParams`; both type-check), never a subset. In the browser `useCompositionData` takes no `searchQuery`: its first argument accepts only `url`, `composableUid` or `templateContentTypeUid`, and it reads `window.location` itself.
+   - **Return an empty `<div />` (not `null`) when there's no spec.** Studio's canvas host queries the mount target after route render. If there's nothing in the DOM it can't drive it, and Studio shows "SDK Not Initialized" or a blank error. An empty div gives it something to attach to. **In wildcard mode this applies to the editor iframe only**, for real visitors the no-spec branch must render the 404 page instead, or the site never 404s. Step 5a (iii) has the gated version. Use that one.
+   - **No `extendQuery`.** It is deprecated in studio-react 2.x: still honoured, but it logs `[studio] extendQuery is deprecated … Tick the references in Studio instead` in development and goes away in the next major. References now travel with the composition, see § Fetching referenced fields below.
 
 5. **Register the catch-all route: pick `[...slug]` vs `[[...slug]]` based on existing app pages.**
 
@@ -237,7 +218,10 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
    # Does a ROOT page already exist? Any extension, app/ or src/app/, and note that
    # a locale-prefixed app's root lives at app/[locale]/page.* — which still owns "/".
    find app src/app -maxdepth 2 -name 'page.*' 2>/dev/null
-   ls pages/index.* 2>/dev/null
+   find pages src/pages -maxdepth 1 -name 'index.*' 2>/dev/null   # not `ls pages/index.*`: zsh aborts on a glob with no match
+
+   # Does a catch-all ALREADY exist (CMS pages, a legacy router)? Then see § Existing catch-all below.
+   find app src/app pages src/pages -name '\[*\.\.\.*\]*' 2>/dev/null
 
    # What other specific routes exist? (informational — they win by Next precedence)
    find app src/app pages -name 'page.*' 2>/dev/null | head -20
@@ -251,7 +235,8 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
    |---|---|
    | `app/page.tsx` (or `pages/index.tsx`) **exists** | `app/[...slug]/page.tsx`: **non-optional** catch-all. Does NOT match `/`. The existing root page keeps owning `/`. Coexists cleanly. |
    | No root page found, so greenfield-style | `app/[[...slug]]/page.tsx`: **optional** catch-all. Matches `/` AND all nested URLs. |
-   | **Locale-prefixed app** (`app/[locale]/page.*` owns `/en`, `/fr`) | `app/[locale]/[...slug]/page.tsx`, **inside** the segment. Strip the prefix before building `url`, pass the mapped stack locale as `{ locale }`, forward `searchQuery` untouched. See [`convert-project-to-studio`](convert-project-to-studio.md) § Step 3 for the map and the Base URL rule. |
+   | **A catch-all already exists** (`app/[...slug]/page.*`, `app/[[...slug]]/page.*`, `pages/[...slug].*`) | **Don't add a second one.** Chain Studio into the existing file: § Existing catch-all |
+| **Locale-prefixed app** (`app/[locale]/page.*` owns `/en`, `/fr`) | `app/[locale]/[...slug]/page.tsx`, **inside** the segment. Strip the prefix before building `url`, pass the mapped stack locale as `{ locale }`, forward `searchQuery` untouched. See [`convert-project-to-studio`](convert-project-to-studio.md) § Step 3 for the map and the Base URL rule. |
 
    Tell the user verbatim what you found:
 
@@ -285,6 +270,8 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
 
    Do NOT create `app/blog/[slug]/page.tsx`, `app/products/[sku]/page.tsx`, etc. The catch-all handles all of them. Studio's URL-pattern matching runs inside `sdk.fetchCompositionData({ url, searchQuery })`. The router doesn't need to know about each template.
 
+   **Caching changes with the route.** The catch-all reads the request query, so it renders dynamically; Studio's reads go through the Delivery SDK (axios), so `fetch`-level revalidation and cache tags don't reach them; and the app's publish webhook doesn't fire for compositions. Tell the user, and keep their caching strategy with [`configure-csr-vs-ssr` § Static generation and caching](configure-csr-vs-ssr.md#static-generation-and-caching).
+
 5a. **Wildcard mode ONLY: preserve site chrome and 404. Mandatory. Do not skip.**
 
    A catch-all takes over every URL that isn't explicitly claimed. Two things silently disappear when it lands in an existing app: **the header/footer that used to be rendered by the pages it replaced**, and **the app's own 404 page** (the catch-all now matches the URLs that used to fall through to it). Neither throws an error. The site just renders bare compositions on every route and never 404s.
@@ -313,7 +300,8 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
    ```bash
    # Next.js — is chrome in the root layout, or in individual pages?
    grep -n "Header\|Footer\|Nav" app/layout.tsx 2>/dev/null
-   grep -rln "Header\|Footer" app/**/page.tsx src/pages/ 2>/dev/null | head
+   grep -rln --include='page.*' "Header\|Footer" app src/app 2>/dev/null | head   # not app/**/page.tsx: zsh aborts when the glob matches nothing
+   grep -rln "Header\|Footer" src/pages 2>/dev/null | head
    # React Router — is chrome around <Routes>, or inside each page component?
    grep -n "Header\|Footer\|Outlet" src/App.tsx src/main.tsx 2>/dev/null
    ```
@@ -349,31 +337,36 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
    </Routes>
    ```
 
-   **`/canvas` outside the chrome is not cosmetic.** `<StudioCanvas />` renders one Section at a time inside Studio's authoring iframe. Wrapped in site chrome, every section is authored inside a full page header and footer. The section's own spacing, sticky behavior, and viewport measurements all read wrong. Same rule for Next.js: if `/canvas` sits under a layout that renders chrome, move it into a route group with a bare layout.
+   **`/canvas` outside the chrome is not cosmetic.** `<StudioCanvas />` renders one Section at a time inside Studio's authoring iframe. Wrapped in site chrome, every section is authored inside a full page header and footer. The section's own spacing, sticky behavior, and viewport measurements all read wrong. Next.js is different: a route group does not escape the **root** layout, which is where most apps render the header and footer. Use the chrome gate in [`setup-section-preview`](setup-section-preview.md) step 2: a small client component in the root layout hides the chrome on the canvas path and keeps the site's CSS and providers.
 
    #### (iii) Wire the 404, and exempt Studio's editor iframe
 
-   The catch-all now owns unmatched URLs, so "no composition for this URL" is the site's 404 path. **Reuse the project's existing not-found page** (`app/not-found.tsx`, `pages/404.tsx`, the app's `NotFound` component, or the per-locale one under `app/[locale]/`). Create a new file only when none exists. **But the same no-spec condition happens legitimately inside Studio's iframe** for a template that hasn't been saved yet. 404 unconditionally and every unsaved template shows your 404 page in the canvas ("Template Did Not Load"). Gate on editor mode: reuse `isStudioEditorMode` from § Editor-mode detection below.
+   The catch-all now owns unmatched URLs, so "no composition for this URL" is the site's 404 path. **Reuse the project's existing not-found page** (`app/not-found.tsx`, `pages/404.tsx`, the app's `NotFound` component, or the per-locale one under `app/[locale]/`). Create a new file only when none exists. **But the same no-spec condition happens legitimately inside Studio's iframe** for a template that hasn't been saved yet. 404 unconditionally and every unsaved template shows your 404 page in the canvas ("Template Did Not Load"). Gate on editor mode with `isStudioEditorMode`, imported from `@contentstack/studio-react` (§ Editor-mode detection below).
 
-   **`fetchCompositionData` throws on a miss. It does not resolve with an empty spec.** A guard like `if (!specOptions?.spec) notFound()` never runs on the path it was written for. The `await` rejects first and the visitor gets a **500 instead of your 404 page**. Use the canonical [`resolveComposition`](configure-csr-vs-ssr.md#resolve-composition-helper) wrapper (it classifies known not-found ids as 404 and rethrows real failures), don't hand-roll a second one, and never blanket-catch.
+   **`fetchCompositionData` throws on a miss. It does not resolve with an empty spec.** A guard like `if (!specOptions?.spec) notFound()` never runs on the path it was written for. The `await` rejects first and the visitor gets a **500 instead of your 404 page**. Use the canonical [`resolveComposition`](configure-csr-vs-ssr.md#resolve-composition-helper) wrapper (it clears a stale preview hash, classifies a miss as 404 and rethrows real failures), don't hand-roll a second one, and never blanket-catch.
 
    **Next.js App Router**: 404 for visitors, empty mount target for the editor:
 
    ```tsx
    // app/[...slug]/page.tsx (or [[...slug]])
    import { notFound } from "next/navigation";
+   import { isStudioEditorMode } from "@contentstack/studio-react";
    import { sdk } from "@/lib/contentstack";
    import { resolveComposition } from "@/lib/resolve-composition";
    import { StudioRender } from "./StudioRender";
-   import { isStudioEditorMode } from "@/lib/studio-editor-mode"; // § Editor-mode detection below
 
-   export default async function Page({ params, searchParams }) {
+   type Props = {
+     params: Promise<{ slug?: string[] }>;
+     searchParams: Promise<Record<string, string>>;
+   };
+
+   export default async function Page({ params, searchParams }: Props) {
      const { slug } = await params;
      const url = "/" + (slug ?? []).join("/");
-     const query = new URLSearchParams((await searchParams) as Record<string, string>);
+     const query = new URLSearchParams(await searchParams);
 
      // Throws on CDA/token/network failure (correctly → 500); returns notFound
-     // only for the known "no composition here" error ids.
+     // only when the SDK established there is no composition here.
      const { specOptions, notFound: miss } = await resolveComposition(sdk, {
        url,
        searchQuery: query.toString(),
@@ -383,7 +376,7 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
        // In Studio's iframe an unsaved template legitimately has no published spec —
        // 404ing here is what produces "Template Did Not Load" in the canvas.
        // A null spec (not undefined: that crashes) asks Studio for the draft.
-       if (isStudioEditorMode(query)) return <StudioRender editorMode specOptions={{
+       if (isStudioEditorMode(query)) return <StudioRender specOptions={{
          spec: null, hasSpec: false, hasTemplate: false, seo: null,
          fetchOptions: { config: sdk.getConfig(), compositionQuery: { url },
            searchQuery: query.toString(), options: {}, mode: "edit" } }} />;
@@ -392,6 +385,8 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
      return <StudioRender specOptions={specOptions} />;
    }
    ```
+
+   On the server `isStudioEditorMode` must be handed the request's params, as here. Called with no argument it reads `window.location`, and on the server it always answers `false`.
 
    **Test the 404 with two URLs, not one.** `/definitely-not-a-page` fails at pattern match (`NO_COMPOSITION_FOR_URL`). A bad slug under a connected template (`/blog/zzz-not-an-entry`) matches the pattern and fails later at entry lookup (`URL_MATCHED_NO_ENTRY`). `isCompositionNotFound` covers both; a hand-rolled list that knows only the first still 500s on every mistyped slug. Full taxonomy: [`troubleshoot-composition-resolution` § Runtime error taxonomy](troubleshoot-composition-resolution.md).
 
@@ -414,30 +409,30 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
 
    ```tsx
    import { useLocation } from "react-router-dom";
-   import { StudioComponent, useCompositionData } from "@contentstack/studio-react";
-   import { isCompositionNotFound } from "@contentstack/studio-client";
+   import {
+     StudioComponent, useCompositionData, isCompositionNotFound, isStudioEditorMode,
+   } from "@contentstack/studio-react";
+   import { sdk } from "./lib/contentstack";
    import NotFound from "./pages/NotFound";   // the app's EXISTING 404 page — reuse it
-   import { isStudioEditorMode } from "./lib/studio-editor-mode"; // § Editor-mode detection below
 
    export function LinkedRoute() {
      const { pathname, search } = useLocation();
      const searchParams = new URLSearchParams(search);
-     const { specOptions, isLoading, error } = useCompositionData({
-       url: pathname,
-       searchQuery: searchParams,
-     });
+     // The hook reads Studio's iframe params off window.location itself.
+     const { specOptions, isLoading, error } = useCompositionData({ url: pathname });
 
      if (isLoading) return <div>Loading…</div>;
 
      // The hook stores the SDK's rejection verbatim in `error`, so a not-found
      // and a CDA outage arrive on the same branch. Ask the SDK which it is.
-     const isMiss = !error || isCompositionNotFound(error);
-     if (error && !isMiss) throw error;   // real failure — don't turn it into a 404
+     if (error && !isCompositionNotFound(error)) throw error;   // real failure — don't turn it into a 404
 
      if (error || !specOptions?.spec) {
        // Editor iframe, unsaved template: null-spec options as in App Router (not 404, not <div />).
-       if (isStudioEditorMode(searchParams)) return <StudioComponent specOptions={{ spec: null,
-         fetchOptions: { compositionQuery: { url: pathname }, searchQuery: searchParams.toString(), options: {}, mode: "edit" } } as any} />;
+       if (isStudioEditorMode(searchParams)) return <StudioComponent specOptions={{
+         spec: null, hasSpec: false, hasTemplate: false, seo: null,
+         fetchOptions: { config: sdk.getConfig(), compositionQuery: { url: pathname },
+           searchQuery: searchParams.toString(), options: {}, mode: "edit" } }} />;
        return <NotFound />;
      }
      return <StudioComponent specOptions={specOptions} />;
@@ -511,6 +506,7 @@ This skill succeeds only when ALL of the following are true. If any fails, do no
 **Dedicated mode:** every pattern in `studioPatterns` mounts `<StudioComponent />`. Every other route, the existing chrome, and the existing 404 page are unchanged (verify by loading one non-Studio page and one bad URL).
 
 - [ ] **ONE catch-all route** is registered (wildcard mode). For Next.js: `app/[...slug]/page.tsx` (non-optional) WHEN the app has an existing `app/page.tsx`, OR `app/[[...slug]]/page.tsx` (optional) WHEN greenfield with no root page. For React Router: `<Route path="*">` registered LAST. The catch-all points at `LinkedRoute`.
+- [ ] If the app already had a catch-all, it was extended in the order app page, then Studio composition, then the app's 404 (§ Existing catch-all), not duplicated or replaced. One of its own pages still renders as before, and a bogus URL still renders its 404.
 - [ ] If the app has an existing `app/page.tsx`: confirm the chosen catch-all does NOT collide (greenfield-style `[[...slug]]` is wrong here, must be `[...slug]`).
 - [ ] If the user provided opt-outs, those routes are registered ahead of the catch-all and bypass Studio correctly.
 - [ ] Studio's project-level Canvas URL still points at `/canvas` (not a template route).
@@ -519,22 +515,92 @@ This skill succeeds only when ALL of the following are true. If any fails, do no
 - [ ] Opt-out routes (if any) are NOT served by Studio.
 - [ ] `npm run dev` (or equivalent) starts without runtime errors.
 
-## Editor-mode detection: for custom renderers
+<a id="existing-catch-all"></a>
 
-If you're shipping a custom `StudioRenderer` (rather than importing `<StudioComponent />` directly, e.g. because you're doing per-route swaps in a partial-adoption app and want to gate on editor mode explicitly), detect editor mode by checking Studio's iframe search params:
+## Existing catch-all: chain Studio into it
 
-```ts
-// lib/studio-editor-mode.ts
-export function isStudioEditorMode(searchParams: URLSearchParams): boolean {
-  return (
-    searchParams.get("cs-composable-studio") === "true" ||
-    searchParams.has("cs-composable-uid") ||
-    searchParams.has("hash")
-  );
+Many apps already own a catch-all (`app/[...slug]/page.tsx` serving CMS pages, a `path="*"` page route). Adding a second one collides, and replacing it breaks every page it served. Extend the existing file instead, in a fixed order:
+
+1. **The app's own page.** Its existing lookup runs first, unchanged. If it finds a page, render it exactly as before.
+2. **A Studio composition.** Only when the app has nothing for this URL.
+3. **The app's 404.** Only when Studio has nothing either. Studio's editor iframe stays exempt, as in step 5a (iii).
+
+```tsx
+// app/[...slug]/page.tsx — the app's EXISTING catch-all, with Studio chained in
+import { notFound } from "next/navigation";
+import { isStudioEditorMode } from "@contentstack/studio-react";
+import { sdk } from "@/lib/contentstack";            // lib/studio on the minimal-add branch
+import { resolveComposition } from "@/lib/resolve-composition";
+import { getCmsPage, CmsPage } from "@/lib/cms";     // the app's own lookup and page — unchanged
+import { StudioRender } from "./StudioRender";
+
+type Props = {
+  params: Promise<{ slug: string[] }>;
+  searchParams: Promise<Record<string, string>>;
+};
+
+export default async function Page({ params, searchParams }: Props) {
+  const { slug } = await params;
+  const url = "/" + slug.join("/");
+
+  // 1. The app's own page, exactly as before.
+  const page = await getCmsPage(url);
+  if (page) return <CmsPage page={page} />;
+
+  // 2. A Studio composition. Read searchParams only here, so the app's own
+  //    pages above never touch it.
+  const query = new URLSearchParams(await searchParams);
+  const { specOptions, notFound: miss } = await resolveComposition(sdk, {
+    url,
+    searchQuery: query.toString(),
+  });
+  if (!miss) return <StudioRender specOptions={specOptions} />;
+
+  // 3. Neither: Studio's editor iframe gets the draft (step 5a iii), visitors
+  //    get the app's own 404.
+  if (isStudioEditorMode(query)) return <StudioRender specOptions={{
+    spec: null, hasSpec: false, hasTemplate: false, seo: null,
+    fetchOptions: { config: sdk.getConfig(), compositionQuery: { url },
+      searchQuery: query.toString(), options: {}, mode: "edit" } }} />;
+  notFound();
 }
 ```
 
-**If you copied a `StudioRenderer` from another project** and editor mode never activates (Studio always shows "Template Did Not Load" for unsaved templates), the reference is likely gated on a different param set (`content_type_uid` / `entry_uid` / `live_preview`) than the public SDK's iframe sends. Replace the check with the one above. Always verify against `document.location.search` inside the live Studio iframe (`window.parent === window ? "standalone" : "iframe"`, then log the search params) if you're unsure which scheme applies to the SDK version you installed.
+- **Keep the app's branch byte-for-byte.** Its data fetching, `generateStaticParams` and `generateMetadata` stay as they are. Chain `generateMetadata` the same way: the app's metadata when its page exists, else `specOptions.seo` from `resolveComposition`, else `{}`.
+- **Read `searchParams` only in the Studio branch.** Awaiting it opts that render into dynamic rendering. Reading it after the app's branch has returned keeps the app's own pages rendering the way they did (static or ISR); only URLs that fall through to Studio become dynamic ([`configure-csr-vs-ssr` § Static generation and caching](configure-csr-vs-ssr.md#static-generation-and-caching)).
+- **The 404 is still the app's.** `notFound()` renders the existing `not-found.tsx`. If the app's branch used to call `notFound()` itself on a miss, move that call to step 3.
+- **React Router `path="*"` page route:** same order inside its element. Run the app's lookup, then `useCompositionData({ url: pathname })`, then the existing not-found UI, with the editor exemption from step 5a (iii).
+
+The app's own route file is modified here, and only by appending steps 2 and 3. Say so in the report: it's the one exception to "no existing route file changes" in [`convert-project-to-studio`](convert-project-to-studio.md).
+
+## Editor-mode detection: use the SDK's predicate
+
+Don't hand-write the check. `@contentstack/studio-react` exports it (2.0.1):
+
+```ts
+import { isStudioEditorMode, isStudioCanvas } from "@contentstack/studio-react";
+
+isStudioEditorMode(searchQuery?: string | URLSearchParams): boolean
+```
+
+- **True in any Studio-driven context**: the canvas (`cs-composable-studio` present, or `builder=true`) or a preview pane (`hash` or `live_preview` present). `isStudioCanvas` is the narrower canvas-only check, for gating cookie banners and third-party scripts.
+- **Server**: pass the request's params, as step 5a (iii) does. With no argument on the server it returns `false`.
+- **Browser**: with no argument it reads the mode the SDK stamped on `window` at load (it survives client-side navigations that drop the query string), else `window.location.search`.
+
+The param names are an internal contract between Studio and the SDK, which is why the predicate lives in the SDK. A copied `StudioRenderer` that checks its own list (`content_type_uid`, `entry_uid`, `cs-composable-uid`, …) is the usual reason editor mode never activates and unsaved templates show "Template Did Not Load". Replace the list with the import.
+
+<a id="fetching-referenced-fields"></a>
+
+## Fetching referenced fields: `extendQuery` is deprecated
+
+Older snippets passed `extendQuery: { <ct_uid>: { includeReferences, only } }` to widen the entry fetch. In studio-react 2.x it is deprecated and slated for removal in the next major. It still works, but in development it logs once: *"[studio] `extendQuery` is deprecated … Tick the references in Studio instead — they are saved with the composition."*
+
+What replaces it:
+
+- **Bindings decide the fetch.** The SDK derives `include[]` paths from what the composition binds, so a bound referenced field is fetched without any app-side option.
+- **References the bindings don't name are ticked in Studio** on the data source and saved with the composition. The SDK applies the saved set to the request it belongs to (the template entry, or a pinned entry).
+- **Compositions written by API** carry the same saved set in the composition entry's `data_sources`, under the data source's `resolvedReferences`. The canonical shape is in [`author-composition-entry`](author-composition-entry.md) and [`resolve-reference-depth`](resolve-reference-depth.md); this skill doesn't restate it. No API exists to "tick" references other than writing that field. When it's ambiguous for your SDK version, author the reference once in Studio, read the saved entry back with the CMA, and copy that shape.
+- **Extra fields, not references** (the `only` half of `extendQuery`): no Studio-side or API replacement is documented as of 2.0.1. Prefer one binding per field, and keep `extendQuery.only` to the components that truly need a whole entry ([`migrate-page-to-studio` § Studio fetches only the fields your bindings name](migrate-page-to-studio.md)).
 
 ## Environment Base URL: must be reachable + include locale segment
 
@@ -604,12 +670,14 @@ Analytics / commerce embeds that `throw` on failure show up as scary-but-harmles
 | Wiring a catch-all into an existing app without asking | It silently claims every URL the app didn't explicitly route, including the ones that used to reach the 404 page. The user expected Studio added, not Studio in front of everything | Ask (step 3). Wildcard with code precedence, `chromeOwner = code` and the existing 404 is the minimal-conversion default. Dedicated when the user wants pattern-level control |
 | Header/footer vanish on Studio-rendered pages | They were imported per `page.tsx` / per page component, and the catch-all replaced those files | Lift chrome into the layout (Next `app/layout.tsx`) or a React Router layout route wrapping the catch-all, step 5a (ii) |
 | Header and footer render twice | Code layout renders them AND the template has Header/Footer Sections on it | One owner only. Strip whichever side isn't the chosen `chromeOwner` |
-| Site chrome wraps the `/canvas` section-authoring iframe | `/canvas` was nested inside the chrome layout, so every Section is authored inside a full page header + footer: spacing, sticky positioning, and viewport measurements all read wrong | Register `/canvas` outside the chrome layout (React Router) or in a bare-layout route group (Next.js) |
+| Site chrome wraps the `/canvas` section-authoring iframe | `/canvas` was nested inside the chrome layout, so every Section is authored inside a full page header + footer: spacing, sticky positioning, and viewport measurements all read wrong | Register `/canvas` outside the chrome layout (React Router). Next.js: the chrome gate in the root layout ([`setup-section-preview`](setup-section-preview.md) step 2), since a route group can't escape the root layout |
 | Unmatched URLs render blank instead of 404ing | The no-spec branch returns an empty `<div />`, correct for the editor iframe, wrong for visitors, and the catch-all now owns every unmatched URL | Gate on `isStudioEditorMode`: empty div in the editor, 404 page for visitors, step 5a (iii) |
-| Unsaved templates show the 404 page inside Studio's canvas ("Template Did Not Load") | The 404 fires unconditionally on no-spec. An unsaved template legitimately has no published spec | Same gate, other direction. Verify `isStudioEditorMode` checks the params the installed SDK actually sends (§ Editor-mode detection) |
+| Unsaved templates show the 404 page inside Studio's canvas ("Template Did Not Load") | The 404 fires unconditionally on no-spec. An unsaved template legitimately has no published spec | Same gate, other direction. Import `isStudioEditorMode` from `@contentstack/studio-react` and pass it the request's params on the server (§ Editor-mode detection) |
 | React Router: the app's `<Route path="*" element={<NotFound />} />` left in place | Both it and the Studio catch-all are `path="*"`. First match wins, so one of them is dead code, usually the 404 | Remove the old route. Render `NotFound` from `LinkedRoute`'s visitor no-spec branch |
 
 ## See also
 
 - `install-studio`: installs the SDKs this skill depends on.
 - `setup-section-preview`: adds the `/canvas` section-authoring route.
+- [`handle-404-pages`](handle-404-pages.md): the 404 branch for unknown URLs and bad slugs, per framework.
+- [`csr-and-ssr-requirements`](csr-and-ssr-requirements.md): what a CSR or SSR route needs for Live Preview and Visual Editor.

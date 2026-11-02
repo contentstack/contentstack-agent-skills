@@ -6,11 +6,13 @@ name: enable-visual-experience
 
 Enable Live Preview + Visual Experience at the stack level: prerequisite before any Studio / Live Preview / Visual Editor work. Without it, app installs silently fail.
 
-Use as the FIRST step before `install-studio`, `install-live-preview`, `configure-studio`, or any Studio setup skill. Phrases: "enable Live Preview", "set up Visual Experience", "canvas is blank", "preview events not arriving". Also when `verify-setup` reports Layer 2 failing or `troubleshoot-canvas` finds canvas blank with no preview events. Not doable from CLI: click-through in the Contentstack web app, gates downstream skills.
+Use as the FIRST step before `install-studio`, `install-live-preview`, `configure-studio`, or any Studio setup skill. Phrases: "enable Live Preview", "set up Visual Experience", "canvas is blank", "preview events not arriving". Also when `verify-setup` reports Layer 2 failing or `troubleshoot-canvas` finds canvas blank with no preview events. Done by API (`POST /v3/stacks/settings` plus one token call) with an OAuth credential. Only the optional Custom Preview URL needs the Contentstack web app. Gates downstream skills.
 
 > **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
 # Enable Visual Experience + Live Preview at the stack level
+
+**Order of work:** the [API path](#api-path) first, every time. It enables Live Preview, sets the default preview environment and mints the preview token, with no clicks. Then decide on the Custom Preview URL (§ [When the Custom Preview URL matters](#custom-preview-url)). The UI walkthrough is the fallback for when no credential works.
 
 ## Why this skill exists
 
@@ -94,6 +96,20 @@ So confirm an API-driven enable in this order:
 
 The top-nav link is the cheapest human-visible signal: it appears when Live Preview is on, whether it was switched on by API or by checkbox, and disappears when it is off.
 
+<a id="custom-preview-url"></a>
+
+## When the Custom Preview URL matters
+
+The Custom Preview URL (Settings, Visual Experience, **Preview URL** sub-tab) tells Contentstack how to build a page URL **from an entry**: alias plus path patterns such as `/blog/{{entry.url}}`. Who reads it decides whether you need it:
+
+| Consumer | Uses the Custom Preview URL? |
+|---|---|
+| **Studio canvas iframe** (`/canvas`) | No. Its address is the targeted environment's per-locale URL plus the project's Canvas URL ([`setup-section-preview`](setup-section-preview.md) § 0, [`configure-studio`](configure-studio.md)) |
+| **Live Preview / Visual Editor opened from an entry** in the CMS | Yes, when set. It turns the entry into the URL the preview panel loads |
+| **Your app's own routes** | No. The app routes by itself |
+
+So set it when editors will open entries in Live Preview or Visual Editor **and** the page for an entry is not simply the environment URL plus the entry's `url` field. A Studio template served at a prefixed route (`/blog/<slug>`) is the usual case. A setup that only authors in the Studio canvas can skip it and add it later. It has no API path that has been verified, so it is the one step that needs a human (Step 3).
+
 ## Fallback: the UI walkthrough
 
 Use this when the API path 401s with a **freshly refreshed** token (an expired OAuth token 401s identically, refresh before concluding anything), or no credential resolves at all. It is also what a human follows to verify what the API did.
@@ -106,11 +122,11 @@ Use this when the API path 401s with a **freshly refreshed** token (an expired O
 | --- | --- | --- |
 | 1. Enable Live Preview | Yes, `POST /v3/stacks/settings` | **SKIP the walkthrough.** Confirm by read-back: `live_preview.enabled === true`. Do not ask for a "done" |
 | 2. Default Preview Environment | Yes, the same call with `default-env: <env-uid>` | **SKIP.** Confirm `live_preview["default-env"]` is non-empty |
-| 3. Custom Preview URL | No, not API-settable (untested) | **Walk the human through it**, the only step that still needs one |
+| 3. Custom Preview URL | No, not API-settable (untested) | **Only if it matters** (§ [When the Custom Preview URL matters](#custom-preview-url)): walk the human through it. Otherwise record it as skipped |
 | 4. Preview Token | Yes, `POST …/delivery_tokens?create_with_preview_token=true` | **SKIP.** Confirm `token.preview_token` came back |
 | 5: Summary | - | Always print it, stating which steps were done by API and which by hand |
 
-So on the API path the human is asked for **one** thing (Step 3), not four. Announce what you did rather than asking them to verify it: "Live Preview is on, default preview environment is `development`, preview token minted, all by API. One thing left for you: the Custom Preview URL."
+So on the API path the human is asked for **at most one** thing (Step 3), not four. Announce what you did rather than asking them to verify it: "Live Preview is on, default preview environment is `development`, preview token minted, all by API. One thing left for you: the Custom Preview URL."
 
 If no credential resolved at all, or a write failed with a **freshly refreshed** token, fall through to the full walkthrough below. **Then** (and only then) ask the user to explicitly type "done" after each step, and do NOT batch the checks.
 
@@ -149,6 +165,8 @@ Tell the user verbatim:
 > Reply **"done"** with the env name you confirmed.
 
 ### Step 3: Set the Custom Preview URL on the Preview URL sub-tab
+
+**Only when it matters** for this project: § [When the Custom Preview URL matters](#custom-preview-url). If not, skip it and say so in the summary.
 
 Tell the user verbatim:
 
@@ -196,7 +214,7 @@ Tell the user verbatim:
    Live Preview:           ENABLED (Settings → Visual Experience → General)
    Default Preview env:    <env name from Step 2>
    Custom Preview URL:
-     Base URL alias:       <alias from Step 3>
+     Base URL alias:       <alias from Step 3, or "skipped: Studio canvas only">
      Base URL pattern:     <pattern from Step 3>
      URL Path default:     /{{entry.url}}  (plus prefixed per-CT rows)
    Preview Token:          generated on <delivery token name from Step 4>
@@ -212,16 +230,15 @@ Next:
 ## Inputs needed from the user
 
 1. `stackApiKey` (required).
-2. `canvasAppUrl` (required): used in Step 3's Base URL pattern.
+2. `canvasAppUrl`: used in Step 3's Base URL pattern, only when Step 3 applies.
 3. `previewEnvironmentName` (default `preview`): selected in Step 2, scopes the Delivery Token in Step 4.
 
 ## Acceptance
 
-- [ ] **CSLP tags reach the DOM**: the SDK config sets `cslp: { appendTags: true }`, and a rendered component's root shows `data-cslp` with each bound field tagged too. Live Preview can be fully enabled and still not be editable if components drop these, see [`register-component` § The `studioAttributes` contract](register-component.md).
-- [ ] User confirmed Step 1 (Enable Live Preview checked + Save clicked + top-nav `Visual Experience` link appeared)
-- [ ] User confirmed Step 2 (Default Preview Environment selected, NOT production)
-- [ ] User confirmed Step 3 (Enable Custom Preview URL ON, Base URL alias + pattern set, URL Path set, Save clicked)
-- [ ] User confirmed Step 4 (Preview Token generated, value copied)
+- [ ] Step 1: `GET /v3/stacks/settings` reads `live_preview.enabled === true` (or, on the UI fallback, the user confirmed the checkbox, Save and the top-nav `Visual Experience` link).
+- [ ] Step 2: `live_preview["default-env"]` is a non-production environment uid.
+- [ ] Step 3: Custom Preview URL set (Enable Custom Preview URL ON, Base URL alias + pattern, URL Path, Save), **or** recorded as skipped because nothing opens entries in Live Preview / Visual Editor yet.
+- [ ] Step 4: the delivery token's `preview_token` is non-empty (API) or the user copied it into `.env.local` (UI).
 - [ ] Final summary printed with all captured values
 
 ## Common pitfalls

@@ -4,9 +4,9 @@ name: import-design-tokens
 
 ## When to use
 
-Read a project's design tokens from Tailwind, CSS variables, or JSON and register them with Studio so the Design Panel offers them for spacing, colors, typography, radius, shadow.
+Read a project's design tokens from Tailwind (a v3 `tailwind.config` or a v4 CSS `@theme` block), CSS variables, or JSON and register them with Studio so the Design Panel offers them for spacing, colors, typography, radius, shadow.
 
-Use when the user wants Studio's Design Panel to show THEIR tokens instead of Studio's defaults, e.g. "use my Tailwind colors in Studio", "register my CSS variables", "I have a tokens.json from Style Dictionary". Run AFTER `register-component`. Do NOT use to register breakpoints (use `register-breakpoints`). Do NOT use to register fonts as static assets, tokens only.
+Use when the user wants Studio's Design Panel to show THEIR tokens instead of Studio's defaults, e.g. "use my Tailwind colors in Studio", "Tailwind v4 @theme", "register my CSS variables", "I have a tokens.json from Style Dictionary". Run AFTER `register-component`. Do NOT use to register breakpoints (use `register-breakpoints`). Do NOT use to register fonts as static assets, tokens only.
 
 > **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
@@ -55,6 +55,23 @@ If the user reports "every field is disabled" or "there's no Design tab," walk t
    const theme = config.theme?.extend ?? config.theme ?? {};
    ```
    Pull `theme.colors`, `theme.spacing`, `theme.fontFamily`, `theme.fontSize`, `theme.borderRadius`, `theme.boxShadow`, `theme.maxWidth`. Tailwind uses nested objects for color shades (`{ primary: { 500: '#…' } }`). Flatten to a token name like `primary-500`.
+
+   **`tokenSource=tailwind` on Tailwind v4 (no `tailwind.config`, a CSS file with `@import "tailwindcss"` and an `@theme { … }` block).** The `@theme` block is the token source. Parse its `--*` declarations like CSS variables, and let the namespace pick the section:
+
+   | `@theme` variable | Goes in | Token name |
+   |---|---|---|
+   | `--color-brand-500` | `colorTokens` | `brand-500` |
+   | `--spacing: 0.25rem` (one base unit) | `spaceTokens` | v4 derives the scale (`p-4` = 4 × base). Emit the steps the design uses as literals: `{ "2": "0.5rem", "4": "1rem", "8": "2rem" }`. Explicit `--spacing-*` entries map one to one |
+   | `--text-xl`, `--text-xl--line-height` | `typography.fontSize`, `typography.lineHeight` | `xl` |
+   | `--font-weight-semibold` | `typography.fontWeight` (number) | `semibold` |
+   | `--font-sans`, `--font-display` | `typography.style[name].fontFamily` | `sans`, `display` |
+   | `--tracking-*`, `--leading-*` | `typography.letterSpacing`, `typography.lineHeight` | suffix |
+   | `--radius-md` | `border.radius` | `md` |
+   | `--shadow-md` | `shadow.style` (decompose, one layer) | `md` |
+   | `--container-3xl` | `size.maxWidth` | `3xl` |
+   | `--breakpoint-*` | not here: [`register-breakpoints`](register-breakpoints.md) | |
+
+   Skip `--*: initial` resets and `--animate-*` / `--ease-*`. Resolve every value to a literal (and any `var(--…)` it references): by default Tailwind v4 writes a theme variable into the built CSS only when a utility uses it, so a `var(--color-brand-500)` token can point at nothing in the canvas.
 
    **`tokenSource=css`**. Parse `:root { --primary: …; }` rules from the CSS file. Map each `--*` var to a token name under the right section (user must annotate which `--*` vars are which scope, ask if unclear).
 
@@ -117,7 +134,7 @@ If the user reports "every field is disabled" or "there's no Design tab," walk t
 
 ## Inputs needed from the user
 
-1. `tokenSource`: required. Auto-detect a default if there's an obvious match (if `tailwind.config.{js,ts}` exists, suggest `tailwind`, and if `tokens.json` exists, suggest `json`).
+1. `tokenSource`: required. Auto-detect a default if there's an obvious match (if `tailwind.config.{js,ts}` exists, or a CSS file holds `@import "tailwindcss"` plus an `@theme` block, suggest `tailwind`, and if `tokens.json` exists, suggest `json`).
 2. `tokenSourcePath`: required for tailwind/css/json modes, skip for manual.
 3. `scopes`: default to all five.
 
@@ -147,7 +164,9 @@ If the user has tokens spread across multiple sources (e.g. Tailwind colors + a 
 | Design tab appears for built-ins but not your component                  | Your `registerComponent` has no `styles` group                                                                                                       | Add a `styles` group to the component (`register-component`)                                          |
 | Registering a `var(--…)` color not defined in the canvas-app stylesheet  | Studio shows the token name but the canvas renders unstyled                                                                                          | Resolve the `var()` to a literal at import time, or load the same stylesheet in the canvas app        |
 | Importing Tailwind's full theme (defaults + extend)                      | Duplicate keys. First registration wins silently                                                                                                     | Read `theme.extend`, or use `resolveConfig` and the merged result                                     |
-| Forgetting to re-run after editing the source file                       | Tokens are read once at startup                                                                                                                      | Add a comment in the registration file: "Re-run import-design-tokens after editing tailwind.config"   |
+| Forgetting to re-run after editing the source file                       | Tokens are read once at startup                                                                                                                      | Add a comment in the registration file: "Re-run import-design-tokens after editing tailwind.config / the @theme block"   |
+| Tailwind v4 project: reading only `tailwind.config`                      | v4 has no config file by default. The tokens live in a CSS `@theme` block, so a config-only import finds nothing                                    | Parse `@theme` (Task step 1, Tailwind v4)                                                             |
+| Utility-CSS project (Tailwind): authors type class names in Studio       | Tailwind generates only classes it finds in source files. A class typed in Studio is never generated and renders unstyled, with no error            | Give components closed design-prop menus whose class strings are written in source, or SDK `design: true` props ([`design-component-library`](design-component-library.md) § Utility-CSS projects) |
 
 ## See also
 

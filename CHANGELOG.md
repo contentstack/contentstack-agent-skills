@@ -2,6 +2,70 @@
 
 All notable changes to the Contentstack agent skills bundle. Versions match the `version` field in every plugin manifest that declares one.
 
+## 0.3.1
+
+### New studio guides
+
+- **`csr-and-ssr-requirements`:** what a Studio page needs as CSR or SSR on the visitor site, the Live Preview pane, Visual Editor and the canvas.
+  - The five settings that must agree, plus preview mode vs builder mode.
+  - Where the Edit button shows, and which refetch to call on studio-react 2.0.1: `refetchData` ignores freeform compositions.
+  - Converting a page from one mode to the other.
+- **`handle-404-pages`:** unknown URLs and bad slugs render the site's own 404 page on Next.js (App and Pages Router), Remix and React Router.
+  - SSR sends a real 404 through `resolveComposition`; CSR uses `noindex`.
+  - The 404 is decided by `isCompositionNotFound` only, so a bad token or an outage stays an error.
+
+### Changed skills
+
+- **`studio` matches Studio SDK 2.0.** Brought in the Studio team's latest guide fixes and checked them against the released SDK.
+  - Missing built-ins now surface as `COMPONENT_NOT_REGISTERED` ("Studio's own components are not registered"). The fix is to import `@contentstack/studio-react` above the fetch, not to upgrade. Updated in `troubleshoot-canvas`, `troubleshoot-ssr-rendering` and `byoc-end-to-end`.
+  - `upgrade-studio-sdk` has a 1.x → 2.0 section, checked by installing 1.9.0 and 2.0.1 side by side.
+    - It lists what 2.0 actually changed (`isCompositionNotFound`, deprecated `hasSpec`/`hasTemplate`, canvas tokens) separately from older rules that behave the same in both versions.
+    - It no longer points to `CHANGELOG.md` files, which the npm packages don't ship.
+  - `wire-studio-state` needs studio-react 1.8.0 or later, the first release that exports the state APIs.
+  - Key and token failures are named `STACK_NOT_FOUND_ON_HOST`. Entry lookups that miss are `URL_MATCHED_NO_ENTRY`. Log lines start with `[Contentstack Studio]`.
+  - `configure-csr-vs-ssr`: server styles come from `getSSRStyles`, computed on the server only. `isCompositionNotFound` is imported from `@contentstack/studio-react`. The Pages Router recipe reads `resolvedUrl`, not `req.url`. The RSC entry renders `<StudioServerComponent />`, and its components register through `@contentstack/studio-react/rsc` from a server module.
+  - The four-question framework is defined once, in `design-component-library`. Other guides link to it.
+  - Router triggers added for pinned Site Settings entries, Repeater recipes by API and App Router SSR crashes. `troubleshoot` stops after its clarifying question. `provision-studio-stack` waits for an explicit go on plan-only requests. `gate-third-party-scripts` covers analytics loader tags.
+  - `use-compositions-api` says Studio API service and drops two endpoints the service doesn't have.
+- **`studio` end-to-end audit fixes.** The skill was followed as a customer would on a Next.js 16 app with `@contentstack/studio-react` 2.0.1. Every changed snippet is typechecked against that release.
+  - **Builds that look done but are wrong:**
+    - Every plan now includes a primitive library step.
+    - One Section-per-region rule replaces the conflicting reuse advice.
+    - `resolveComposition` resets the preview hash, so drafts no longer leak to visitors.
+    - The skill documents that the live site fetches only bound fields, and image props bind `.url`.
+    - Section Slot nodes omit the slot key, which the API rejects with a 422.
+    - New guides cover restarting the dev server after a registration change and a Studio-only route that sets no SEO metadata and turns 404s into 500s.
+  - **SDK 2.0.1:**
+    - `registerLazyComponent` is used for lazy registrations.
+    - `object` and `array` props declare their required `properties` and `items`.
+    - `styles` is an object of style groups.
+    - `isStudioEditorMode` and `isCompositionNotFound` are imported from `@contentstack/studio-react`.
+    - Built-in components use their SDK type names (`header`, `text`, `rich-text`, `hstack`).
+    - The deprecated `extendQuery` is explained, and `StudioCanvas` needs no `dynamic()` wrapper or token style tag.
+  - **New paths:**
+    - An app that already has a catch-all route.
+    - Live Preview without the Delivery SDK.
+    - Next.js 16 `proxy.ts` and Turbopack.
+    - Tailwind v4 `@theme` tokens and design props written in source.
+    - Interactive embeds in rich text.
+    - Static generation and caching for Studio routes.
+    - The canvas route layout, without a route group, and its `frame-ancestors`-only headers.
+  - **Compositions and MCP:**
+    - One canonical list recipe (Repeater, item Box, Condition Block).
+    - One wire-shape table for the CMA and the Compositions API.
+    - The compositions content type ships as JSON.
+    - Expected validator warnings are listed.
+    - The MCP content-type snapshot and the HTTP fallback are explained, with `--scope` and the hosted connector.
+    - Covers how to export the `csdx` OAuth token for scripts.
+    - The delivery-token probe path is fixed.
+  - **Consistency:**
+    - The definition of done is ten checks everywhere.
+    - `analyze-project-fit` runs first in the ordering hints.
+    - Shell snippets work in zsh.
+    - `verify-setup` is project-agnostic.
+    - The Custom Preview URL is only required when preview is opened from an entry.
+    - Example nodes carry all seven keys.
+
 ## 0.3.0
 
 ### New skills
