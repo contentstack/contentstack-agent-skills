@@ -7,11 +7,11 @@ All notable changes to the Contentstack agent skills bundle. Versions match the 
 ### New studio guides
 
 - **`csr-and-ssr-requirements`:** what a Studio page needs as CSR or SSR on the visitor site, the Live Preview pane, Visual Editor and the canvas.
-  - The five settings that must agree, plus preview mode vs builder mode.
+  - The five settings that must agree, plus preview mode vs builder mode. Builder mode needs `stackDetails.apiKey` and `.environment`, and a frame-and-listen check confirms Visual Editor's handshake without signing in.
   - Where the Edit button shows, and which refetch to call on studio-react 2.0.1: `refetchData` ignores freeform compositions.
   - Converting a page from one mode to the other.
 - **`handle-404-pages`:** unknown URLs and bad slugs render the site's own 404 page on Next.js (App and Pages Router), Remix and React Router.
-  - SSR sends a real 404 through `resolveComposition`; CSR uses `noindex`.
+  - SSR sends a real 404 from a `try`/`catch`, clears the shared stack's preview hash before each fetch, and shares one fetch per request between the page and `generateMetadata`. CSR uses `noindex`.
   - The 404 is decided by `isCompositionNotFound` only, so a bad token or an outage stays an error.
 
 ### Changed skills
