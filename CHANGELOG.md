@@ -4,6 +4,15 @@ All notable changes to the Contentstack agent skills bundle. Versions match the 
 
 ## 0.3.1
 
+### Contentstack MCP server bundled with the plugin
+
+- Every plugin now connects the hosted Contentstack MCP Profile Hub (`https://mcp-profile-hub.contentstack.com/api/mcp`), so the skills and the Contentstack tools install together. Sign-in is OAuth in the browser on first use, with no API key.
+  - Claude Code and claude.ai: `.mcp.json` (`type: http`).
+  - Codex, ChatGPT and other Agent Plugins clients: `mcp.json` (`type: streamable-http`).
+  - Cursor: `mcpServers` in `.cursor-plugin/plugin.json`, which Cursor reads in place of `mcp.json`.
+  - Gemini CLI: `mcpServers` in `gemini-extension.json` (`httpUrl`).
+- Existing installs get the server on their next update and are asked to sign in the first time a Contentstack tool runs.
+
 ### New studio guides
 
 - **`csr-and-ssr-requirements`:** what a Studio page needs as CSR or SSR on the visitor site, the Live Preview pane, Visual Editor and the canvas.
