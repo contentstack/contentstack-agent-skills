@@ -93,9 +93,10 @@ Studio treats locale as a context variable, not as part of a composition URL. Co
 grep -E '"(next-intl|next-i18next|i18next|react-i18next|react-intl|@lingui/[a-z]+|next-international)"' package.json
 # Route segment
 find app src/app -maxdepth 2 -type d \( -name '[[]locale[]]' -o -name '[[]lang[]]' \) 2>/dev/null
-# Next config i18n key, locale middleware, React Router locale param
-grep -n "i18n" next.config.* 2>/dev/null
-grep -ln "locale\|createMiddleware" middleware.* src/middleware.* 2>/dev/null
+# Next config i18n key, locale middleware (Next 16 renames middleware.* to proxy.*),
+# React Router locale param. `find`, not bare globs: zsh aborts a line whose glob matches nothing.
+find . -maxdepth 1 -name 'next.config.*' -exec grep -n "i18n" {} + 2>/dev/null
+find . src -maxdepth 1 \( -name 'middleware.*' -o -name 'proxy.*' \) -exec grep -ln "locale\|createMiddleware" {} + 2>/dev/null
 grep -rn 'path="/:\(lang\|locale\)' src 2>/dev/null | head -3
 ```
 
@@ -143,7 +144,7 @@ Run [`setup-template-preview-routes`](setup-template-preview-routes.md) in **wil
 |---|---|
 | Route mode (step 3) | **A. Wildcard.** Code routes win by precedence, so nothing the app owns changes |
 | Opt-outs | None needed. Code routes already win — routes are ranked by specificity, so `/api/*` beats the catch-all whatever the order |
-| `[...slug]` vs `[[...slug]]` (step 5) | `[...slug]` when a root page exists (it nearly always does on an existing app), else `[[...slug]]`. On a locale-prefixed app, inside the segment |
+| `[...slug]` vs `[[...slug]]` (step 5) | `[...slug]` when a root page exists (it nearly always does on an existing app), else `[[...slug]]`. On a locale-prefixed app, inside the segment. **If the app already has a catch-all** (CMS pages, a legacy router): add none. Chain Studio into the existing one: app page first, then Studio composition, then the app's 404 ([`setup-template-preview-routes` § Existing catch-all](setup-template-preview-routes.md#existing-catch-all)) |
 | `chromeOwner` (step 5a) | **`code`.** Header and footer stay in the layout |
 | 404 branch (step 5a iii) | **Reuse the project's existing not-found** (`app/not-found.tsx`, `pages/404.tsx`, or the `NotFound` component). Localized apps: the per-locale one. Create a file only when none exists. Editor-mode exemption on |
 | Locale | From Step 3f |
@@ -174,7 +175,7 @@ Print, filled in:
 ```
 Minimal conversion done.
   Existing routes:   untouched (<n> code routes win by precedence)
-  Fallback route:    <path> mounts <StudioComponent /> for unclaimed URLs
+  Fallback route:    <path> mounts <StudioComponent /> for unclaimed URLs (<new file | chained into the app's existing catch-all>)
   404:               <file> for visitors, editor iframe exempt
   Canvas route:      /canvas (<file>)
   Locales:           <en-us, fr-fr | single locale en-us>, Base URLs set on <env>
@@ -206,7 +207,7 @@ This skill succeeds only when ALL of the following are true.
 - [ ] The verification report distinguishes HTTP reachability from rendering and live editing. Unverified browser checks are not marked passed.
 - [ ] `analyze-project-fit` ran and no blocker path (B / C / G) was open when install started.
 - [ ] Locale detection ran. On a localized app the map was confirmed by the user, every mapped locale has a Base URL on the targeted environment, and the redirect probe returned 200 for every locale. On an un-localized app this was stated in one line.
-- [ ] No existing route file was modified or deleted. The only route files added are the canvas route and the catch-all.
+- [ ] No existing route file was modified or deleted. The only route files added are the canvas route and the catch-all. **One exception:** when the app already had a catch-all, that file gained the Studio and 404 steps after its own branch, which stayed unchanged, and the report says so.
 - [ ] The per-locale smoke in Step 8 passed for every mapped locale: existing page unchanged, bogus URL renders the project's own 404 with no 500, `/canvas` renders `<StudioCanvas />`.
 - [ ] No component was registered, decomposed, or authored as part of the minimal conversion.
 - [ ] The report block in Step 9 was printed with the definition-of-done items marked as above.
@@ -217,6 +218,7 @@ This skill succeeds only when ALL of the following are true.
 |---|---|---|
 | Skipping the Step 1 gate and improvising "full site or one page" | Neither scope is what "make it compatible" asks for, and both start rebuilding pages | Ask the three-option gate verbatim. Minimal is the default |
 | Wiring the catch-all before `/canvas` exists | The catch-all claims `/canvas` and every Section renders as a composition miss or the 404 page | Step 5 before Step 6, always |
+| Adding a second catch-all next to the app's own `[...slug]` | Next.js refuses two catch-alls at one level; replacing it drops every page it served | Chain Studio into the existing one (§ Existing catch-all in `setup-template-preview-routes`) |
 | Optional `[[...slug]]` on an app with a root page | Both match `/`. Next.js reports a collision or the root page loses | `[...slug]` whenever any root `page.*` exists, including `app/[locale]/page.*` |
 | Treating "no pages found" as greenfield | A fixed path list misses `src/app` and locale segments, so a catch-all lands in an app full of pages | Use the `find` in `setup-template-preview-routes` step 3 and confirm with `ls` before believing an empty result |
 | 404 branch returns an empty `<div />` to visitors | The site never 404s. Correct for the editor iframe, wrong for everyone else | Gate on `isStudioEditorMode`: empty div in the editor, the project's 404 page for visitors |

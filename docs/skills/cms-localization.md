@@ -5,7 +5,7 @@ description: "Design multilingual delivery in Contentstack: language setup, fall
 
 # Localization
 
-**Slug:** `cms-localization` · **Product:** CMS · **Type:** Advisory (read-only)
+**Slug:** `cms-localization` · **Product:** CMS · **Type:** Advisory (acts through MCP tools on request)
 
 Advises on Contentstack localization with correct fallback behavior, efficient editorial workflows, and minimal redundancy. The skill distinguishes CMS editorial behavior from CDA delivery behavior, and clarifies which you mean before answering.
 
@@ -17,7 +17,7 @@ When you ask about languages, fallback chains, localizing entries, non-localizab
 
 - **Master language**: permanent, set at stack creation, and ends every fallback chain.
 - **Fallback chain design**: each language can have one fallback; inheritance is a chain (e.g. `fr-ca → fr-fr → en-us`). Changing fallback relationships later affects existing content inheritance.
-- **Localized vs unlocalized entries**: a localized entry is an independent copy with its own version history, publishing status, and workflow state; an unlocalized entry inherits from its fallback chain. Localizing is one-way per locale and entry.
+- **Localized vs unlocalized entries**: a localized entry is an independent copy with its own version history, publishing status, and workflow state; an unlocalized entry inherits from its fallback chain. Localizing is reversible: Unlocalize drops the locale's content and the entry inherits again from its fallback (or master). Unlocalized and deleted entries can be restored from Trash within 14 days.
 - **Non-localizable fields**: mark structural/shared data non-localizable (SKUs, prices, dates, coordinates, boolean flags, shared assets, identifiers); keep human-readable text localizable.
 - **CDA locale queries**: pass `locale` explicitly; use `include_fallback=true` to apply the full fallback chain (without it, only the exact locale is checked).
 - **Multi-locale publishing**: editors can publish multiple locale versions from the master-language entry (subject to plan limits). Only the latest version of each localized entry is published; localized versions can be deleted only from the master entry's delete modal.
@@ -30,9 +30,13 @@ When you ask about languages, fallback chains, localizing entries, non-localizab
 - "How do I publish content in multiple languages at once?"
 - "What happens if a locale has no content?"
 
+## MCP tools
+
+With the Contentstack MCP server connected, the agent can list languages, check what each locale serves with `get_all_entries_cdn` (`locale`, `include_fallback`), and localize, unlocalize or publish entries in several locales. There are no tools to add languages or change fallback chains.
+
 ## Safety notes
 
-Read-only advisory. Requires explicit confirmation before any destructive action and never auto-executes delete/overwrite/publish. Use environment variables for all credentials.
+Advisory by default; uses the MCP tools only when you ask for the change. Before localizing, unlocalizing or publishing it lists the entry, locales and environments and waits for explicit confirmation, and it never auto-executes delete, overwrite or publish. Use environment variables for all credentials.
 
 ## Related
 

@@ -22,6 +22,8 @@ All operations are CMA-only (`api.contentstack.io` and regional variants). Auth 
 
 ## Task
 
+**Plan-only requests stop at the plan.** When the user asks for the plan first ("show me the plan", "don't run anything yet"), print it, ask what you need, and end the turn. Their answers to those questions (the stack, the environments, a file path) are not a go-ahead: every step here writes to a shared stack and some can't be undone cleanly, so wait for an explicit "go" before the first create, upload or publish.
+
 1. **Prerequisites.** Stack exists with delivery + preview tokens. The compositions CT has been created via [`provision-studio-project`](provision-studio-project.md). You have `CS_AUTH_TOKEN`, `CS_API_KEY`, the target environment name, and the region's CMA host.
 
 2. **Create / update global fields first.** Page CTs that reference global fields (e.g. `gf_hero`, `gf_card_list`) must have those GFs in place at CT create time. Contentstack rejects CT POSTs that reference an unknown global field uid.
@@ -142,6 +144,7 @@ All operations are CMA-only (`api.contentstack.io` and regional variants). Auth 
 
 | Pitfall | Why it bites | Fix |
 |---|---|---|
+| Treating the user's answers to the plan's questions as the go-ahead on a plan-only request | Content types and entries get created on a stack the user only wanted a plan for | Answers fill in the plan. Reprint what changed and wait for an explicit "go" before any write |
 | Creating a CT that references a GF before the GF exists | CMA rejects POST `/v3/content_types` with "global field not found" | Create / update all global fields BEFORE page CTs |
 | Re-uploading the same asset every provision run | Stack accumulates duplicate assets. Entry references go stale on re-create | Dedupe via `GET /v3/assets?query={"title":"…"}` + persist `.asset-map.json` |
 | File-field value set to the asset URL or filename instead of uid | CMA accepts the POST but the field reads as broken in CDA | Pass `<asset_uid>` (string) for single-file, `[<uid>, ...]` for multi-file |
@@ -155,7 +158,6 @@ All operations are CMA-only (`api.contentstack.io` and regional variants). Auth 
 
 ## See also
 
-- [`provision-studio-project`](provision-studio-project.md): stack-wide setup, compositions CT, Studio project registration.
+- [`provision-studio-project`](provision-studio-project.md): stack-wide setup, compositions CT, Studio project registration, regional hosts and auth headers.
 - [`author-composition-via-api`](author-composition-via-api.md): composition entries that bind to the CTs created here.
 - [`build-connected-template`](build-connected-template.md): Template authoring against these page CTs.
-- [`provision-studio-project`](provision-studio-project.md): regional hosts and auth headers.

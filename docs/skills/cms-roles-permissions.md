@@ -15,11 +15,11 @@ When you ask about user permissions, role design, team management, token capabil
 
 ## What it covers
 
-- **Built-in roles**: Owner, Admin, Developer, Content Manager. Use them when they fit; otherwise create a custom role.
+- **Built-in roles**: Owner, Admin, Developer, Content Manager (some orgs have extra system roles, such as read-only; check the stack's Roles list). Use them when they fit; otherwise create a custom role.
 - **Custom roles**: limit access by content type, environment, locale, branch, or action. Describe permissions by module, content type, and action; use `$all` for all instances when applicable.
-- **Permission merging**: multiple roles combine allowed actions permissively, but explicit denials override grants. Watch overlap risks when roles are reused across teams/stacks.
+- **Permission merging**: effective permissions are the union of all applicable roles (stack, team, org). There is no deny rule, so remove a role rather than trying to override it. Watch overlap risks when roles are reused across teams/stacks.
 - **Teams**: recommended for shared access across users and stacks; team membership maps users to stack roles and scales better than assigning roles individually.
-- **Token capabilities**: choose the least-privileged token (management tokens, authtokens, OAuth) with SSO/org-owner edge cases noted.
+- **Token capabilities**: choose the least-privileged credential: management tokens (at most 10 valid per stack), authtokens, OAuth, or machine-to-machine (M2M) apps using the client-credentials grant for automation. SSO/org-owner edge cases noted.
 - **Rate limits**: check `X-RateLimit-Remaining` and use backoff for automation/bulk operations.
 
 ## Example prompts
@@ -30,9 +30,13 @@ When you ask about user permissions, role design, team management, token capabil
 - "How do I set up teams for multiple stacks?"
 - "What happens when a user has multiple roles?"
 
+## MCP tools
+
+No Contentstack MCP tool manages roles, users, teams or tokens, so changes are made in the UI or through the CMA. With the `cma-extended` group connected, the agent can read the stack audit log (`get_audit_log`, `get_audit_log_item`) to review access changes.
+
 ## Safety notes
 
-Read-only advisory. Never creates, modifies, or deletes roles, users, teams, or tokens. Never recommends management tokens in client-side code; prefers server-side proxies for privileged CMA access. Delivery tokens are client-safe for read-only delivery only.
+Read-only advisory. Never creates, modifies, or deletes roles, users, teams, or tokens; gives the steps and target for you to apply. Never recommends management tokens in client-side code; prefers server-side proxies for privileged CMA access. Delivery tokens are client-safe for read-only delivery only.
 
 ## Related
 

@@ -33,7 +33,7 @@ The registry tracks unique `id`s and unique `displayName`s. Duplicates throw. Th
 
 ## Task
 
-1. **Locate the bootstrap module: by content, not by path.** `grep -rln "registerComponent" src app lib 2>/dev/null` (path lists produce false negatives on `src/app`, route groups, and locale segments). Typical homes are ( `src/studio/bootstrap.ts`, `src/studio/registerComponents.ts`, or whatever the project pulls in from `@/lib/contentstack`). If none exists, create `src/studio/bootstrap.ts` and import it from the app shell (`app/layout.tsx`, `src/main.tsx`, `app/root.tsx`, etc.) for its side effects.
+1. **Locate the bootstrap module: by content, not by path.** `grep -rlnE "register(Lazy)?Component" src app lib 2>/dev/null` (path lists produce false negatives on `src/app`, route groups, and locale segments). Typical homes are ( `src/studio/bootstrap.ts`, `src/studio/registerComponents.ts`, or whatever the project pulls in from `@/lib/contentstack`). If none exists, create `src/studio/bootstrap.ts` and import it from the app shell (`app/layout.tsx`, `src/main.tsx`, `app/root.tsx`, etc.) for its side effects.
 
 2. **Add the import** at the top of that file:
 

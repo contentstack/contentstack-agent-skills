@@ -21,12 +21,39 @@ A composition is a single entry on the compositions CT. The fields (see [`author
 | `place_composition_as` | string | `"page"` for a template composition (Connected or Freeform). `"section"` for a section composition. `"template"` also legal but not what Studio writes for the top-level template composition. The Compositions tab lists `"page"` entries under Templates |
 | `schema_version` | string | Composition schema version stamped by Studio (`"1.0.0"`, `"1"`, `"2"`, …), a **string**, not a number |
 | `ui` | string | The compressed composition tree, `zlib:<base64>` (see `troubleshoot-canvas` § Diagnostic tooling) |
-| `data_sources` | JSON string | The stringified `resolvedReferences` map + pinned data-source list. Wire shape is `"[]"` when empty, not `[]` |
+| `data_sources` | JSON string (raw CMA) | The `resolvedReferences` map + pinned data-source list. Shape per API: § [Wire shapes](#wire-shapes) |
 | `static_value` | group | Per-key literal store. Every `binding.type: "static_value"` on a node references a **key** here. The actual literal lives in `static_value.<subtype>[]` under that key. See [`author-composition-static-values`](author-composition-static-values.md) |
 | `url_metadata` | group | **Required on every template composition** (`place_composition_as: "page"`): `url_source` + `url_queries`. Never write `url` without it. See § `url` + `url_metadata`: a matched pair below. Sections carry neither `url` nor `url_metadata` |
 | `linked_schemas` | **group-multiple** | Sections only. Declares parent CT + `selectedField` the section scopes to. `[]` for templates / freeform |
 | `linked_sections` | reference (multiple) | Template's references to section-composition entries placed in its `ui` tree. `[]` for freeform / sections |
 | `ui_preview` | file (asset uid) | **Required on every section composition** (`place_composition_as: "section"`). The editor writes this for itself by screenshotting the canvas on save. **The CMA never populates it**, so an API-created Section stays blank in the Sections palette forever and nothing errors. Supply an asset uid. See [`author-composition-thumbnails`](author-composition-thumbnails.md) § Fix C for the calls. Templates don't need it |
+
+<a id="wire-shapes"></a>
+
+### Wire shapes: raw CMA vs Compositions API
+
+This is the one definition of each shape. Every other file links here. The raw CMA is this skill's path. The managed Compositions API is [`use-compositions-api`](use-compositions-api.md).
+
+| Field | Raw CMA (`POST /v3/content_types/<ct>/entries`) | Compositions API (`POST /v1/projects/<p>/compositions`) |
+|---|---|---|
+| Body envelope | `{ "entry": { … } }` | The fields directly, no `entry` wrapper |
+| `ui` | String `"zlib:<base64>"` you compress yourself | Uncompressed node **object**. A `zlib:` string fails validation |
+| Where `ui` sits | Top-level entry field, sibling of `static_value`. **Never inside `static_value`** | Same |
+| `data_sources` | JSON-encoded **string**: `"[]"`, `"[{\"uid\":\"template\",…}]"` | Plain **array**: `[]`, `[{ "uid": "template", … }]`. A string answers `400` |
+| `resolvedReferences` key (template data source) | `"template"`. The SDK ignores the key's content, but write `"template"`: it is what Studio writes. Never `"root.<field>"` | Same |
+| `resolvedReferences` key (`contentstack` pinned data source) | The pinned **entry uid**: the SDK looks it up by that key | Same |
+| `static_value.number[].value` | Must match the compositions CT's `static_value.number.value` field type. The schema [`provision-studio-project`](provision-studio-project.md) ships makes it **text**, so write `"49"`. A CT whose field is `number` (a measured `422 … is not number`) needs `49`. Read the CT before the first write | Same: the service forwards to the CMA |
+| `static_value.choice[].value` | List: `["h1"]` | Same |
+| `static_value.object` / `.array` values | JSON-encoded string | Same |
+
+One data source, both forms:
+
+```jsonc
+// raw CMA
+"data_sources": "[{\"uid\":\"template\",\"data\":null,\"resolvedReferences\":{\"template\":[\"products\"]}}]"
+// Compositions API
+"data_sources": [{ "uid": "template", "data": null, "resolvedReferences": { "template": ["products"] } }]
+```
 
 After write, publish the entry. Studio queries by `composable_uid` + published status. An unpublished entry won't appear in the project's Compositions list or load in the canvas.
 
@@ -60,7 +87,7 @@ A published entry returns an array with one object per environment/locale. `[]` 
 | Composition | `url` | `url_source` | Notes |
 |---|---|---|---|
 | **Connected** template, CT is a page type (`is_page: true` + CT `url_pattern`) | `/<route>/{{entry.title}}` | `content_type_url_pattern` | **The default for the API path.** The CT pattern is the derivation, so Studio re-derives correctly on every editor load. Pair with CT `url_prefix: "/<route>/"`. See [`build-connected-template` § Single-entry vs multi-entry URL pattern rule](build-connected-template.md#single-entry-vs-multi-entry-url-pattern-rule) |
-| **Connected** template, CT **has** a `url_pattern` (entries get a real `url`) | `/<route>/{{entry.title}}` | `content_type_url_pattern` | Resolution keys on **`entry.url`**: the SDK finds the entry whose stored `url` equals the request path, so write the template `url` in the shape of a real entry's `url` (read one first; a CT `url_prefix` the stored `url` lacks misses with `PREVIEW_ENTRY_NOT_FOUND`). The composition `url` is NOT variable-substituted under this source (see below). Requires every entry to carry a populated `url` |
+| **Connected** template, CT **has** a `url_pattern` (entries get a real `url`) | `/<route>/{{entry.title}}` | `content_type_url_pattern` | Resolution keys on **`entry.url`**: the SDK finds the entry whose stored `url` equals the request path, so write the template `url` in the shape of a real entry's `url` (read one first; a CT `url_prefix` the stored `url` lacks misses with `URL_MATCHED_NO_ENTRY`). The composition `url` is NOT variable-substituted under this source (see below). Requires every entry to carry a populated `url` |
 | **Connected** template, **singleton** CT with no `url_pattern` (homepage, pricing, a one-entry rewards page) | `/rewards` (literal) | `content_type_url_pattern`, **but only if you populate `url` on the entry by hand** | The source's real requirement is a non-empty `url` field on at least one entry, not a CT `url_pattern`. A singleton has no pattern to generate one, so set `url: "/rewards"` on the entry yourself. Skip that and the editor fails with `MISSING_CT_PATTERN_URL_FIELD`, shown as "No entry has a URL field populated yet", while SSR renders the page fine |
 | **Connected** template whose URL derives from a field **other than** `url` (`{{entry.slug}}`, `{{entry.author.slug}}`) | `/blog/{{entry.slug}}` | `user_specified_pattern` | This is the only source that extracts and matches on pattern variables. `content_type_url_pattern` would ignore the pattern and look for `url` instead |
 | **Freeform** template, identity URL | `/<compositions-CT-uid>/<composable_uid>` | `default_url_pattern` | The Studio-generated default. Use this unless the path was deliberately hand-chosen |

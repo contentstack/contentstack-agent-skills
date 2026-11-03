@@ -1,2 +1,5 @@
 .DS_Store
 .obsidian
+evals/results/
+__pycache__/
+*.pyc

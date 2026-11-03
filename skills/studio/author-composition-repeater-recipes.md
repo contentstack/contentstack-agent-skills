@@ -8,6 +8,117 @@ Worked recipes for repeating a card over a multi-reference field and over a GROU
 
 Part of the API-authoring set. Start at [`author-composition-via-api`](author-composition-via-api.md), which routes to this one.
 
+<a id="canonical-list-recipe"></a>
+
+## The canonical list recipe {#canonical-list-recipe}
+
+Every list Section uses this one shape. Other files link here instead of restating it.
+
+1. **Scope the Section to the whole entry.** `linked_schemas: [{ "content_type_uid": "<page-ct>" }]`, no `selected_field`. A Section scoped to the list field renders, but Visual Editor finds no list or item tags ([`make-visual-editor-editable`](make-visual-editor-editable.md) § 2).
+2. **A list Box holds the Repeater.** It carries `metadata.repeaterWrapper: true` (the list tag `<field>` lands on it) and the list layout: flex or grid with `gap` ([`build-repeating-section`](build-repeating-section.md) § The Repeater's wrapper element).
+3. **The Repeater binds to the field**: `items` = `template` binding on `{ "<field>": {} }`, `metadata.mode: "preview"`, `metadata.repeaterBindingFieldType` per [`author-composition-bindings`](author-composition-bindings.md) § Binding a Repeater.
+4. **An item Box is the Repeater's only child.** The item tag `<field>.<N>` lands on it. Without it, a Condition Block holding a Section or Section Slot drops every item tag.
+5. **Condition Blocks go inside the item Box**, one per content type (references) or block uid (modular blocks), each with `operator` and `conditionBinding`. Group-multiple, multi-file and scalar lists skip this step: the card goes straight into the item Box.
+6. **Card bindings** use `type: "repeater"` with the Repeater's `repeaterUID`, paths relative to the item.
+
+The section's full `ui` tree for a multi-reference `products` field, every node with all seven keys:
+
+```json
+{
+  "uid": "ROOT",
+  "type": "page",
+  "attrs": {},
+  "metadata": { "title": "Product Grid", "sectionExposedProps": [] },
+  "props": { "children": { "type": "slot", "slot": "ROOT-slot" } },
+  "slots": {
+    "ROOT-slot": [
+      {
+        "uid": "LIST",
+        "type": "box",
+        "attrs": {},
+        "metadata": { "title": "Box — Product list", "repeaterWrapper": true },
+        "props": { "children": { "type": "slot", "slot": "LIST-slot" } },
+        "slots": {
+          "LIST-slot": [
+            {
+              "uid": "R1",
+              "type": "repeater",
+              "attrs": {},
+              "metadata": { "title": "Repeater — Products", "mode": "preview", "repeaterBindingFieldType": "reference" },
+              "props": {
+                "items": { "binding": { "type": "template", "value": { "path": { "products": {} } } } },
+                "children": { "type": "slot", "slot": "R1-slot" }
+              },
+              "slots": {
+                "R1-slot": [
+                  {
+                    "uid": "ITEM",
+                    "type": "box",
+                    "attrs": {},
+                    "metadata": { "title": "Box — Product item" },
+                    "props": { "children": { "type": "slot", "slot": "ITEM-slot" } },
+                    "slots": {
+                      "ITEM-slot": [
+                        {
+                          "uid": "CB1",
+                          "type": "condition-block",
+                          "attrs": {},
+                          "metadata": {
+                            "title": "Condition — product",
+                            "condition": {
+                              "type": "reference", "operator": "eq", "value": "product",
+                              "conditionBinding": { "type": "repeater",
+                                "value": { "repeaterUID": "R1", "path": { "_content_type_uid": {} } } }
+                            }
+                          },
+                          "props": { "children": { "type": "slot", "slot": "CB1-slot" } },
+                          "slots": {
+                            "CB1-slot": [
+                              {
+                                "uid": "CARD1",
+                                "type": "site-product-card",
+                                "attrs": {},
+                                "metadata": { "title": "Product card" },
+                                "props": {
+                                  "title": { "binding": { "type": "repeater", "value": { "repeaterUID": "R1", "path": { "title": {} } } } },
+                                  "price": { "binding": { "type": "repeater", "value": { "repeaterUID": "R1", "path": { "price": {} } } } }
+                                },
+                                "slots": {},
+                                "styles": {}
+                              }
+                            ]
+                          },
+                          "styles": {}
+                        }
+                      ]
+                    },
+                    "styles": {}
+                  }
+                ]
+              },
+              "styles": {}
+            }
+          ]
+        },
+        "styles": {
+          "default": {
+            "classes": [""],
+            "responsiveStyles": { "default": { "display": "grid", "gridTemplateColumns": "repeat(3, minmax(0, 1fr))", "gap": "24px" } }
+          }
+        }
+      }
+    ]
+  },
+  "styles": {}
+}
+```
+
+The composition also needs `data_sources` with `resolvedReferences` `{ "template": ["products"] }` (step 1 below). A modular-blocks list swaps the condition to `"type": "modular_block"` with the block uid ([step 4](#4-condition-block-inside-the-item-box)) and `repeaterBindingFieldType` to `"modular_block"`.
+
+**Expected validator warning.** The Compositions API validator warns on the item Box that the Repeater's items won't render. On this shape the warning is expected and wrong: leave the Box in place. It is a warning, not a `422`, and the items render (see [`use-compositions-api`](use-compositions-api.md) § Expected validator warnings).
+
+The recipes below explain each piece.
+
 ## Recipe: Repeat a card over a multi-reference field
 
 The canonical pattern. Requires FIVE shapes in concert. Missing any one yields a silently-empty repeater or (worse) an all-items-identical render (the `template`-at-`.0.` trap below).
@@ -30,13 +141,7 @@ The reference-resolution map. Tells the SDK "when bindings resolve through this 
 ]
 ```
 
-Example: a section (Card Grid) that iterates `related_posts`:
-
-```json
-"data_sources": "[{\"uid\":\"template\",\"data\":null,\"resolvedReferences\":{\"template\":[\"related_posts\"]}}]"
-```
-
-**Wire format quirk:** on the CMA `data_sources` is stored as a **JSON-encoded string** (`"[]"`, `"[{…}]"`), not the parsed array. Serialize before write. Parse after read.
+Shown parsed. On the raw CMA `data_sources` is a **JSON-encoded string**, on the Compositions API a plain array: [`author-composition-entry`](author-composition-entry.md#wire-shapes) § Wire shapes.
 
 **Key semantics: depends on the data source, and getting it wrong fails silently:**
 
@@ -96,58 +201,59 @@ The Repeater consumes its iteration source through its `items` prop:
 
 `props.children` is **required**: it wires the `R1-slot` slot to the Repeater's built-in `children` prop. Without it the Repeater iterates but renders nothing ([`author-composition-bindings`](author-composition-bindings.md) § Node anatomy, point 4). The `slots` key MUST match `props.children.slot`.
 
-For a section whose `selectedField` is the reference itself (`build-section`'s scope-aware sections), the path collapses to scope-root `{ "path": {} }`, the section's `dataSources.template` is already the resolved array.
+A Section scoped to the reference itself (`selectedField: "products"`) would need scope-root `{ "path": {} }`, because its `dataSources.template` is already the array. Don't author new Sections that way: it drops the Visual Editor list tags. Use the whole-entry scope of the [canonical list recipe](#canonical-list-recipe).
 
 ### 3. Repeater node's `metadata.mode: "preview"`
 
 On the same Repeater node, in `metadata` (parallel to `props`). Per `use-repeater`'s two-mode model: Design Mode (default) renders one placeholder. Preview Mode renders N real iterations. UI authors toggle this in Properties, under Configuration. API authors set the metadata directly. See the Repeater node shape in step 2 above for placement.
 
-### 4. Condition Block as the immediate child of the Repeater (under `slots`)
+### 4. Condition Block inside the item Box
 
-Required by Studio's composition schema for reference iteration (single-CT AND multi-CT, `use-condition-block`). Narrows the iteration item to a specific content type before child bindings resolve.
+Required for reference iteration (single-CT AND multi-CT, `use-condition-block`). Narrows the iteration item to a specific content type before child bindings resolve.
 
-The Condition Block lives under a slot of the Repeater. Its discriminator is in `metadata.condition`:
+The Condition Block sits in the slot of the item Box that is the Repeater's only child ([canonical list recipe](#canonical-list-recipe), step 4). Its discriminator is in `metadata.condition`. The Repeater's `slots`, from the item Box down:
 
 ```jsonc
-{
-  "type": "repeater",
-  "uid": "R1",
-  // …items binding / metadata.mode as in step 2…
-  "props": {
-    "items": { "binding": { /* …as step 2… */ } },
-    "children": { "type": "slot", "slot": "<repeater-slot-uid>" }   // ← wire the Repeater's slot
-  },
-  "slots": {
-    "<repeater-slot-uid>": [
-      {
-        "type": "condition-block",
-        "uid": "CB1",
-        "metadata": {
-          "condition": {
-            "type": "reference", "operator": "eq", "value": "product",
-            "conditionBinding": { "type": "repeater",
-              "value": { "repeaterUID": "R1", "path": { "_content_type_uid": {} } } }
+"slots": {
+  "R1-slot": [
+    {
+      "type": "box", "uid": "ITEM", "attrs": {}, "metadata": {}, "styles": {},
+      "props": { "children": { "type": "slot", "slot": "ITEM-slot" } },   // ← the item Box
+      "slots": {
+        "ITEM-slot": [
+          {
+            "type": "condition-block",
+            "uid": "CB1", "attrs": {}, "styles": {},
+            "metadata": {
+              "condition": {
+                "type": "reference", "operator": "eq", "value": "product",
+                "conditionBinding": { "type": "repeater",
+                  "value": { "repeaterUID": "R1", "path": { "_content_type_uid": {} } } }
+              }
+            },
+            "props": { "children": { "type": "slot", "slot": "CB1-slot" } },   // ← Condition Block needs it too
+            "slots": { "CB1-slot": [ /* card subtree here — step 5 */ ] }
           }
-        },
-        "props": {
-          "children": { "type": "slot", "slot": "<cb-slot-uid>" }   // ← Condition Block needs it too
-        },
-        "slots": {
-          "<cb-slot-uid>": [
-            /* card subtree here — step 5 */
-          ]
-        }
+        ]
       }
-    ]
-  }
+    }
+  ]
 }
 ```
 
 Without `conditionBinding` the block silently renders nothing. Design mode hides this: verify in preview.
 
-For modular-block iteration: `type: "modular_block"`, `value: "<block-uid>"`, `conditionBinding` and `dataBinding` on path `{ "<block-uid>": {} }`.
+For modular-block iteration the condition reads the block uid, and carries a `dataBinding` of the same shape:
 
-Both container nodes carry `props.children` pointing at their own slot ([`author-composition-bindings`](author-composition-bindings.md) § Node anatomy, point 4). The Condition Block also exposes a `children` slot prop. Skip its pointer and the card subtree never renders even though the Repeater iterates correctly.
+```json
+"condition": {
+  "type": "modular_block", "operator": "eq", "value": "<block-uid>",
+  "conditionBinding": { "type": "repeater", "value": { "repeaterUID": "R1", "path": { "<block-uid>": {} } } },
+  "dataBinding":      { "type": "repeater", "value": { "repeaterUID": "R1", "path": { "<block-uid>": {} } } }
+}
+```
+
+All three container nodes (Repeater, item Box, Condition Block) carry `props.children` pointing at their own slot ([`author-composition-bindings`](author-composition-bindings.md) § Node anatomy, point 4). The Condition Block also exposes a `children` slot prop. Skip its pointer and the card subtree never renders even though the Repeater iterates correctly.
 
 ### 5. Card prop bindings: type `repeater`, with `repeaterUID`
 
@@ -198,30 +304,19 @@ Composition entry
 ├── data_sources: [{ uid:"template",
 │                    resolvedReferences:{ "template":["products"] } }]
 └── ui (zlib-inflated tree)
-    └── Section "ProductGrid"
-        └── Box  (grid layout — register-component-render-contracts § Layout contract)
-            └── { type:"repeater", uid:"R1",
-                  metadata:{ mode:"preview" },
-                  props:{ items:{ binding:{ type:"template",
-                                            value:{ path:{ products:{} } } } } },
-                  slots:{ "<R1-slot>":[
-                    { type:"condition-block", uid:"CB1",
-                      metadata:{ condition:{ …step 4… } },
-                      slots:{ "<CB1-slot>":[
-                        { type:"site-product-card", uid:"CARD1",
-                          props:{
-                            title:{ binding:{ type:"repeater",
-                                              value:{ repeaterUID:"R1", path:{ title:{} } } } },
-                            image:{ binding:{ type:"repeater",
-                                              value:{ repeaterUID:"R1", path:{ images:{ 0:{ url:{} } } } } } },
-                            price:{ binding:{ type:"repeater",
-                                              value:{ repeaterUID:"R1", path:{ price:{} } } } }
-                          } }
-                      ] } }
-                  ] } }
+    └── Section "ProductGrid"  (linked_schemas: [{ content_type_uid:"category" }], whole entry)
+        └── Box "list"  (metadata.repeaterWrapper:true, grid + gap)
+            └── Repeater R1  (items: template path {products:{}}, metadata.mode:"preview")
+                └── Box "item"
+                    └── Condition Block CB1  (type:"reference", operator:"eq", value:"product",
+                        │                     conditionBinding: repeater R1 path {_content_type_uid:{}})
+                        └── site-product-card CARD1
+                              title: repeater R1 path {title:{}}
+                              image: repeater R1 path {images:{0:{url:{}}}}
+                              price: repeater R1 path {price:{}}
 ```
 
-Five shapes: composition `resolvedReferences` + Repeater `props.items.binding` + Repeater `metadata.mode` + Condition Block in slot with `metadata.condition` + repeater-scope card bindings. Any one missing produces an empty render or an all-identical render.
+The node-for-node JSON is in [the canonical list recipe](#canonical-list-recipe). Five shapes: composition `resolvedReferences` + Repeater `props.items.binding` + Repeater `metadata.mode` + Condition Block with `metadata.condition` (`conditionBinding` included) + repeater-scope card bindings. Any one missing produces an empty render or an all-identical render.
 
 ## Recipe: Repeat a card over a GROUP-MULTIPLE field
 
@@ -234,7 +329,7 @@ Scenario: a `category` entry has a `features` field of type `group` + `multiple:
 | Shape | Multi-reference | **Group-multiple** |
 |---|---|---|
 | Composition `data_sources.resolvedReferences` | **Required**: reference stubs need resolving | **NOT needed**: values are inline on the parent entry |
-| Condition Block as Repeater's immediate child | **Required**: references are polymorphic (any allowed CT). The block narrows | **NOT needed**: group-multiple has one shape, not polymorphic |
+| Condition Block inside the item Box | **Required**: references are polymorphic (any allowed CT). The block narrows | **NOT needed**: group-multiple has one shape, not polymorphic |
 | Repeater `props.items.binding` | `type: "template"`, path at the multi-ref field | (same) `type: "template"`, path at the group-multiple field |
 | Repeater `metadata.mode: "preview"` | Required for canvas iteration | (same) Required |
 | Card prop bindings | `type: "repeater"`, `repeaterUID`, no index | (same) `type: "repeater"`, `repeaterUID`, no index |
@@ -248,27 +343,17 @@ Composition entry
 ├── composable_uid: "<15-char>" (= CMA entry uid)
 ├── data_sources: [/* no resolvedReferences entry needed */]
 └── ui (zlib-inflated tree)
-    └── Section "FeatureList"
-        └── Box  (flex / grid layout — register-component-render-contracts § Layout contract)
-            └── { type:"repeater", uid:"R2",
-                  metadata:{ mode:"preview" },
-                  props:{ items:{ binding:{ type:"template",
-                                            value:{ path:{ features:{} } } } } },
-                  slots:{ "<R2-slot>":[
-                    /* card goes here directly — no Condition Block wrapper */
-                    { type:"site-feature-card", uid:"FC1",
-                      props:{
-                        headline:{ binding:{ type:"repeater",
-                                              value:{ repeaterUID:"R2", path:{ headline:{} } } } },
-                        body:{     binding:{ type:"repeater",
-                                              value:{ repeaterUID:"R2", path:{ body:{} } } } },
-                        icon:{     binding:{ type:"repeater",
-                                              value:{ repeaterUID:"R2", path:{ icon:{ url:{} } } } } }
-                      } }
-                  ] } }
+    └── Section "FeatureList"  (whole-entry scope)
+        └── Box "list"  (metadata.repeaterWrapper:true, flex / grid + gap)
+            └── Repeater R2  (items: template path {features:{}}, metadata.mode:"preview")
+                └── Box "item"
+                    └── site-feature-card FC1   (no Condition Block)
+                          headline: repeater R2 path {headline:{}}
+                          body:     repeater R2 path {body:{}}
+                          icon:     repeater R2 path {icon:{url:{}}}
 ```
 
-The card sits **directly inside the Repeater's slot**, no Condition Block in between, because the iteration item has one shape (the group's sub-fields). Each card prop reads from the iteration item via `repeaterUID:"R2"` + the field path on the item.
+The card sits **directly inside the item Box**, no Condition Block, because the iteration item has one shape (the group's sub-fields). Each card prop reads from the iteration item via `repeaterUID:"R2"` + the field path on the item.
 
 ### Decision rule: which recipe to use
 

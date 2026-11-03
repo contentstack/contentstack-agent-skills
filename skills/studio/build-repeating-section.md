@@ -33,7 +33,7 @@ Before reaching for the parent+child+Repeater pattern, check whether a **single 
 
 The pattern:
 
-1. **Register a component** with an `array`-typed prop (e.g. `cards: { type: "array" }`).
+1. **Register a component** with an `array`-typed prop (e.g. `cards: { type: "array", items: { type: "any" } }`; `items` is required on studio-react 2.x).
 2. **Bind that prop to a Reference field** on the section's linked schema.
 3. **Populate `data_sources.resolvedReferences`** in the composition. This tells the SDK to include the referenced entries via CDA `?include[]=<ref_field>`, so the bound array arrives at the component as **full resolved entry objects**, not `{uid}` stubs.
 4. **The component does its own `.map()`** to render each item, no Studio Repeater, no Condition Block, no iteration scope inside Studio.
@@ -44,7 +44,7 @@ registerComponent({
   type: "doc-card-list",
   component: CardList,
   props: {
-    cards: { type: "array" }, // <-- bound to a multi-Reference field on the section's linked schema
+    cards: { type: "array", items: { type: "any" } }, // <-- bound to a multi-Reference field on the section's linked schema
   },
 });
 
@@ -95,7 +95,7 @@ Gate: open the child standalone. It must adapt at any canvas width. If it render
 
 In Studio, open the Sections tab, then click + New Section. Name it `parentSectionName`.
 
-Link the parent to `parentLinkedSchema` (the CT / Global Field that holds `iterationSourceField`). Use the same Connect-A-Schema flow `build-section` describes.
+Link the parent to `parentLinkedSchema` (the CT / Global Field that holds `iterationSourceField`). Use the same Connect-A-Schema flow `build-section` describes. **Link the whole schema, don't select `iterationSourceField` as the section's field.** A section scoped to the list field renders, but Visual Editor gets no list or item tags. This step and Steps 3 to 6 are the [canonical list recipe](author-composition-repeater-recipes.md#canonical-list-recipe) built in the UI.
 
 ### Step 3: Drop a layout container Box first
 
@@ -108,7 +108,15 @@ Link the parent to `parentLinkedSchema` (the CT / Global Field that holds `itera
 | `vertical-list` | `display: flex; flex-direction: column; gap: 16px;` |
 | `horizontal-scroll` | `display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory;` with `flex: 0 0 280px` on the cell |
 
-The Box defines the cell size. The Slot will sit inside the Repeater inside this Box, so each iteration fills one grid track / flex item / list row.
+The Box defines the cell size. The Slot will sit inside the Repeater inside this Box, so each iteration fills one grid track / flex item / list row. Always space items with `gap` on this Box, never with sibling selectors: see § The Repeater's wrapper element below.
+
+#### The Repeater's wrapper element
+
+The Repeater wraps each item in its own `<div data-composable-studio-wrapper="repeater" style="display: contents">`. A list Box rendered as `<ul>` with `<li>` items becomes `ul > div > li`:
+
+- **Sibling- and child-based CSS stops matching.** `space-y-*` / `space-x-*`, `divide-*`, `> * + *` margins, `li:first-child`, `:nth-child()` and `ul > li` all see the wrapper divs, not the items. Margins on the wrapper do nothing, because a `display: contents` element has no box.
+- **Flex and grid still work.** `display: contents` lifts each item into the list Box's layout, so `display: flex` / `grid` with `gap` spaces the items exactly as authored. Use that for every list container.
+- **`ul > div` is invalid list markup.** Screen readers may stop announcing the list and its count. If list semantics matter, render the list Box as a plain `div` and give it `role="list"` with `role="listitem"` on each item's element, or keep the `ul`/`li` inside a registered component that maps the array itself (§ When to skip the Repeater entirely).
 
 ### Step 4: Drop a Repeater inside the Box
 
@@ -118,18 +126,17 @@ Bind the Repeater's **Bind items** property to `iterationSourceField` via the Da
 
 For multi-reference / Modular Block iteration, see Step 5 (Condition Block). For `group` / `array` / `pinned-query`, skip to Step 6.
 
-### Step 5: Wrap in a Condition Block (when required)
+### Step 5: Drop an item Box, then a Condition Block (when required)
 
-If `iterationItemKind` is `reference` (single-CT or multi-CT) or `modular-block`, the Repeater's immediate child must be a **Condition Block** (Studio schema requirement); for Visual Editor's item controls, those may sit inside one Box that is the Repeater's only child ([`make-visual-editor-editable`](make-visual-editor-editable.md) § 2). Two ways:
+Drop a **Box** inside the Repeater as its only child, whatever `iterationItemKind` is. Visual Editor's per-item tag (move, delete, add) lands on that Box. Without it, a Condition Block holding a Section or Section Slot drops every item tag ([`make-visual-editor-editable`](make-visual-editor-editable.md) § 2).
 
-- **Preferred**: drop a Section Slot inside the Repeater (Step 6), then when you later drop the child Section into the Slot at template time, Studio surfaces an inline hint that this iteration source needs a Condition Block. Accept the wrap and Studio inserts it for you.
-- **Manual**: drop a Condition Block inside the Repeater first. Then drop the Section Slot inside the Condition Block.
+If `iterationItemKind` is `reference` (single-CT or multi-CT) or `modular-block`, drop a **Condition Block** inside the item Box, one per content type or block. Studio's inline "needs a Condition Block" prompt (Step 8) inserts one directly under the Repeater, without the Box, so add it manually here instead.
 
-For `group` / `array` / `pinned-query`, no Condition Block is needed.
+For `group` / `array` / `pinned-query`, no Condition Block is needed: the Section Slot goes straight into the item Box.
 
-### Step 6: Drop exactly ONE Section Slot inside the Repeater (or its Condition Block)
+### Step 6: Drop exactly ONE Section Slot inside the Condition Block (or the item Box)
 
-Drag a **Section Slot** from the palette into the Repeater (or the Condition Block from Step 5). One Slot, not multiple.
+Drag a **Section Slot** from the palette into the Condition Block from Step 5 (or the item Box, when there is no Condition Block). One Slot per branch, not multiple.
 
 Set the Slot's **Drop placeholder label** to something intent-revealing: `Drop ${childSectionName} here` (e.g. `Drop ProductCard here`). The label is the only contract template authors have with this Section.
 
@@ -140,11 +147,12 @@ Set the Slot's **Drop placeholder label** to something intent-revealing: `Drop $
 Save. In Layers, the tree should read:
 
 ```
-Section "<parentSectionName>"
-└── Box  (layoutShape container)
+Section "<parentSectionName>"   (linked to the whole schema)
+└── Box  (layoutShape container, gap)
     └── Repeater  (bound to <iterationSourceField>)
-        └── (Condition Block, if reference/modular-block)
-            └── Section Slot  (label: Drop <childSectionName> here)
+        └── Box  (item)
+            └── (Condition Block, if reference/modular-block)
+                └── Section Slot  (label: Drop <childSectionName> here)
 ```
 
 In the parent Section's own canvas (with no template open), the Repeater shows one placeholder iteration containing the empty Slot. This is normal. Fills happen at template / parent-of-parent time.
@@ -158,7 +166,7 @@ What happens:
 - Section-level auto-binding kicks in: the child's linked schema (`childLinkedSchema`) is matched to the Repeater's iteration scope. The child Section's bindings resolve against each iterated item.
 - Zero manual binding clicks. The child Section is pre-bound by virtue of being a Section.
 
-If the iteration source is a single-CT / multi-CT Reference (or Modular Block) and you didn't add a Condition Block manually in Step 5, Studio prompts you to wrap. Accept.
+If the iteration source is a single-CT / multi-CT Reference (or Modular Block) and you didn't add a Condition Block in Step 5, Studio prompts you to wrap. Accepting puts the Condition Block directly under the Repeater, so move it into the item Box afterwards.
 
 ### Step 9: Toggle Preview Mode to verify
 
@@ -190,7 +198,9 @@ This skill succeeds only when ALL are true:
 - [ ] **BOTH Sections (child and parent) have a `ui_preview`**, a blank tile in the Sections accordion otherwise. UI-created sections get one from Studio on Save. API-created ones need one attached explicitly. See [`author-composition-via-api` § Section thumbnails](author-composition-thumbnails.md#section-thumbnails-ui-preview).
 - [ ] The parent Section's Box has explicit layout CSS for `layoutShape` (grid tracks, flex with basis, etc.) defining each cell's size.
 - [ ] The Repeater is bound to `iterationSourceField` via the Data Picker (confirmed by inspecting the Bind items breadcrumb).
-- [ ] Exactly ONE Section Slot sits inside the Repeater (or its Condition Block).
+- [ ] Exactly ONE Section Slot sits inside each Condition Block (or the item Box).
+- [ ] The parent Section is linked to the whole schema, not scoped to `iterationSourceField`.
+- [ ] The list Box spaces items with flex/grid `gap`, not sibling selectors (`space-y-*`, `> * + *`).
 - [ ] When the parent Section is dropped on a template and the child Section is dropped into the Slot, **no manual prop binding** is needed. The child binds automatically at Section level.
 - [ ] Preview Mode on the Repeater renders N iterations of the child Section, each iteration's bindings showing the corresponding item's data.
 - [ ] No iteration renders full-bleed (parent Box defines the cell size correctly).
@@ -202,7 +212,8 @@ This skill succeeds only when ALL are true:
 | Dropping a raw registered card into the Slot | Build it as a Section first. Drop the Section. See `understand-section-slots`. |
 | Skipping the Box (Step 3), Repeater bare on Section root | Wrap Repeater in a sized Box. See `use-section-slot` § Layout container. |
 | Multiple Section Slots inside the Repeater | Exactly ONE Slot per Repeater. Put multi-region content inside the child. |
-| Skipping Condition Block for Reference / Modular Block iteration | Accept Studio's inline wrap prompt, or insert Condition Block manually (Step 5). |
+| Skipping Condition Block for Reference / Modular Block iteration | Insert it inside the item Box (Step 5). Studio's inline wrap prompt puts it under the Repeater instead: move it. |
+| `space-y-*`, `divide-*` or `li + li` spacing on the list | The Repeater's per-item `display: contents` wrapper breaks sibling selectors. Use flex/grid `gap` (§ The Repeater's wrapper element). |
 | Binding from parent's linked-schema root inside the Repeater | Inside Repeater, picker shows "Repeater Data". Bind from that root. See `use-repeater` § The scope rule. |
 | Child depends on layout ancestor (`.fs-grid > .fs-card`) | Keep child layout-agnostic. See `register-component` § Layout contract. |
 | Empty Slot in Design Mode mistaken for binding error | Toggle Preview Mode. See `use-repeater` step 7. |

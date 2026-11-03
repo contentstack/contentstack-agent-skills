@@ -4,9 +4,9 @@ name: use-compositions-api
 
 ## When to use
 
-Create, read, list, update, or delete Studio compositions through the **managed Composable Studio API service**, the REST layer that validates the layout, compresses the `ui` spec, and forwards the caller's identity, so you don't hand-encode entries against the raw CMA.
+Create, read, list, update, or delete Studio compositions through the **managed Studio API service**, the REST layer that validates the layout, compresses the `ui` spec, and forwards the caller's identity, so you don't hand-encode entries against the raw CMA.
 
-Use when the project talks to the Composable Studio API service (`/v1/projects/:projectUid/compositions`) and you want guardrails: server-side Studio validation, automatic `ui` compression, `composable_uid` backfill, a referenced-guard on delete, and list/references endpoints. Phrases: "compositions REST API", "Studio API service", "create composition endpoint", "list compositions", "composition references API", "managed composition API". Do NOT use for: raw-CMA / seed-pipeline / migration authoring where you hold a management token and encode the `ui` yourself. That's `author-composition-via-api`. Do NOT use for interactive UI authoring. That's `build-section` / `build-connected-template`. The `ui`-tree shapes themselves are NOT redefined here. They live in `author-composition-via-api`.
+Use when the project talks to the Studio API service (`/v1/projects/:projectUid/compositions`) and you want guardrails: server-side Studio validation, automatic `ui` compression, `composable_uid` backfill, a referenced-guard on delete, and list/references endpoints. Phrases: "compositions REST API", "Studio API service", "create composition endpoint", "list compositions", "composition references API", "managed composition API". Do NOT use for: raw-CMA / seed-pipeline / migration authoring where you hold a management token and encode the `ui` yourself. That's `author-composition-via-api`. Do NOT use for interactive UI authoring. That's `build-section` / `build-connected-template`. The `ui`-tree shapes themselves are NOT redefined here. They live in `author-composition-via-api`.
 
 > **Auth preflight: settle the credential before the first API call.** The service accepts OAuth Bearer. Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
@@ -14,7 +14,7 @@ Use when the project talks to the Composable Studio API service (`/v1/projects/:
 
 ## Context
 
-The **Composable Studio API service** is a REST wrapper over the CMS. Instead of building a composition entry by hand, you `POST` the layout and the service does the mechanical work:
+The **Studio API service** is a REST wrapper over the CMS. Instead of building a composition entry by hand, you `POST` the layout and the service does the mechanical work:
 
 - **You send the `ui` tree uncompressed** (a JSON object). The service compresses it to `zlib:<base64>`. You never touch zlib.
 - **The service validates** the tree against Studio's structural rules and returns all problems at once, field-anchored.
@@ -43,8 +43,6 @@ All routes are prefixed with `/v1` and nested under the project. Base URL per re
 | Create a section | `POST …/compositions/sections` |
 | List / query | `GET …/compositions` |
 | Fetch one | `GET …/compositions/{uid}` |
-| Fetch, assert template | `GET …/compositions/{uid}/template` |
-| Fetch, assert section | `GET …/compositions/{uid}/section` |
 | List references | `GET …/compositions/{uid}/references` |
 | Update (partial merge) | `PUT …/compositions/{uid}` |
 | Delete (guarded) | `DELETE …/compositions/{uid}` |
@@ -85,16 +83,33 @@ curl -X POST "$STUDIO_API/v1/projects/$PROJECT/compositions" \
         "place_composition_as": "page",
         "url": "/blog/{{entry.slug}}",
         "connected_content_type": "blog_post",
-        "ui": { "uid": "root", "type": "page", "props": {}, "slots": {}, "metadata": {} },
+        "ui": { "uid": "root", "type": "page", "attrs": {}, "metadata": {},
+                "props": {}, "slots": {}, "styles": {} },
         "data_sources": []
       }'
 ```
+
+Body shapes (`ui` as an object, `data_sources` as an array, no `entry` wrapper) differ from the raw CMA: [`author-composition-entry`](author-composition-entry.md#wire-shapes) § Wire shapes is the one definition. Every node carries all seven keys (`uid`, `type`, `attrs`, `metadata`, `props`, `slots`, `styles`).
 
 On success (`201`) the response is `{ notice, composition, warnings? }`. The returned `composition.ui` is the **compressed** string as stored. `composable_uid` equals the entry uid unless you supplied one. Non-blocking findings ride along in `warnings[]`.
 
 ### Step 3: Handle validation
 
 Blocking problems return **`422` `composition_invalid`** with every failing path at once: `errors: { "<path>": ["<message>"] }`. Fix each path and resend. Warnings don't block, surface them but proceed.
+
+A common `422`: `Empty slots crash the renderer.` on a `slots` entry holding `[]`, most often a `section-slot` node written as `{ "<own-uid>": [] }`. Write `"slots": {}` ([`author-composition-sections`](author-composition-sections.md) § `section-slot` node shape).
+
+<a id="expected-validator-warnings"></a>
+
+#### Expected validator warnings {#expected-validator-warnings}
+
+Three warnings show up on correct compositions. Report them as expected, don't "fix" them:
+
+| Warning | Why it appears on a correct composition | Act only if |
+|---|---|---|
+| `unknown_type` on a registered component's node | Components are registered in the browser (`registerComponent` in the app), so the service never sees the registry. It flags every non-built-in `type` | The `type` string differs from the one in the app's `registerComponent` call. Check that by hand |
+| `linked_sections_required` on a template | Raised even when every placed section is already in `linked_sections` | A `section-composition` node's `metadata.compositionUID` is missing from `linked_sections`. Compare the two sets |
+| "items won't render" on the item Box under a Repeater | The [canonical list recipe](author-composition-repeater-recipes.md#canonical-list-recipe) puts a Box between the Repeater and its Condition Blocks so Visual Editor gets item tags | The Box holds no Condition Block on a reference or modular-block list |
 
 ### Step 4: Read, list, reference
 
@@ -139,7 +154,8 @@ A composition created through this API is not finished when the write returns `2
 | Pitfall | Why it bites | Fix |
 |---|---|---|
 | Sending `ui` pre-compressed | The service compresses for you. A `zlib:` string is treated as the tree and fails validation | Send the **uncompressed node object** |
-| `data_sources` as a JSON string | The service stringifies it. A string double-encodes | Send a plain **array** |
+| `data_sources` as a JSON string | The service stringifies it. A string answers `400` | Send a plain **array** ([Wire shapes](author-composition-entry.md#wire-shapes)) |
+| Treating `unknown_type` or `linked_sections_required` as errors | They fire on correct compositions | See § Expected validator warnings |
 | Blank `composable_uid` | A whitespace-only value is rejected, not backfilled | Omit it, or send a real slug. A blank value gives `422` |
 | Duplicate `composable_uid` in another locale | Uniqueness is content-type-wide, not per-locale | Expect `409` at create. Pick a unique slug |
 | Treating `422 stack_not_found` as "missing" | It's the **access-denied** code (Studio convention, not 403) | Check the caller's rights on the project's stack |

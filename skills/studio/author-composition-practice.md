@@ -50,24 +50,31 @@ For content props, prefer the comp's own copy as the `static_value` over relying
 [ { "key": "<uid>-items" } ]
 ```
 
-The wrapper holding the repeater carries `metadata.repeaterWrapper: true`, and its `direction` / `gap` / `wrap` props produce the row or grid the iterations flow into. Verified against a production section authored this way with `linked_schemas: []` and no data sources at all.
+The wrapper holding the repeater carries `metadata.repeaterWrapper: true`, and its `direction` / `gap` / `wrap` props produce the row or grid the iterations flow into. The repeater's one child is an item Box ([canonical list recipe](author-composition-repeater-recipes.md#canonical-list-recipe)). Verified against a production section authored this way with `linked_schemas: []` and no data sources at all.
 
 **A list whose items have different shapes needs one Condition Block per shape, all of them, in the skeleton.** A carousel showing stat / image / quote cards is not three lists and not one card repeated. It is one Repeater with three branches. Build every branch. Stopping after the first leaves two thirds of the design unbuilt while the canvas looks plausible, and the omission is invisible once the sheet is written.
 
 ```jsonc
-// repeater.slots.<contents> holds ONE condition-block per item type
+// the item Box under the repeater holds ONE condition-block per item type
+// (canonical list recipe: author-composition-repeater-recipes)
 {
+  "uid": "<cb-uid>",
   "type": "condition-block",
+  "attrs": {},
   "metadata": {
+    "title": "Condition — <block_uid>",
     "slotNames": { "<slot-uid>": "Contents" },
     "condition": {
       "type": "modular_block", "operator": "eq", "value": "<block_uid>",
       "conditionBinding": { "type": "repeater",
         "value": { "repeaterUID": "<repeater-uid>", "path": { "<block_uid>": {} } } },
-      "dataBinding": { /* same shape */ }
+      "dataBinding": { "type": "repeater",
+        "value": { "repeaterUID": "<repeater-uid>", "path": { "<block_uid>": {} } } }
     }
   },
-  "props": { "children": { "type": "slot", "slot": "<slot-uid>" } }
+  "props": { "children": { "type": "slot", "slot": "<slot-uid>" } },
+  "slots": { "<slot-uid>": [ /* this branch's card */ ] },
+  "styles": {}
 }
 ```
 

@@ -23,6 +23,8 @@ function markdownFiles(dir) {
 
 // --- Skills ---------------------------------------------------------------
 const NAME_RE = /^(?!.*--)[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
+const SECTIONS = ["When to use", "Before you answer", "Instructions", "MCP tools", "Output", "Security", "References", "Examples"];
+const REQUIRED_SECTIONS = ["When to use", "Instructions", "MCP tools", "Security"];
 const skillsDir = join(root, "skills");
 const slugs = readdirSync(skillsDir).filter((d) => statSync(join(skillsDir, d)).isDirectory());
 
@@ -67,6 +69,16 @@ for (const slug of slugs) {
   if (!description) fail(`skills/${slug}: missing description`);
   else if (description.length > 1024) fail(`skills/${slug}: description is ${description.length} chars (max 1024)`);
   else if (!/\bUse when\b/.test(description)) fail(`skills/${slug}: description should say "Use when ..." so agents know when to load it`);
+
+  // Body sections follow docs/contributing/skill-template.md: required ones present, in order, nothing else.
+  const headings = [...withoutCode(text).matchAll(/^## (.+)$/gm)].map((m) => m[1].trim());
+  const unknown = headings.filter((h) => !SECTIONS.includes(h));
+  if (unknown.length) fail(`skills/${slug}/SKILL.md: sections not in the template: ${unknown.map((h) => `"${h}"`).join(", ")}`);
+  for (const h of REQUIRED_SECTIONS) if (!headings.includes(h)) fail(`skills/${slug}/SKILL.md: missing "## ${h}" section`);
+  const known = headings.filter((h) => SECTIONS.includes(h));
+  if (known.some((h, i) => i && SECTIONS.indexOf(h) <= SECTIONS.indexOf(known[i - 1]))) {
+    fail(`skills/${slug}/SKILL.md: sections out of order or repeated (expected ${SECTIONS.join(", ")})`);
+  }
 
   const security = withoutCode(text).split(/^## Security\b.*$/m)[1]?.split(/^## /m)[0];
   if (security === undefined) fail(`skills/${slug}/SKILL.md: missing the mandatory "## Security" section`);

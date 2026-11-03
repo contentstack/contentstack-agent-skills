@@ -38,11 +38,13 @@ The route-swap itself is a four-step transform:
 3. **Scaffold**: create a Studio Connected template + section structure with the bindings pre-populated.
 4. **Swap**: replace the route's JSX with `<StudioComponent specOptions={…} />`. Preserve the original as a commented block above the new render so the user can diff.
 
-> **Design-fidelity contract: the migrated render MUST be visually identical to the original page.** Migration re-homes the SAME UI into Studio. It never redraws it. This is not aspirational. It is the definition of done, and the user should never have to point out that the design drifted. For every block:
-> - **1:1 reuse is the DEFAULT. Decomposition is opt-in.** Each component the original route renders maps to the SAME registered component in Studio, bound to the whole object/array, so the layout is identical by construction, right on the first render, with no correction round-trip. Do NOT split a block into a Repeater + per-item components or child Sections **unless the user explicitly asked to make items author-editable.** Decomposition re-lays-out the block (a uniform sequence instead of the original's bespoke arrangement) and is the #1 cause of first-render drift, the exact failure that makes a user re-prompt "the design doesn't match." When in doubt, reuse whole.
-> - **Reuse the EXACT production component**: register it and bind the whole object/array (see [`register-component`](register-component.md)). Never hand-author a lookalike, a "close enough" reimplementation, or a built-in stand-in for a component the app already ships. Registering the real component is the only way brand styling + layout survive.
-> - **Never substitute a uniform Repeater for a bespoke/asymmetric layout** (a bento mosaic, a 1-big-plus-small grid, a carousel). A Repeater renders items uniformly in sequence. Different design. Bind the whole array/object to the real component and let its own markup + CSS run (see [`register-component-prop-contracts`](register-component-prop-contracts.md) § Array & object props: binding rules).
-> - **Slots and per-field bindings reproduce the original's structure and order**, not an approximation.
+> **Structure: the [Section rule](SKILL.md#section-rule) applies to migrations too.** One Section per page region, on the first pass. Inside a Section, the production component is reused whole only when it is interactive or computes its values. Everything else is rebuilt from the project's primitive library ([`plan-studio-architecture`](plan-studio-architecture.md) Step 2c). Don't restate or relax that rule here.
+>
+> **Design-fidelity contract: the migrated render MUST be visually identical to the original page.** Migration re-homes the SAME UI into Studio. It never redraws it. This is the definition of done, and the user should never have to point out that the design drifted:
+> - **A component kept whole is the EXACT production component**, registered as-is (see [`register-component`](register-component.md)). Never a lookalike or a "close enough" reimplementation.
+> - **A decomposed region gets its fidelity from the library**, not from approximation: the library's design props carry the original classes and tokens, with defaults that reproduce today's render.
+> - **A list whose layout depends on item position or count** (a bento mosaic, 1-big-plus-small) is a component that computes its layout: keep it whole and bind the array. A uniform list is a Repeater inside a layout primitive.
+> - **Per-field bindings reproduce the original's structure and order**, not an approximation.
 >
 > "It renders" is not the bar. "It renders identically to the current site" is.
 
@@ -56,6 +58,7 @@ The skill is conservative. It stops on anything it can't represent cleanly. Bett
      - Direct field reads: `headline={entry.title}` becomes the binding `headline ← template.title`
      - Nested object reads: `cover={entry.featured_image.url}` becomes the binding `cover ← template.featured_image.url`
    - **Data fetching.** The entry lookup at the top of the route (`stack.entry(...)`, `useCompositionData(...)`, `getStaticProps`, etc.). Confirm it's a single-entry fetch by uid/slug. Flag anything else.
+   - **Route-level SEO and build exports.** `generateMetadata` / `metadata`, JSON-LD `<script>` tags, `generateStaticParams`, `revalidate`. They are not blockers: they stay in the route through the swap (step 5). List them so none is dropped.
    - **Blockers.** Anything that isn't "render an entry's fields through components":
      - `useState`, `useEffect`, `useReducer` inside the route
      - Conditional component switches based on runtime state (`{flag ? <A /> : <B />}`)
@@ -81,6 +84,9 @@ The skill is conservative. It stops on anything it can't represent cleanly. Bett
      Body.markdown       ← template.body
      RelatedPosts.ids    ← template.related
 
+   KEPT IN THE ROUTE:
+     generateMetadata, JSON-LD (BlogPosting), generateStaticParams
+
    BLOCKERS: none
    ```
 
@@ -91,11 +97,12 @@ The skill is conservative. It stops on anything it can't represent cleanly. Bett
 4. **Scaffold the Studio composition.** With every component now registered, create the Connected template via Studio's web UI flow OR by chaining `build-connected-template`:
    - Connected content type: `contentTypeUid`
    - URL pattern: `urlPattern`
-   - Template root: one section (or a sequence of sections) matching the route's render order
-   - **For each component in the inventory:** drop the registered component onto the section canvas and apply the binding that was detected in step 1 (so the user does not re-author bindings)
+   - Template root: **one Section per page region**, in the route's render order ([Section rule](SKILL.md#section-rule)). Never one Section for the whole route
+   - **For each region:** build its Section from the library primitives (or the production component the rule keeps whole) and apply the bindings detected in step 1, so the user does not re-author them
+   - **Bind one field per prop.** See § Studio fetches only the fields your bindings name, below, before binding any whole entry or reference to an `object` prop
    - Save the template
 
-5. **Generate the swap.** Rewrite `routeFilePath`:
+5. **Generate the swap: server-rendered, with the route's SEO kept.** Rewrite `routeFilePath` so the server fetches the composition through the canonical [`resolveComposition`](configure-csr-vs-ssr.md#resolve-composition-helper) helper (it lives in `configure-csr-vs-ssr`, don't write a second one) and renders through the `"use client"` wrapper from [`configure-csr-vs-ssr`](configure-csr-vs-ssr.md) step 3. Next.js App Router shown. Other frameworks: same contract, that skill's recipe for the framework.
 
    ```tsx
    // Before — preserved as a reference comment so you can diff:
@@ -110,22 +117,45 @@ The skill is conservative. It stops on anything it can't represent cleanly. Bett
    //   );
    // }
 
-   "use client";
-   import { use } from "react";
-   import { StudioComponent, useCompositionData } from "@contentstack/studio-react";
+   // app/blog/[slug]/page.tsx — a Server Component: NO "use client"
+   import { notFound } from "next/navigation";
+   import { getSSRStyles } from "@contentstack/studio-react";
+   import { sdk } from "@/lib/studio.server";                      // server-only Studio init
+   import { resolveComposition } from "@/lib/resolve-composition"; // configure-csr-vs-ssr
+   import { ClientRender } from "@/components/studio/ClientRender"; // "use client" wrapper, configure-csr-vs-ssr step 3
+   import { getPost, blogPostingJsonLd } from "@/lib/blog";          // the app's own helpers, unchanged
 
-   export default function BlogPost({ params }) {
-     const { slug } = use(params);   // params is a Promise on Next 15+
-     const { specOptions, isLoading, error } = useCompositionData({
-       url: `/blog/${slug}`,        // or the pathname for this route
-       templateContentTypeUid: "blog_post", // narrows resolution to this CT
+   // KEPT from the original route, unchanged: they read the entry, not the composition.
+   export async function generateStaticParams() { /* original body */ }
+   export async function generateMetadata({ params }) { /* original body */ }
+
+   export default async function BlogPost({ params, searchParams }) {
+     const { slug } = await params;                                  // a Promise on Next 15+
+     const searchQuery = new URLSearchParams((await searchParams) as Record<string, string>).toString();
+     const { specOptions, notFound: miss } = await resolveComposition(sdk, {
+       url: `/blog/${slug}`,
+       templateContentTypeUid: "blog_post",                          // narrows resolution to this CT
+       searchQuery,
      });
-     if (isLoading) return null;
-     if (error) throw error;
-     if (!specOptions) return null;   // hook may return null before resolving
-     return <StudioComponent specOptions={specOptions} />;
+     if (miss) notFound();      // no composition or no entry at this URL: the app's 404, never a 500
+     const post = await getPost(slug);                               // the app's own fetch, for JSON-LD only
+     return (
+       <>
+         <script type="application/ld+json"
+           dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd(post)) }} />
+         <style dangerouslySetInnerHTML={{ __html: getSSRStyles(specOptions.spec) }} />
+         <ClientRender specOptions={specOptions} />
+       </>
+     );
    }
    ```
+
+   Rules for the swap:
+
+   - **A missing page stays a 404.** `fetchCompositionData` throws on a miss. `resolveComposition` turns only the not-found case (`isCompositionNotFound`, exported by `@contentstack/studio-react`) into `notFound()` and rethrows every real failure. Never `if (error) throw error` on a client hook: every bad URL becomes a 500.
+   - **SEO survives.** Keep `generateMetadata`, the JSON-LD and `generateStaticParams` exactly as the original route had them. If the composition's own SEO fields should drive the head instead, build it from the fetched `specOptions` with `getCompositionMetadata(specOptions, { baseUrl })` (exported by `@contentstack/studio-react` and `@contentstack/studio-react/rsc`; it returns `title`, `description`, `ogImage`, `canonical` and `tags`). `renderMetadataToHtml` renders the same object to a string for non-React hosts. Pick one source per tag, never both.
+   - **Reading `searchParams` makes this route dynamic.** That is what lets Live Preview and the editor pass their hash. What it does to static generation and caching, and how to keep the app's strategy: [`configure-csr-vs-ssr`](configure-csr-vs-ssr.md).
+   - **Client-only fallback.** On a framework with no server render, use the CSR recipe in `configure-csr-vs-ssr` step 2, which classifies `error` with `isCompositionNotFound` and renders the app's 404 for a miss.
 
    Print the diff to chat for review before writing the file.
 
@@ -158,7 +188,10 @@ This skill succeeds only when ALL of the following are true.
 - [ ] Every prop assignment in the original JSX was either represented as a Studio binding OR explicitly listed as a blocker.
 - [ ] If any blocker was reported, the skill stopped and did NOT proceed to scaffold.
 - [ ] If the skill proceeded - a new Connected template exists in the Studio project with bindings populated. The user did NOT re-author bindings in the canvas.
-- [ ] The route file is rewritten - new render is `<StudioComponent specOptions={…} />`. Original JSX is preserved as a commented block above so the user can diff.
+- [ ] The route file is rewritten - new render is `<StudioComponent specOptions={…} />` (through the client wrapper), fetched server-side via `resolveComposition`. Original JSX is preserved as a commented block above so the user can diff.
+- [ ] **A bad URL returns the app's 404, not a 500**, checked with `curl -s -o /dev/null -w '%{http_code}'` on a slug that doesn't exist.
+- [ ] **The route's metadata, JSON-LD and static params survived the swap**: every item under KEPT IN THE ROUTE in the report is still exported or rendered.
+- [ ] **One Section per page region**, per the [Section rule](SKILL.md#section-rule), and every whole-entry `object` prop either replaced by per-field bindings or backed by an explicit field request (§ Studio fetches only the fields your bindings name), verified on the live route.
 - [ ] `verify-setup` ran and Layer 4 (Studio canvas) renders the converted template successfully.
 - [ ] **Visual parity confirmed**: the Studio render was compared against the pre-migration render and matches (same sections, order, images, text, layout), not merely "renders." Any drift was traced to a binding / component / layout defect and fixed BEFORE declaring success.
 - [ ] A next-step checklist of further route candidates was printed.
@@ -175,8 +208,10 @@ This skill succeeds only when ALL of the following are true.
 | Scaffolding the template without first running `register-component` for unregistered ones | The template's bindings reference unregistered types and render as "Component Loading Error" | Always chain `register-component` first. Never assume registration |
 | Discarding the original JSX without preserving it as a comment | Rollback requires git history. User can't easily diff visually | Always keep the original as a commented block in the rewritten file |
 | Failing to invoke `verify-setup` after the swap | The route may render blank in prod and you wouldn't know until a visitor hits it | Verify before declaring success |
-| Declaring success on "it renders" without comparing to the ORIGINAL design | Design drift ships (a crude lookalike, a bespoke layout flattened to a uniform Repeater, a section rendering blank because a prop collapsed) and the USER catches it, re-prompting "the design doesn't match" | Run the before/after visual-parity gate (step 6). Capture the original render first, compare after, fix any drift before declaring done. Reuse the real production component. Never hand-roll or decompose a bespoke layout |
-| Rebuilding a block as a hand-authored lookalike instead of registering the real component | Loses the exact styling/layout. The user sees a "close but wrong" render and has to correct it | Register the app's actual component and bind the whole object/array. The design comes for free. See the Design-fidelity contract above |
+| Declaring success on "it renders" without comparing to the ORIGINAL design | Design drift ships (a crude lookalike, a position-dependent layout flattened to a uniform Repeater, a section rendering blank because a prop collapsed or received only some fields) and the USER catches it, re-prompting "the design doesn't match" | Run the before/after visual-parity gate (step 6). Capture the original render first, compare after, fix any drift before declaring done |
+| Rebuilding an interactive or computing component as a hand-authored lookalike | Loses its behavior and exact layout. The user sees a "close but wrong" render and has to correct it | Register the app's actual component whole, as the [Section rule](SKILL.md#section-rule) says for these two cases |
+| Registering a presentational component whole "for fidelity" | One block an author can't restructure, and a coarse prop that only receives the fields bound to it (§ Studio fetches only the fields your bindings name) | Rebuild it from the library primitives with per-field bindings. The library's design props carry the original classes |
+| Client-rendered swap with `if (error) throw error` | Every bad URL becomes a 500, and the route loses its metadata, JSON-LD and static params | Server-rendered swap through `resolveComposition` (step 5), SEO exports kept |
 | Inferring `templateEntryUid` wrong (e.g. passing `params.slug` when the entry is looked up by a different field) | The route fetches the wrong entry or 404s | Re-read the original entry-fetch code carefully. Use the same lookup key Studio's spec resolver expects |
 
 ## Where does call-site display logic go?
@@ -193,13 +228,22 @@ Hand-coded pages routinely do data massage at the call site (before passing to t
 
 Rule of thumb: **if the call site is doing anything the Data Picker can't express in a bare path, the migration must decide where that logic lives: adapter / static / branch / product-gap.** Silently dropping it is not an option.
 
-## Recommended migration shape: top-down
+## Studio fetches only the fields your bindings name
 
-If the route you're migrating is rendered by a **compound component** (an outer wrapper that iterates and dispatches to inner components), start by authoring ONE Section that wraps the whole compound. Studio renders the existing page inside its canvas in ~5 minutes with no source-code changes. Marketing gains a real win (change bound content, publish without a deploy) at that first checkpoint.
+This bites migrations more than any other build, because the original route passed whole entries to its components. On the live site the SDK projects the Delivery API query (`only[]`) down to the fields the composition's bindings name. Inside the editor it fetches everything. So a whole referenced entry bound to one `object` prop renders fully while you author and arrives as little more than its `uid` on the published page, with no error. Measured on a product card: no title, price or images.
 
-Only decompose further when a specific inner level needs to become author-editable: reorder body blocks, swap a variant, add a new block type. At each drill-down step: author the next Section, preview it in Studio's canvas, verify the inner sub-tree still renders, then decide whether to go deeper. Every step is opt-in. Every step is reversible.
+- **Bind one field per prop**: the default, and what the [Section rule](SKILL.md#section-rule) already asks for on presentational components.
+- **A component kept whole that genuinely needs the whole entry** (interactive, or computing from many fields): request the extra fields explicitly. The options in 2.0.1, `extendQuery.only` (deprecated, still honoured) or fetching the data yourself through the `data` prop, and their caveats are defined once in [`register-component-prop-contracts`](register-component-prop-contracts.md) § Studio fetches only the fields your bindings name. Pass `extendQuery` as the third argument of `resolveComposition`, which forwards it to `fetchCompositionData`.
 
-For each Section you author along the way, use [`build-section`](build-section.md) or [`build-repeating-section`](build-repeating-section.md). 
+Verify on the published route in a plain browser tab, not in the editor: the editor fetches everything and hides the gap.
+
+## Migration shape: region by region
+
+Every pass produces one Section per page region ([Section rule](SKILL.md#section-rule)). A route rendered by a **compound component** (an outer wrapper that iterates and dispatches to inner components) is split at its regions first, never wrapped in one Section. For a modular-blocks body, [`decompose-blocks-page`](decompose-blocks-page.md) gives one Section per block type, and leaves the render byte-identical.
+
+Work one region at a time: author its Section, preview it on `/canvas`, compare it against the original, then move to the next. Inside a region, the component the rule keeps whole stays whole. Everything else is built from the primitive library.
+
+For each Section you author along the way, use [`build-section`](build-section.md) or [`build-repeating-section`](build-repeating-section.md).
 
 ## See also
 

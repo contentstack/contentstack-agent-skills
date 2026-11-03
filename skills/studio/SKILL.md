@@ -9,7 +9,22 @@ You are working on Contentstack Studio. The pack has one specialist skill per ta
 
 This SKILL.md is the only file loaded up front. Everything else is routed through `skills-index.md`.
 
-## Resolving a skill file
+## When to use
+
+- Anything that mentions Contentstack Studio or its concepts: the Studio SDK, canvas, compositions, Connected or Freeform templates, sections, section slots, repeaters, registering components, BYOC, Studio preview routes, or making a project Studio-ready.
+
+Use another skill for:
+
+- Live Preview or Visual Editor problems that don't involve Studio → `cms-live-preview-visual-editor-support-assistant`
+- Delivery SDK code outside Studio → `dx-delivery-sdk`
+- Content model design in general → `cms-data-modeling-best-practices`
+- Rendering JSON RTE fields → `cms-json-rte`
+- Hosting the site on Launch → `launch-platform`
+- General MCP setup outside a Studio project → `dx-mcp-server`
+
+## Instructions
+
+### Resolving a skill file
 
 The specialist guides sit next to this file, in the same folder: a skill named `<name>` is `<name>.md` beside this SKILL.md, and the lookup table is `skills-index.md` in the same folder. Every cross-reference in this file and in `skills-index.md` is written as `<name>` or `<name>.md`. Resolve all of them this way.
 
@@ -17,7 +32,7 @@ Fallback: if `<name>.md` isn't there, try `../<name>/SKILL.md` (a host that inst
 
 **If neither resolves, say so out loud**: "the Studio skill pack looks mis-installed, `<name>` didn't resolve", and do NOT quietly fall back to general knowledge. A silent fallback looks identical to the pack working, so the user never learns their install is broken.
 
-## What to do
+### What to do
 
 **Setup intent takes precedence over keyword matching.** “Enable Studio”, “make this project Studio ready”, “Studio setup”, and equivalent whole-app requests run `convert-project-to-studio` through verification. `install-studio` alone is for an explicit SDK-only request. Preserve the active setup objective across replies such as “yes”, “start”, and “OAuth done”; resume the pending step rather than routing that reply as a new task. Use the orchestrator's scoped completion checklist; authoring requirements below apply only when components or compositions are authored.
 
@@ -31,36 +46,34 @@ Fallback: if `<name>.md` isn't there, try `../<name>/SKILL.md` (a host that inst
 
 4. If nothing matches after both passes, answer from general Studio knowledge, but say so, and check whether a skill is missing that should exist.
 
-## Standing rule: atomic and reusable, every time
+### Standing rule: atomic and reusable, every time
 
 **This applies on every Studio turn, whatever the user asked for. It is not optional and it is not only a planning concern.**
 
 Before creating, registering, or authoring anything:
 
-1. **Decompose first.** Never register or build a component that renders more than one piece of content. The test: does it render more than one heading / image / body / list? If yes, run [`decompose-jsx-to-atomics`](decompose-jsx-to-atomics.md) before anything else. One Section per page, or one component swallowing a whole page, is a defect, not a shortcut.
-2. **Compose from atoms by default: do NOT reach for a pre-composed composite.** A palette usually contains both **atoms + layout primitives** (`*-atom-heading`, `*-stack`, `*-row`, `*-grid`, `*-section-shell`) and **composites** that already bundle a whole shape (`*-feature-card`, `*-hero`, `*-card-grid`). Dropping one composite is faster and looks identical on the canvas, and it is the wrong default: its internals are fixed in code, so the author cannot restructure it, the spacing inside it cannot be matched to a comp, and the design is no longer expressed as a composition. **Build the shape out of atoms unless the user explicitly asks to reuse an existing component.** If a composite would clearly save real work, say so and let them choose. Do not decide it silently.
-3. **Reuse atoms, not shapes.** Reuse means the same `*-atom-heading` everywhere, not a ready-made card. Two things differing only in spacing are one Section plus an exposed prop, never two.
-4. **Shared shells are Sections.** Header, footer, nav, menus, breadcrumbs render on every page and are the highest-value reusable pieces in any project. They are never "atomic, no binding". Their menus are **Repeaters over a field**, never hardcoded lists. Otherwise an author cannot add a menu item without a developer.
-5. **One atomic prop maps to one CT field.** A single prop taking a whole object is how binding breaks: the binder recursively unwraps single-key objects for every type except `object`/`array`, so a coarse prop renders blank with no error.
+<a id="section-rule"></a>
+
+1. **The Section rule (defined here only; every other skill links to it): one Section per page region, always. Inside a Section, reuse a production component whole only when it is interactive or computes its values.**
+   - **Region**: a part of the page a person can point at and name (header, hero, form band, feature grid, card list, footer). A Template is a stack of these Sections, whether it is a new build or a migration, and whatever the reuse count. One Section for a whole page, or one component bound to the whole page body, is a defect.
+   - **Interactive**: local state, event handlers, forms, carousels, modals. Built-ins and atoms cannot express behavior, so the app's component stays whole inside its Section.
+   - **Computes its values**: it derives what it renders instead of printing fields (formatting, totals, sorting or filtering, a layout that depends on item count or position). Keep it whole too, or the logic has nowhere to live.
+   - **Everything else** (presentational markup that prints fields) is decomposed into the primitive library's atoms and layout primitives, one prop per CT field: run [`decompose-jsx-to-atomics`](decompose-jsx-to-atomics.md). The test for "everything else": does it render more than one heading / image / body / list and do nothing else? Then it is not registered whole.
+2. **Plan the primitive library before any Section.** Every build has a library of atoms and layout primitives with menu-style design props and defaults ([`design-component-library`](design-component-library.md)), and Sections are composed from it. Sections built from generic boxes plus hard-coded CSS classes render, and an author cannot compose anything with them. [`plan-studio-architecture`](plan-studio-architecture.md) makes this a required step.
+3. **Compose from atoms by default: do NOT reach for a pre-composed composite.** A palette usually contains both **atoms + layout primitives** (`*-atom-heading`, `*-stack`, `*-row`, `*-grid`, `*-section-shell`) and **composites** that already bundle a whole shape (`*-feature-card`, `*-hero`, `*-card-grid`). Dropping one composite is faster and looks identical on the canvas, and it is the wrong default: its internals are fixed in code, so the author cannot restructure it, the spacing inside it cannot be matched to a comp, and the design is no longer expressed as a composition. **Build the shape out of atoms unless the user explicitly asks to reuse an existing component.** If a composite would clearly save real work, say so and let them choose. Do not decide it silently.
+4. **Reuse atoms, not shapes.** Reuse means the same `*-atom-heading` everywhere, not a ready-made card. Two things differing only in spacing are one Section plus an exposed prop, never two.
+5. **Shared shells are Sections.** Header, footer, nav, menus, breadcrumbs render on every page and are the highest-value reusable pieces in any project. They are never "atomic, no binding". Their menus are **Repeaters over a field**, never hardcoded lists. Otherwise an author cannot add a menu item without a developer.
+6. **One atomic prop maps to one CT field.** A single prop taking a whole object is how binding breaks: the binder recursively unwraps single-key objects for every type except `object`/`array`, so a coarse prop renders blank with no error.
 
 If the user's request would skip this ("just register the page component", "make the whole page one section"), say what it costs (nothing reusable, authors can't reorder, bindings break) and propose the decomposed shape instead. Do it their way only if they confirm after hearing that.
 
-## Standing rule: definition of done
+### Standing rule: definition of done
 
-**Also every Studio turn.** Eight deliverables decide whether what you built is usable by a marketer rather than only by a developer. Every one fails silently. The page still renders, nothing errors, and the gap surfaces only when a non-developer opens Studio:
+**Also every Studio turn.** Ten deliverables decide whether what you built is usable by a marketer rather than only by a developer. They are listed once, with owners and checks, in [`complete-the-build`](complete-the-build.md). Every one fails silently: the page still renders, nothing errors, and the gap surfaces only when a non-developer opens Studio.
 
-1. `cslp: { appendTags: true }` in the SDK init, once per project.
-2. `studioAttributes` on the root + `wrap: false` in the register entry + `$prop` twins, **every** registered component.
-3. `thumbnailUrl`, **every** `registerComponent` call.
-4. `ui_preview`, **every** Section composition. The editor writes this for itself by screenshotting the canvas on save. **A CMA-authored Section has it empty forever** unless you supply an asset uid explicitly. So "at write time" means have the asset ready and include it, not "the create call handles it". See [`author-composition-via-api`](author-composition-via-api.md) § Section thumbnails for the three ways to do it. Scripted authoring is exactly where this gets skipped, and the only signal is a blank tile in the palette.
-5. Live Preview enabled on the stack + preview token, once per project.
-6. The `/canvas` route mounted, once per project.
-7. **Published** to the environment the project targets, every Section and Template, and again after every tree edit. Delivery otherwise serves the old version while the CMA and canvas both look correct.
-8. **Composed of Sections**: every Template. Read the saved composition back and count `section-composition` nodes. Zero means the page is one component bound to the whole body. The standing rule above already forbids that shape, and a build still reached it, because a monolith renders correctly and fails no other check here. Counting is the only thing that catches it.
+Read that list before you plan, and again before you report done. State the ten in the plan up front, so what the user approves is what they get. Never report a build done with any of them outstanding: say "created, thumbnail pending" and then finish it.
 
-Read [`complete-the-build`](complete-the-build.md) for the how and the verification block. The runnable node count is in [`build-connected-template`](build-connected-template.md) § Post-build structural check. Never report a build done with any of these outstanding. Say "created, thumbnail pending" and then finish it. State them in the plan up front too, so what the user approves is what they get.
-
-## Standing rule: auth preflight
+### Standing rule: auth preflight
 
 **Settle the credential before the first API call of the turn, not when one fails.** Every specialist repeats this. It lives here because it must hold even before a specialist is pulled.
 
@@ -70,7 +83,7 @@ Read [`complete-the-build`](complete-the-build.md) for the how and the verificat
 4. If nothing resolves, or a refresh returns `400 invalid_refresh_token`, hand the user `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` and wait. It needs a TTY and a browser, you cannot run it for them. The region must be **in** the command. `DEFAULT_REGION` is `NA`, so omitting it silently authenticates against NA prod.
 5. `403 error_code 316` is **not** an auth failure. It is a valid credential aimed at a stack outside its org. Re-authenticating fixes nothing. Check with `GET /v3/stacks` + `organization_uid`.
 
-## Rules
+### Rules
 
 - Always re-Read the skill file. Never answer from a remembered summary. The source of truth is the file on disk.
 - **A failed Read is a hard stop, not a shrug.** If a skill file won't resolve (see § Resolving a skill file), report it. Improvising over a broken install is worse than erroring: the user believes the pack ran when it didn't.
@@ -78,17 +91,28 @@ Read [`complete-the-build`](complete-the-build.md) for the how and the verificat
 - If the user's request implies multiple skills (e.g. "install and set up preview routes"), pull each in the order they must run: skills-index.md's Trigger table encodes that ordering.
 - Prerequisite skills: many authoring skills assume `install-studio` + `configure-studio` are done. If the user's project state is unclear, run `analyze-project-fit` first.
 
+## MCP tools
+
+Studio is MCP-first for the operations the server supports. [`install-contentstack-mcp`](install-contentstack-mcp.md) covers discovering, installing and verifying the server, and [`understand-contentstack-mcp`](understand-contentstack-mcp.md) covers what it does and doesn't do. Common tools (local server group in brackets):
+
+- Inspect: `get_all_content_types`, `get_a_single_content_type`, `get_all_entries`, `get_single_entry`, `get_all_environments`, `get_all_languages` (`cma`)
+- Change: `create_a_content_type`, `update_content_type`, `create_an_entry`, `update_an_entry`, `publish_an_entry` (`cma`)
+- Delete: `delete_an_entry`, `delete_content_type` (`cma`)
+
+The server doesn't cover every Studio operation: the Studio API project list and configuration (`/v1/projects`) and some token and Live Preview operations need OAuth HTTP or the Studio UI. Use only tools the host actually lists, and never claim an MCP call ran when none did.
+
 ## Security
 
 ### Defaults
 
+- Use MCP tools only for the Studio work the user asked for, and verify the target stack with a read call first.
 - Resolve credentials OAuth-first (see § Standing rule: auth preflight). Ask before reading or refreshing another tool's stored OAuth session.
 - Delivery and preview tokens may reach the browser; management tokens, OAuth tokens and session authtokens never do.
 - Never disable TLS certificate or hostname verification, and never ship permissive frame headers (`frame-ancestors *`, `Access-Control-Allow-Origin: *`) outside local development or the canvas route.
 
 ### Destructive Actions
 
-Creating or changing stacks, content types, entries, compositions or Studio projects is a real mutation. State what will change and get confirmation first. Never delete or overwrite existing content, sections or templates without explicit approval.
+Creating or changing stacks, content types, entries, compositions or Studio projects is a real mutation. Name the stack, branch and items, state what will change, and get confirmation first. This applies to MCP tool calls and OAuth HTTP calls alike. Never delete or overwrite existing content, sections or templates without explicit approval.
 
 ### Secrets
 

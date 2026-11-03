@@ -43,17 +43,30 @@ Use existing compositions for verification where possible. Any temporary authori
    - Before testing any app-side wiring, ask the user to confirm ALL of:
      - `Settings → Visual Experience → General → Live Preview → Enable Live Preview` checkbox is **checked + Save clicked**
      - A `Default Preview Environment` is selected on the same page
-     - The `Preview URL` sub-tab has a `Custom Preview URL` set (and is NOT showing the "Custom Preview URL Unavailable" lockout banner)
+     - If authors open Live Preview or Visual Editor **from an entry**, the `Preview URL` sub-tab has a `Custom Preview URL` set (and is NOT showing the "Custom Preview URL Unavailable" lockout banner). The Studio canvas alone doesn't use it: see [`enable-visual-experience`](enable-visual-experience.md#custom-preview-url)
      - The Delivery Token in `.env` has a Preview Token generated (the **Create Preview Token** button on the token edit page must have been clicked at least once)
      - **The environment your Studio project targets has a non-empty per-locale URL** for your locale, and for **every** other locale the app serves on a localized project (in the stack, open Settings, then Environments, then `<env>`, and read the URL for `<locale>`). This is the canvas Base URL (origin). Empty = blank canvas with an error that points at the wrong layer. For local dev it must equal your dev origin (e.g. `http://localhost:5173`).
    - If any of these is unconfirmed (or the user is unsure), STOP and route them through `enable-visual-experience` (Live Preview) or `setup-section-preview` (the env Base URL). Re-run this skill after that completes.
    - Catches the most common failure: app wired, stack-level flag off, runtime silently broken. Skipping makes Layer 2 failures look like SDK bugs when they're actually web-app toggles.
 
-1. **Layer 1: Delivery SDK reachability.**
-   - Run: `npx tsx -e "import('@contentstack/delivery-sdk').then(async cs => { const stack = cs.default.stack({ apiKey: process.env.CS_API_KEY, deliveryToken: process.env.CS_DELIVERY_TOKEN, environment: process.env.CS_ENVIRONMENT || 'preview' }); const r = await stack.contentType('home_page').entry().limit(1).find(); console.log('OK entries:', r.entries?.length ?? 0); })"`
-   - Or, programmatically, call `stack.contentType('<uid>').entry().limit(1).find()` for a known CT in the app.
-   - Pass: a query returns without throwing.
-   - Fail modes: 401 means a wrong Delivery Token, 422 a wrong environment name, 404 a wrong CT UID, and ECONNREFUSED a wrong region host.
+1. **Layer 1: Delivery SDK reachability.** Probe with the credentials the app itself loads, without printing them and without assuming any content type.
+
+   **Reading the app's credentials.** Find the variable names in the app's Contentstack init module (the file `install-studio` wrote, or the app's own stack factory), and the env file that sets them (`.env.local`, `.env`). Load that file inside a subshell so the values never reach the transcript or your shell history, and print only status lines. Below, `<KEY_VAR>`, `<DELIVERY_VAR>`, `<PREVIEW_VAR>` and `<ENV_VAR>` are those names (for an `install-studio` app, `<PREFIX>_CONTENTSTACK_API_KEY` and so on). If the values come from a secrets manager or runtime config instead of a file, ask the user to run the probe themselves and paste only the output.
+
+   ```bash
+   ( set -a; . ./.env.local; set +a          # the app's own env file
+     H="<cdn-host>"                           # cdn.contentstack.io, or the regional CDN host
+     CT=$(curl -s "https://$H/v3/content_types?limit=1" \
+            -H "api_key: ${<KEY_VAR>}" -H "access_token: ${<DELIVERY_VAR>}" | jq -r '.content_types[0].uid // empty')
+     echo "first content type: ${CT:-none}"
+     curl -s -o /dev/null -w "entries probe: HTTP %{http_code}\n" \
+       "https://$H/v3/content_types/$CT/entries?environment=${<ENV_VAR>}&limit=1" \
+       -H "api_key: ${<KEY_VAR>}" -H "access_token: ${<DELIVERY_VAR>}" )
+   ```
+
+   - Any content type will do, so the probe takes the first one the stack returns rather than a guessed uid such as `home_page`. Record it: Layer 6 reuses it.
+   - Pass: a content type uid prints and the entries probe returns 200.
+   - Fail modes: `first content type: none` means the API key, Delivery Token or CDN host is wrong (rerun the first `curl` with `-w '%{http_code}'`: 401 is a credential, a connection error is the host); the entries probe then 404s on the empty uid, which says nothing more. A 422 on the entries probe means a wrong environment name.
 
 2. **Layer 2: Live Preview iframe channel.**
    - Open the host app at the Canvas URL in a browser.
@@ -66,6 +79,7 @@ Use existing compositions for verification where possible. Any temporary authori
    - Click the "Preview" or eye icon, and the Visual Editor opens.
    - Pass: the entry preview shows, fields have hover-edit highlights, clicking a field opens its edit panel.
    - Fail modes: a blank iframe means the Canvas URL is wrong. Missing field highlights mean the `data-cslp` tags aren't being injected (the app isn't using `live-preview-utils` correctly). Stuck on "Initializing the editor…" means Live Preview is not in `mode: "builder"`.
+   - Page check (before opening the editor): the app's Live Preview init sets `cslp.appendTags: true` (or the components emit tags themselves), and a rendered page's HTML has `data-cslp` on each registered component's root and on its bound fields. No tags here means Layer 3 cannot pass.
    - Lists: the rendered HTML has a `data-cslp="….<field>"` tag and a `….<field>.0` tag for every list, or Visual Editor cannot add, move or delete items ([`make-visual-editor-editable`](make-visual-editor-editable.md) § 2).
 
 4. **Layer 4: Studio canvas.**
@@ -74,7 +88,7 @@ Use existing compositions for verification where possible. Any temporary authori
    - Fail modes:
      - A blank canvas means the canvas iframe address is wrong. Check both halves: the **Canvas URL** (path) on the Studio project must match the mounted route, AND the **targeted environment's per-locale Base URL** (origin) must be non-empty and reachable. An empty env Base URL is the most common cause and surfaces as a "no base URL"-style error pointing at the Studio project, not the environment.
      - "Component Loading Error" means the section ref's `compositionUID` doesn't resolve (sections not preloaded or fetched from CDA)
-     - "Authentication failed" means the Delivery or Preview token in `.env` is wrong or revoked. In the stack, open Settings, then Tokens, then the token itself to read its current values, paste those into `.env`, and restart the dev server
+     - `STACK_NOT_FOUND_ON_HOST` or 401/412: a key or token in `.env` is wrong. In the stack, open Settings, then Tokens, then the token itself to read its current values, paste those into `.env`, and restart the dev server
 
    ### Expected (not-a-failure) console messages when verifying
 
@@ -107,7 +121,7 @@ Use existing compositions for verification where possible. Any temporary authori
      ```bash
      curl -I -sS --max-time 5 ${canvasAppUrl} | grep -iE 'content-security-policy|access-control-allow-origin'
      ```
-     Pass: the canvas route's `Content-Security-Policy: frame-ancestors` permits the Studio origin (e.g. `frame-ancestors 'self' https://*.contentstack.com`). Wildcards (`frame-ancestors *`, `Access-Control-Allow-Origin: *`) are acceptable only on a local dev server, never on a deployed site. Fail: missing, or Studio's origin not permitted, so see `setup-local-https-canvas` / `setup-section-preview` for the Vite/Next config block. The Studio iframe will silently fail to embed without it.
+     Pass: the canvas route sends `Content-Security-Policy: frame-ancestors 'self' https://*.contentstack.com` (or names your Studio host). Framing is decided by `frame-ancestors` alone: an `Access-Control-Allow-Origin` header is not needed for it, and `frame-ancestors *` or `Access-Control-Allow-Origin: *` on the canvas route is a finding to remove, not a pass. Fail: missing, or Studio's origin not permitted, so see `setup-section-preview` step 5 for the Vite/Next config block. The Studio iframe will silently fail to embed without it.
 
    - **5d. Arity ≥ 1 on every registered component**:
      ```bash
@@ -120,23 +134,24 @@ Use existing compositions for verification where possible. Any temporary authori
      - If it fails, immediately apply the section-test diagnostic: open a section composition. If the section renders, the SDK is fine. The failure is the connected template's URL match. See `troubleshoot-composition-resolution` (entry `url` field needs a leading slash, and composition `url` must contain a `{{entry.x}}` pattern).
      - Also verify the env base URL scheme: in `GET /v3/environments/<env>`, `urls[].url` must be HTTPS if the canvas-app is HTTPS.
 
-6. **Layer 6: Preview Token authenticates with the CDA preview API** (behavior-based, project-agnostic, does NOT assume any specific env file path or env var name).
+6. **Layer 6: Preview Token authenticates with the CDA preview API** (behavior-based, project-agnostic: variable names come from the app's init module, not from a guessed convention).
 
    The most common silent failure on a fresh setup: the **Preview Token** passed to the Delivery SDK / Live Preview SDK is invalid or empty, the CDA preview API returns 401 without CORS headers, and the browser surfaces a misleading "CORS error" instead of "401 Unauthorized." Hours of CORS chasing for a token paste. Verify the token authenticates **before** opening Studio.
 
-   **The check is project-agnostic.** Don't grep `.env.local`, don't assume `VITE_*` / `NEXT_PUBLIC_*` / `REACT_APP_*` env var names: every framework / project layout differs. Ask the user for the API key and host and curl-verify directly. **Never ask the user to paste the Preview Token into chat, and never print it.** Have them export it in their own shell (`export PREVIEW_TOKEN=…`, from wherever the project loads it) so the curl below reads `${PREVIEW_TOKEN}`.
+   **The check is project-agnostic.** Don't assume `VITE_*` / `NEXT_PUBLIC_*` / `REACT_APP_*` names: read them from the app's init module, and load the env file in a subshell as in Layer 1. **Never ask the user to paste the Preview Token into chat, and never print it.** When the token isn't in a file (secrets manager, runtime config), ask the user to run the curl themselves and paste only the status line.
 
    Inputs:
    - `stackApiKey`: the stack's API key the canvas-app uses
-   - `PREVIEW_TOKEN` (exported by the user in their shell, not pasted into chat): the Preview Token the canvas-app currently passes to `@contentstack/live-preview-utils` / Delivery SDK at runtime, wherever it's loaded from (env file, runtime config, secrets manager, fetched-from-API, hardcoded, doesn't matter)
+   - The Preview Token the canvas-app passes to the Delivery SDK's `live_preview` block at runtime, read from the app's env file inside the subshell (Layer 1), never echoed
    - `previewHost`: region-dependent: `rest-preview.contentstack.com` (NA prod), `eu-rest-preview.contentstack.com` (EU prod), `azure-na-rest-preview.contentstack.com`, etc. (see `install-studio` § Regional host map). For a custom / private data center (hosts supplied by Contentstack), take the explicit host from [`analyze-project-fit`](analyze-project-fit.md) § 2b rather than asking again.
-   - One `<CT>`, `<env>`, `<locale>` from the project to query against: pick any content type the user knows has at least one entry in that environment.
+   - The content type Layer 1 found, the app's environment, and its default locale.
 
    Run:
    ```bash
-   curl -is "https://${previewHost}/v3/content_types/${CT}/entries?environment=${env}&locale=${locale}&limit=1" \
-     -H "api_key: ${stackApiKey}" \
-     -H "preview_token: ${PREVIEW_TOKEN}"
+   ( set -a; . ./.env.local; set +a
+     curl -s -w "\nHTTP %{http_code}\n" \
+       "https://<previewHost>/v3/content_types/<CT>/entries?environment=${<ENV_VAR>}&locale=<locale>&limit=1" \
+       -H "api_key: ${<KEY_VAR>}" -H "preview_token: ${<PREVIEW_VAR>}" | tail -c 300 )
    ```
 
    Outcomes:
@@ -154,7 +169,7 @@ Use existing compositions for verification where possible. Any temporary authori
    Inputs:
    - `previewUrl`: any visitor URL that resolves to a Connected Template that has sections placed on it (e.g. `https://localhost:3006/products/some-product`, `https://your-staging-site/blog/some-post`). The canvas-app must be running and reachable at this URL.
 
-   Run (as a one-off Node script using the canvas-app's already-installed SDK):
+   Run as a one-off `.mjs` script from the app's root, so it uses the app's installed SDK. Replace the `process.env.*` names with the ones the app's init module reads, and load the app's env file with Node itself: `node --env-file=.env.local verify-sections.mjs` (Node 20.6+). No `tsx`, nothing exported in the user's shell.
 
    ```js
    import contentstack from "@contentstack/delivery-sdk";
@@ -219,20 +234,19 @@ Use existing compositions for verification where possible. Any temporary authori
 
 1. `canvasAppUrl`: used in Layer 2 (open in browser) + Layer 4 (compare against Studio project config).
 2. `studioUrl`: used in Layer 4.
-3. `stackApiKey`: used in Layer 6 (curl against preview API).
-4. `PREVIEW_TOKEN`: used in Layer 6. The user exports it in their own shell (never pasted into chat, never printed) from wherever the project loads it (env file, runtime config, secrets manager, hardcoded). Do NOT assume an env file path or variable name.
-5. `previewHost`: used in Layer 6. Region-dependent (see `install-studio` § Regional host map). Custom / private data center (hosts supplied by Contentstack): the explicit host the user gives you.
-6. One `<CT>`, `<env>`, `<locale>` triple: used in Layer 6 as a known-good probe target. Any content type the user knows has at least one entry in that environment.
-7. `previewUrl`: used in Layer 7. Any visitor URL on the canvas-app that resolves to a Connected Template with sections placed on it (e.g. `http://localhost:3006/products/some-product` for local dev). Skip Layer 7 if the project has no section compositions placed on any template yet.
+3. Credentials: none asked for. Layers 1 and 6 read the API key, Delivery Token, Preview Token and environment from the app's own env file inside a subshell, using the variable names in its init module, and print only status lines. Ask the user to run a probe themselves only when the values aren't in a file.
+4. `cdnHost` / `previewHost`: used in Layers 1 and 6. Region-dependent (see `install-studio` § Regional host map). Custom / private data center (hosts supplied by Contentstack): the explicit host from `analyze-project-fit` § 2b.
+5. `<locale>`: the app's default locale. The content type comes from Layer 1.
+6. `previewUrl`: used in Layer 7. Any visitor URL on the canvas-app that resolves to a Connected Template with sections placed on it (e.g. `http://localhost:3006/products/some-product` for local dev). Skip Layer 7 if the project has no section compositions placed on any template yet.
 
-If `.env` exists in the project, read `CANVAS_APP_BASE_URL` and `STUDIO_BASE_URL` as defaults for the first two before asking. Do NOT auto-read or print the Preview Token from any env file: its location is project-specific.
+If `.env` exists in the project, read `CANVAS_APP_BASE_URL` and `STUDIO_BASE_URL` as defaults for the first two before asking. Never print a token, and never load an env file outside a subshell.
 
 ## Acceptance
 
 This skill succeeds only when Layer 0 + ALL seven downstream layers were attempted (Layer 7 may be skipped if the project has no section compositions placed on any template) and a clear pass/fail recorded for each.
 
-- [ ] Layer 0 confirmed (Enable Live Preview checked + Default Preview Environment set + Custom Preview URL set + Preview Token created on the Delivery Token + targeted environment has a non-empty Base URL for every locale the project serves).
-- [ ] Layer 1 result reported (delivery SDK call result or HTTP status code).
+- [ ] Layer 0 confirmed (Enable Live Preview checked + Default Preview Environment set + Custom Preview URL set where entry-opened preview is used + Preview Token created on the Delivery Token + targeted environment has a non-empty Base URL for every locale the project serves).
+- [ ] Layer 1 result reported (the content type found and the entries probe's HTTP status). No content type uid was assumed, and no credential was printed or asked for in chat.
 - [ ] Layer 2 result reported (live-preview event seen / not seen within timeout).
 - [ ] Layer 3 result reported (entry preview opens / fails / can't even open the entry).
 - [ ] Layer 4 result reported (canvas DOM tree present in the iframe / not present / specific error string).
