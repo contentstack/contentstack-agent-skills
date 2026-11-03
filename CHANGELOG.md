@@ -86,6 +86,13 @@ This release adds nine skills, connects every plugin to the hosted Contentstack 
 - **Every skill uses the same sections:** When to use, Before you answer, Instructions, MCP tools, Output, Security, References, Examples. `scripts/validate.mjs` rejects missing, extra or out-of-order sections. The duplicated Description, User Problem, Success Criteria, Expected Inputs/Outputs, Workflow Summary, Tooling Notes and Product Context blocks are folded in, so the existing skills are about 770 lines shorter. See [the skill template](https://github.com/contentstack/contentstack-agent-skills/blob/main/docs/contributing/skill-template.md).
 - **Routing cues:** each skill's When to use ends with the neighbouring skills to use instead, and many descriptions gained a "For X, use Y." cue.
 
+### Plugin listings
+
+- **Icon:** `assets/icon.png` (512×512) is set as `icon` for Claude and `logo` for Cursor.
+- **Cursor manifest:** adds `homepage`, `repository`, `license`, `keywords` and `logo`.
+- **Descriptions:** every manifest's description now names the MCP server and the newer products.
+- **Cleanup:** removes a committed Python bytecode file from `migration-companion`, and ignores `__pycache__/` and `*.pyc`.
+
 ### For contributors
 
 - **Routing evals:** `evals/` holds 62 `claude plugin eval` cases, two or more per automatically invoked skill. Each checks that a prompt loads the right skill and, for close neighbours, doesn't load the wrong one. `.github/workflows/routing-evals.yml` runs them on PRs that touch `skills/` or `evals/` and needs an `ANTHROPIC_API_KEY` secret. See [Routing evals](https://github.com/contentstack/contentstack-agent-skills/blob/main/docs/contributing/routing-evals.md).
