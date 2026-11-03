@@ -30,17 +30,17 @@ This skill is **read-only**. It never writes files, never installs packages, nev
 
 ### 1. Inspect the project (no writes)
 
-Run these checks in order:
+Run these checks in order. They use `find` and quoted patterns rather than bare globs: under zsh (the macOS default shell) a glob that matches nothing aborts the whole command with `no matches found`, before `2>/dev/null` can hide it.
 
 ```bash
 # 1a. package.json — root + workspace packages if monorepo
 cat {{projectRoot}}/package.json
 
 # 1b. Lockfile → package manager
-ls {{projectRoot}}/pnpm-lock.yaml {{projectRoot}}/yarn.lock {{projectRoot}}/package-lock.json {{projectRoot}}/bun.lockb 2>/dev/null
+find {{projectRoot}} -maxdepth 1 \( -name pnpm-lock.yaml -o -name yarn.lock -o -name package-lock.json -o -name 'bun.lock*' \)
 
 # 1c. Workspace / monorepo signals
-ls {{projectRoot}}/turbo.json {{projectRoot}}/pnpm-workspace.yaml {{projectRoot}}/nx.json {{projectRoot}}/lerna.json 2>/dev/null
+find {{projectRoot}} -maxdepth 1 \( -name turbo.json -o -name pnpm-workspace.yaml -o -name nx.json -o -name lerna.json \)
 
 # 1d. TypeScript presence
 ls {{projectRoot}}/tsconfig.json 2>/dev/null
@@ -48,19 +48,22 @@ ls {{projectRoot}}/tsconfig.json 2>/dev/null
 # 1e. Single React check (the dual-React problem)
 cd {{projectRoot}} && npm ls react 2>&1 | head -20
 
-# 1f. Bundler configs
-ls {{projectRoot}}/vite.config.* {{projectRoot}}/next.config.* {{projectRoot}}/webpack.config.* {{projectRoot}}/tsup.config.* 2>/dev/null
+# 1f. Bundler configs, and the Next version (16+ defaults to Turbopack)
+find {{projectRoot}} -maxdepth 1 \( -name 'vite.config.*' -o -name 'next.config.*' -o -name 'webpack.config.*' -o -name 'tsup.config.*' \)
+cd {{projectRoot}} && npm ls next 2>/dev/null | grep -m1 'next@'
 
 # 1g. Local HTTPS readiness
-which mkcert ; ls {{projectRoot}}/certs/*.pem 2>/dev/null
+which mkcert ; find {{projectRoot}}/certs -maxdepth 1 -name '*.pem' 2>/dev/null
 
 # 1h. Deploy target
-ls {{projectRoot}}/launch.json {{projectRoot}}/.cs-launch.json 2>/dev/null
+find {{projectRoot}} -maxdepth 1 \( -name launch.json -o -name .cs-launch.json \)
 
 # 1i. App-side i18n (every locale needs its own env Base URL later)
 grep -E '"(next-intl|next-i18next|i18next|react-i18next|react-intl|@lingui/[a-z]+|next-international)"' {{projectRoot}}/package.json
 find {{projectRoot}}/app {{projectRoot}}/src/app -maxdepth 2 -type d \( -name '[[]locale[]]' -o -name '[[]lang[]]' \) 2>/dev/null
-grep -n "i18n" {{projectRoot}}/next.config.* 2>/dev/null ; ls {{projectRoot}}/middleware.* {{projectRoot}}/src/middleware.* 2>/dev/null
+find {{projectRoot}} -maxdepth 1 -name 'next.config.*' -exec grep -n "i18n" {} +
+# Request middleware: middleware.* up to Next 15, proxy.* from Next 16 (same role, renamed)
+find {{projectRoot}} {{projectRoot}}/src -maxdepth 1 \( -name 'middleware.*' -o -name 'proxy.*' \) 2>/dev/null
 ```
 
 ### 2. Classify the project
@@ -77,7 +80,8 @@ From the output above, extract:
 | **Monorepo** | Any of `turbo.json` / `pnpm-workspace.yaml` / `nx.json` / `lerna.json` |
 | **Existing Studio integration** | Any `@contentstack/studio-*` already in deps |
 | **Existing CS app** | Any `@contentstack/*` already in deps (not Studio), implies minimal-add |
-| **Next + Turbopack** | Next deps + `next dev --turbo` or `next dev --turbopack` in scripts |
+| **Next + Turbopack** | Next **16 or later** (Turbopack is the default for `next dev` and `next build` there, no flag needed; only an explicit `--webpack` opts out), or Next 15 and earlier with `--turbo` / `--turbopack` in scripts |
+| **Request middleware** | `middleware.*` (Next 15 and earlier) or `proxy.*` (Next 16+), at the root or under `src/`. Either one can redirect the Studio iframe (locale prefix, auth): record it for the redirect probe |
 | **mkcert ready** | `which mkcert` returns a path |
 | **Data center / region** | See § 2b: Determine the data center below. **Never skip this.** |
 
@@ -91,7 +95,9 @@ Resolve in this order, stopping at the first hit:
 
 ```bash
 # 1. Explicit host already in the app?
-grep -rnE "https?://|host:|CONTENTSTACK_[A-Z_]+|CMA_HOST|STUDIO_API_HOST|CDA_HOST|PREVIEW_HOST|region" .env* src/ app/ lib/ 2>/dev/null | head
+P="https?://|host:|CONTENTSTACK_[A-Z_]+|CMA_HOST|STUDIO_API_HOST|CDA_HOST|PREVIEW_HOST|region"
+find . -maxdepth 1 -name '.env*' -exec grep -nE "$P" {} +   # print host/region lines only; never paste token values back
+grep -rnE "$P" src/ app/ lib/ 2>/dev/null | head
 
 # 2. Region shortcut in use? (standard regions only — NA/EU/AU/AZURE_NA/AZURE_EU/GCP_NA/GCP_EU)
 grep -rn "region:\s*['\"]" src/ app/ lib/ 2>/dev/null | head
@@ -122,7 +128,7 @@ Pick exactly one based on the classification:
 | **A. Greenfield-friendly** | **Vite / CRA / Next (App or Pages Router)** + React 18 or 19 + single React + no existing CS deps | Run `install-studio` directly. No pre-work needed. A fresh Next 15 + React 19 app lands here — framework is not what gates Path A; a stale SDK pin (B), React 17 (C), existing CS deps (D) or duplicate React (G) are. On Next + Turbopack, also read Path E's flag before installing. |
 | **B. Stale SDK pin on React 19** | React 19.x detected AND `npm ls @contentstack/studio-react` (or the lockfile) shows 1.5.0 | **Block** `install-studio` until the pin moves. **Evidence:** `@contentstack/studio-react` 1.5.1+ peer-deps `react ^18.0.0 \|\| ^19.0.0`. 1.5.0 alone peer-deps `^18.0.0`, so the install fails with ERESOLVE on React 19. **Fix:** `<pm> add @contentstack/studio-react@latest` (run [`upgrade-studio-sdk`](upgrade-studio-sdk.md) so the sibling packages move together), then re-run `analyze-project-fit`. **Never downgrade React or Next to satisfy an old SDK pin.** A React 19 app with no prior Studio pin is Path A or D. |
 | **C. React 17 or older** | React < 18 detected | **Block** `install-studio`. The user must upgrade to React 18 first. Refer them to the React 18 upgrade guide. The SDK won't work on 17: this is a hard requirement, not a soft one. |
-| **D. Existing CS app (minimal-add)** | `@contentstack/delivery-sdk` or `@contentstack/live-preview-utils` already present | Do NOT re-init Delivery SDK. Take the minimal-add branch in `install-studio` (Studio-only install, reuses existing Delivery SDK init). |
+| **D. Existing CS app (minimal-add)** | `@contentstack/delivery-sdk` or `@contentstack/live-preview-utils` already present | Do NOT re-init Delivery SDK or Live Preview. With `delivery-sdk` present: take the minimal-add branch in `install-studio` (Studio-only install, reuses the existing stack). With `live-preview-utils` but **no** `delivery-sdk` (the app reads content with its own fetch client): take `install-studio` § Live Preview present, no Delivery SDK. It installs the Delivery SDK for Studio's own stack and leaves the app's Live Preview init as the only one. Studio cannot start without a Delivery SDK stack. |
 | **E. Next + Turbopack** | Detected | Proceed to `install-studio` with Next-specific paths. Flag: SDK ships a canvas-route built-ins auto-bootstrap, but if the user is pinned to an older SDK there's a known Turbopack tree-shake regression. `troubleshoot-canvas` has the safety-net snippet. |
 | **H. Custom / private data center** | Editor URL or config shows a custom host supplied by Contentstack | Not a blocker, but pin it before any state-changing skill. Set every host explicitly (no `region` shortcut); the MCP's OAuth login cannot reach a custom DC (its API calls can, with host overrides), and CMA calls use `curl`. Carry the hosts into `install-studio`, `verify-setup` and any provisioning skill. |
 | **F. Custom bundler** | Webpack/tsup/rollup with no `external: ['react']` detected | Walk the user through `dedupe` config OR (recommended) switch to serving a prod build for the Studio canvas. The dev bundler is the most common source of dual-React issues. |
@@ -140,6 +146,8 @@ Print a single readable summary block:
     TypeScript:       <yes | no>
     Monorepo:         <yes (turbo/pnpm-workspace/etc.) | no>
     Existing CS SDKs: <none | delivery-sdk | live-preview-utils | studio-react>
+    Next / bundler:   <n/a | Next 16 (Turbopack default) | Next 15 + --turbopack | webpack>
+    Middleware:       <none | middleware.ts | proxy.ts>
     Local HTTPS:      <mkcert ready | not installed>
     Deploy target:    <launch | other host | none>
     i18n:             <none | next-intl (always) en,fr | [locale] segment en,de | …>

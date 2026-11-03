@@ -1,6 +1,6 @@
 ---
 title: Contentstack Studio (preview)
-description: Build with Contentstack Studio end to end, routed to one of 109 bundled specialist guides per task.
+description: Build with Contentstack Studio end to end, routed to one of 111 bundled specialist guides per task.
 ---
 
 # Contentstack Studio (preview)

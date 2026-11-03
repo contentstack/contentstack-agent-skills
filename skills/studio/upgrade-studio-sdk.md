@@ -4,9 +4,9 @@ name: upgrade-studio-sdk
 
 ## When to use
 
-Bump the Studio SDK packages the host app declares (usually just `@contentstack/studio-react`): pin versions, read CHANGELOGs, smoke-check, roll back if needed.
+Bump the Studio SDK packages the host app declares (usually just `@contentstack/studio-react`): pin versions, find what changed (type check, the 1.x → 2.0 table), smoke-check, roll back if needed.
 
-Use when the user wants to upgrade the Studio SDK packages in their host app: "upgrade Studio SDK to latest", "what's new in `@contentstack/studio-react`", "is `studio-client@1.5` safe", "I want the new repeater fix". Do NOT use to install for the first time (`install-studio`). Do NOT use to develop the SDK itself.
+Use when the user wants to upgrade the Studio SDK packages in their host app: "upgrade Studio SDK to latest", "what's new in `@contentstack/studio-react`", "is `studio-client@1.5` safe", "I want the new repeater fix", "upgrade to studio-react 2", "what broke in 2.0", "registration stopped type-checking after the upgrade". Do NOT use to install for the first time (`install-studio`). Do NOT use to develop the SDK itself.
 
 > **Auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
@@ -27,10 +27,11 @@ The `peerDependencies` are `react ^18.0.0 || ^19.0.0` and `react-dom ^18.0.0 || 
    - List the resolved versions of every `@contentstack/studio-*` package with the project's package manager: `npm ls --all | grep @contentstack/studio`, `pnpm why @contentstack/studio-react`, or `yarn why @contentstack/studio-react`.
    - To see what's published, run `npm view @contentstack/studio-react versions --json` (or `pnpm view` / `yarn info`).
 
-2. **Read the CHANGELOG delta: actually read it.**
-   - For each package the host app installs, open its CHANGELOG and read every entry from the installed version up to the target. Do not summarize from imagination. Copy or paraphrase actual entries.
-   - The studio-client CHANGELOG lives at `node_modules/@contentstack/studio-client/CHANGELOG.md` on the consumer side. Same for the other packages.
-   - Flag any entry that touches: registry singleton, SSR / `"use client"` boundary, `fetchSpec` / `fetchCompositionData` signatures, URL pattern compilation, design-token / font loading, data-binder type-mismatch. Those are the ones most likely to surface integration friction even when the bump is technically non-breaking.
+2. **Find out what changed: from the compiler, not from memory.**
+   - **No changelog ships in the npm packages.** As of 2.0.1, each `@contentstack/studio-*` tarball holds only `README.md`, `dist/` and `package.json`. The changelogs live in the SDK's source repo, which is private, and its `studio-react` changelog stops at 1.8.0. Don't tell the user to read a `node_modules/.../CHANGELOG.md`, and don't summarize release notes you haven't seen.
+   - **Crossing a major (1.x → 2.x)?** Apply § [Upgrading from 1.x to 2.0](#upgrade-1-to-2) first.
+   - **Let TypeScript list the breaks.** After installing the target (step 3), run the project's type check (`npx tsc --noEmit`, or the framework's `build`). Every registration, prop schema and fetch call the new types reject shows up there. A JavaScript project gets no such list: use the grep commands in § Upgrading from 1.x to 2.0 instead.
+   - Pay extra attention to anything touching: registry singleton, SSR / `"use client"` boundary, `fetchCompositionData` signatures, URL pattern compilation, design-token / font loading, data-binder type-mismatch. Those surface integration friction even when nothing fails to compile.
 
 3. **Upgrade the packages the host declares, together.** Bump every `@contentstack/studio-*` package listed in the host's `package.json` in the same change. Usually that is only `@contentstack/studio-react`, as `install-studio` installs it. `studio-react` declares the other Studio packages as its own dependencies, so upgrading it brings in matching versions. Do **not** add those internal packages to `package.json`: a direct pin that falls outside `studio-react`'s range installs a second copy, which splits the registry singleton (the globalThis-backed singleton landed across packages in coordinated bumps).
    - Pick the exact versions (avoid `^` for the upgrade commit so the resolved versions are reproducible. You can relax to `^` after smoke passes).
@@ -56,22 +57,55 @@ The `peerDependencies` are `react ^18.0.0 || ^19.0.0` and `react-dom ^18.0.0 || 
    - `rm -rf node_modules`, then a clean install from that lockfile with the project's package manager: `npm ci`, `pnpm install --frozen-lockfile`, or `yarn install --frozen-lockfile` (`yarn install --immutable` on Yarn 2+). Don't try to selectively downgrade: lockfile reconciliation across the Studio packages is unreliable.
    - Re-run the smoke check. If you can't get back to a working state with a hard revert, escalate.
 
+<a id="upgrade-1-to-2"></a>
+
+## Upgrading from 1.x to 2.0
+
+`studio-react` 2.0.0 shipped on 2026-10-12 and 2.0.1 on 2026-10-16. Both lists below were checked by installing 1.9.0 (the last 1.x) and 2.0.1 side by side and comparing their types and runtime code.
+
+### What 2.0 actually changed
+
+The public `studio-react` exports gained three names and lost none. Most 1.9.0 code compiles unchanged.
+
+| Change | 1.9.0 | 2.0.1 | Action | Details |
+|---|---|---|---|---|
+| Not-found errors | A miss throws `ComposableStudioError` (code `COMPOSITION_NOT_FOUND` / `COMPOSITION_NOT_FOUND_BY_URL`); there is no predicate to call | New exports `isCompositionNotFound`, `ComposableStudioError` and `CompositionNotFoundError` | Decide every 404 with `isCompositionNotFound(error)` instead of matching codes or messages | [`handle-404-pages`](handle-404-pages.md) |
+| Composition kind | `hasSpec` and `hasTemplate` on the spec options | Both still present but `@deprecated`; new `connectedContentTypeUid` (`null` for freeform) | Read `connectedContentTypeUid` for the kind; never use either flag for a 404. `grep -rnE 'hasSpec\|hasTemplate' src app` | [`handle-404-pages`](handle-404-pages.md) |
+| Canvas tokens | `StudioCanvas` writes no design-token variables | `StudioCanvas` writes the token `:root` variables itself once mounted | Delete any `<style>{getSSRStyles(null)}</style>` on the canvas page: it now only causes a hydration error. `grep -rn 'getSSRStyles(null)' src app` | [`setup-section-preview`](setup-section-preview.md) |
+| Internal packages | `studio-client` 3.2, `studio-registry` 1.10 | `studio-client` 4.1, `studio-registry` 2.0 | Nothing, unless `package.json` pins one of them directly: then bump it in the same change (step 3) or you get two registries | Step 3 |
+
+### Also check: rules older guides and code got wrong
+
+These behave the same on 1.9.0 and 2.0.1, so they are not 2.0 changes. Code copied from older versions of these guides often breaks them, and an upgrade is a good time to fix it. TypeScript reports the first four.
+
+| Rule | Wrong | Right | Find it | Details |
+|---|---|---|---|---|
+| `object` props need `properties` | `{ type: "object" }` | `{ type: "object", properties: { … } }` | `grep -rn 'type: "object"' src` | [`register-component`](register-component.md) step 3 |
+| `array` props need `items` | `{ type: "array" }` | `{ type: "array", items: { type: "any" } }` (or the per-item prop) | `grep -rn 'type: "array"' src` | [`register-component`](register-component.md) step 3 |
+| Lazy components register through `registerLazyComponent` | `registerComponent({ …, component: () => import("./X") })` (runs, but doesn't type-check) | `registerLazyComponent(config, () => import("./X").then((m) => m.X))`; the loader resolves to the component, not the module | `grep -rn 'component: () => import' src` | [`register-component`](register-component.md) § 5b |
+| The hook takes no `searchQuery` | `useCompositionData({ url, searchQuery })` | `useCompositionData({ url })`; it reads `window.location` itself | `grep -rn 'useCompositionData(' src app` | [`setup-template-preview-routes`](setup-template-preview-routes.md) |
+| `styles` is an object of style groups | `styles: [ … ]` | `styles: { default: …, <group>: … }`; `default` arrives as `className` | `grep -rn 'styles: \[' src` | [`register-component`](register-component.md) § 5c |
+| `extendQuery` is deprecated | relied on silently | Still honoured, warns in development; no documented replacement for its `only` half | `grep -rn 'extendQuery' src app` | [`register-component-prop-contracts`](register-component-prop-contracts.md) |
+| `refetchData` needs a connected composition | `refetchData` on every page | Fall back to `refetchSpec` on freeform compositions and before the first load | `grep -rn 'refetchData' src app` | [`csr-and-ssr-requirements`](csr-and-ssr-requirements.md) |
+
+**After the bump:** restart the dev server (a running server keeps the old registrations), run the type check, then the smoke tests in step 4. Check the Components panel on the canvas: a registration that fails at runtime drops out of the palette without an error on the page.
+
 ## Knowing what actually changed
 
-Each package publishes a CHANGELOG derived from Conventional Commits. Read the CHANGELOG for every package in your delta before upgrading.
+There is no public changelog for these packages (step 2). Read the compiler output and § Upgrading from 1.x to 2.0. Within a major, compare the installed `.d.ts` files before and after (`diff -r` two installs of `node_modules/@contentstack/studio-react/dist`) when you need more than the type check gives you.
 
-A non-exhaustive list of changes that historically required consumer-side action (read each from its CHANGELOG before claiming it applies to your delta):
+A non-exhaustive list of older changes that required consumer-side action (confirm each applies to your delta before claiming it does):
 
 - **Registry singleton moved to `globalThis`** (`studio-registry` / `studio-react` coordinated bump): required for RSC server-side fetch to see registered components. If you're upgrading FROM a pre-singleton version TO a post-singleton version, server-side `fetchSpec` calls that used to return "component not registered" will now resolve. No consumer code change beyond the upgrade.
 - **Basics moved behind a `"use client"` isolation boundary** (`studio-react`): fixes "Attempted to call Page() from the server" in Next App Router. No consumer code change required. The renderer pulls in the client-only basics automatically.
 - **Tolerant `useData` fallback** (`studio-react-components`): replaces a throw with an empty-data fallback plus a dev-only warning. SSR pass of basics no longer crashes outside a `DataCtxProvider`. Consumer-side: dev console may show one new warning, production unchanged.
 - **`fetchCompositionData` requires `searchQuery` on the server**: see [`configure-csr-vs-ssr.md`](configure-csr-vs-ssr.md). Required for locale/variant/preview to flow from Studio's iframe params. Pre-existing as an integration step.
 
-Do NOT extrapolate from this list. **Only the actual CHANGELOG entries for your delta** tell you which of these apply.
+Do NOT extrapolate from this list. Confirm each against the installed types or a smoke test before claiming it applies.
 
 ## What this skill is NOT
 
 - Not a guide to first-time installation (use [`install-studio`](install-studio.md)).
 - Not a guide to SDK-internal development.
-- Not a substitute for reading the CHANGELOG. Always read the actual CHANGELOG entries for your version delta.
+- Not a substitute for the type check and smoke test. Run both for every version delta.
 - Not a guide to upgrading the Contentstack Delivery SDK (`@contentstack/delivery-sdk`) or Live Preview Utils (`@contentstack/live-preview-utils`): those are separate packages with their own CHANGELOGs, only loosely coupled to the Studio SDK.

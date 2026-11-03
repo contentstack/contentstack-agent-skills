@@ -106,15 +106,21 @@ import { sdk } from "@/lib/contentstack";    // or @/lib/studio for additive int
 import { resolveComposition } from "@/lib/resolve-composition";  // configure-csr-vs-ssr
 import { StudioEmbedClient } from "./StudioEmbedClient";
 
-export async function StudioEmbed({ compositionUid }: { compositionUid: string }) {
+export async function StudioEmbed({ compositionUid, searchQuery = "" }: {
+  compositionUid: string;
+  searchQuery?: string;   // the page's request query string, so a preview hash applies here too
+}) {
   // fetchCompositionData THROWS when the composition is missing — it does not
   // resolve empty. Unwrapped, a deleted or misspelled embed takes down the whole
   // host page with a 500. An embed must degrade to nothing, never to an outage.
   // NOTE: a compositionUid lookup throws COMPOSITION_UID_NOT_FOUND — NOT the
-  // ..._BY_URL id. resolveComposition covers all three not-found ids.
+  // ..._BY_URL id. isCompositionNotFound (inside resolveComposition) covers every not-found case.
   const { specOptions, notFound } = await resolveComposition(sdk, {
     compositionUid,
-    searchQuery: "",       // required on server (no window.location.search)
+    // Required on the server (no window.location.search). Pass the page's own
+    // query: resolveComposition clears the preview hash on the shared stack, so
+    // an empty string here would undo the hash the page's fetch just set.
+    searchQuery,
   });
   if (notFound) return null;   // real failures still throw — see resolveComposition
   return <StudioEmbedClient specOptions={specOptions} />;
@@ -134,7 +140,7 @@ Detect the framework (Next App Router vs Vite/CRA) before picking. Same rule as 
 
 ### Step 3: Insert the embed into the target page
 
-Read the target page file. Find the `insertionAnchor`. Insert the `<StudioEmbed compositionUid="{bandName}" />` line at `insertionPosition` (before/after the anchor).
+Read the target page file. Find the `insertionAnchor`. Insert the `<StudioEmbed compositionUid="{bandName}" />` line at `insertionPosition` (before/after the anchor). With the SSR variant, also pass `searchQuery`: the page's request query string (`new URLSearchParams(await searchParams).toString()` in an App Router page), so the embed previews the same draft as the page.
 
 Also add the import at the top of the file:
 - Relative path inferred from where the wrapper landed in step 2 (e.g. `import { StudioEmbed } from "@/components/StudioEmbed"`).

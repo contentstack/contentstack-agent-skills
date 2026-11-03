@@ -29,8 +29,8 @@ Studio installs a content type into your stack the first time a project is provi
 To find the exact UID for THIS project:
 
 - **Studio web app:** open the project, go to Settings, then Configuration, and read the "Composition Content Type" field (it shows the UID).
-- **Contentstack web app:** open Content Models and look for a content type with the description "Studio compositions" (or similar). The UID column is what you want.
-- **API:** `GET /v3/content_types?query={"_metadata.studio_managed":true}` returns the compositions content type. Its `uid` is the value.
+- **Contentstack web app:** Content Models shows the content type, but a name or description match is a guess when the stack hosts several projects. Confirm the uid against the project.
+- **API:** the project's `contentTypeUid` in the `GET /v1/projects` listing (Step 0). That field is the source of truth. Don't search content types for a marker: one created by API carries no Studio flag in `_metadata`, so a `_metadata.studio_managed` query finds nothing.
 
 Pass this UID to `studioSdk.init({ contentTypeUid: "<uid>" })` in your app's `lib/contentstack.ts` (the `install-studio` skill writes it from the `studioContentTypeUid` input). **This is the SDK-init `contentTypeUid`, NOT `templateContentTypeUid`, which identifies a composition's CONNECTED content type at fetch time.**
 

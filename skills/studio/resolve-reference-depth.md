@@ -71,6 +71,8 @@ Never open a checkpoint for any row but the first. Offering to dig deeper for ab
 
 Walk the content type. Each segment whose field is `data_type: "reference"` is a hop. Group, blocks and block-uid segments are free. Declare **every** derivable hop in one request rather than one per pass, each costs a path, not a round trip.
 
+**Only paths a binding actually reads.** "Every derivable hop" means every hop on the way to a field some binding in the composition reads, not every reference in the schema and not the app's own `include[]` list. Measured: copying a production app's include list into `resolvedReferences` pulled in a third-level reference no binding used, and the SDK reported `REFERENCES_UNRESOLVED` ("references came back as pointers rather than entries") for it. When you see that warning, first check whether the stubbed path is one any binding reads. If none does, delete the path rather than digging deeper.
+
 Declare the same paths in the composition's `resolvedReferences`. A fetch that includes a path the composition never declared still renders blank, and the two failures are indistinguishable from outside.
 
 **Use schema paths, not payload paths.** The payload carries array indices (`sections.1.resources.cards.0.reference_card.card_category.0.author.0`) and `include[]` takes the schema shape with the indices dropped: `sections.resources.cards.reference_card.card_category.author`. Copying the path out of the response is the most common way this silently declares nothing.
@@ -166,6 +168,7 @@ A caller may configure more. What automation must never do is treat "no human pr
 - [ ] `include[]` used **schema** paths with array indices stripped, not paths copied out of the payload.
 - [ ] `_metadata` objects were excluded before any stub was counted or reported.
 - [ ] Every derivable hop was declared without prompting. The first prompt came only at a path that could not be derived.
+- [ ] Every declared path leads to a field a binding reads. No path was copied from the app's own include list, and a `REFERENCES_UNRESOLVED` warning on an unread path was fixed by deleting the path.
 - [ ] Each stub's own path was declared before any hop beyond it.
 - [ ] An empty `entries` array was classified as "no entry in this environment", never counted as zero stubs.
 - [ ] Every candidate CT of a multi-target reference was expanded, not only the one this entry held.

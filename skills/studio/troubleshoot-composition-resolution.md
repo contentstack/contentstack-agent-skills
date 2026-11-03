@@ -102,7 +102,7 @@ Every other class is real breakage and **never a 404**: `SETUP_INVALID` (a wrong
 Classify with the predicate:
 
 ```ts
-import { isCompositionNotFound } from "@contentstack/studio-client";
+import { isCompositionNotFound } from "@contentstack/studio-react";
 
 if (isCompositionNotFound(err)) { /* 404 */ } else { throw err; /* 500 */ }
 ```

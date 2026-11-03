@@ -56,14 +56,14 @@ Gate: open Studio, open any composition (even an empty one). Canvas iframe loads
 
 ### Phase 1: Register components (lazy by default)
 
-- **`register-component`**: for each component the user wants Studio to surface in the palette. Default to the LAZY shape: `component: () => import("./Foo").then(m => ({ default: m.Foo }))`. Eager only when the component is tiny and on a hot path where Suspense fallback is unacceptable.
+- **`register-component`**: for each component the user wants Studio to surface in the palette. Default to the LAZY shape: `registerLazyComponent(config, () => import("./Foo").then((m) => m.Foo))`, the loader resolving to the component itself. Every `object` prop needs `properties`, every `array` prop needs `items`. After changing any registration, restart the dev server before checking the canvas. Eager only when the component is tiny and on a hot path where Suspense fallback is unacceptable.
 - **`register-breakpoints`** (optional): if the site needs custom responsive breakpoints registered for Studio's responsive editor.
 - **`register-json-rte`** (optional): only if the site uses JSON-RTE-bound props.
 - **`import-design-tokens`**: register the customer's design system. Do this BEFORE building any Section. Tokens here drive visual fidelity of every later canvas preview.
 
 Detour: `component: Hero` where `Hero` is `function Hero() { ... }` (no `props` arg) produces "Invalid hook call". Back to `register-component`, read the arity rule. The lazy shape avoids the trap.
 
-Gate: open the canvas. Switch the palette to **Registered Components**. Every component the user expects to see is present, with a non-blank preview (defaults populated).
+Gate: open the canvas. Switch the palette to **Registered Components**. Every component the user expects to see is present, with a non-blank preview (defaults populated). Without the Studio UI, run the dev-only registry check from `register-component` step 7 on `/canvas`: every expected `type` is listed.
 
 ### Phase 2: Build the first Section
 
@@ -122,7 +122,7 @@ Phase 0 includes project bootstrap. Recommended: Next.js App Router (catch-all r
 | Studio canvas blank, no console error | env Base URL empty, or Canvas URL set to a full URL instead of a path | `setup-section-preview` + `understand-canvas-url` |
 | Components don't show up in the palette | Registration file isn't imported at app startup | `register-component`: `import "./register-components"` from the app entry |
 | Sections panel is empty even after Phase 2 finished | Wrong project selected in Studio top-bar | switch project, OR re-run `provision-studio-project` if it was provisioned against a different stack |
-| "Internal components missing: page" on the visitor route | SDK predates the release that auto-registers built-ins on the visitor render path | `upgrade-studio-sdk`: bump to the patch that ships the visitor-path auto-register |
+| `COMPONENT_NOT_REGISTERED` naming `page` on the visitor route | The visitor bundle never imports `@contentstack/studio-react` | `troubleshoot-ssr-rendering`: add that import above the fetch |
 | Template renders in Studio but not on the live route | The visitor route isn't mounting `<StudioComponent />`, OR is mounting `<StudioCanvas />` by mistake | `understand-canvas-vs-component` + `setup-template-preview-routes` |
 | "registered as lazy but hasn't been loaded yet" | `fetchSpec` / `fetchCompositionData` wasn't awaited before `<StudioComponent />` mounted | `configure-csr-vs-ssr`: the SSR / RSC patterns show the right await placement |
 | `useData()` warning in dev console only | Benign. Basic component hit the SSR pass before `DataCtxProvider` attached. Disappears post-hydration. | `troubleshoot-ssr-rendering`: confirm it's a warning, not an error |

@@ -50,7 +50,7 @@ export default function CanvasRoute() {
 }
 ```
 
-`<StudioCanvas />` is client-only: it reads the post-message channel with Studio's parent frame and `window.location`. For SSR frameworks (Next, Remix), load it client-only via `next/dynamic({ ssr: false })` or `ClientOnly`. `setup-section-preview` emits the right shape per framework.
+`<StudioCanvas />` is client-only: it reads the post-message channel with Studio's parent frame and `window.location`. On studio-react 2.x it is a `"use client"` component that renders `null` until mount, so a `"use client"` canvas page is enough; no `next/dynamic({ ssr: false })` or `ClientOnly` wrapper is needed. `setup-section-preview` emits the right shape per framework.
 
 The route should NOT include nav, header, footer, or any other layout chrome. Those would push the canvas down and clip Studio's overlays. Bare `<StudioCanvas />` and nothing else.
 

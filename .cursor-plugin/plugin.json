@@ -1,7 +1,10 @@
 {
   "name": "contentstack-skills",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Contentstack agent skills for CMS modeling, Delivery SDK, Live Preview, Studio, Brand Kit, Developer Hub apps, Launch, and migrations.",
   "author": { "name": "Contentstack", "url": "https://www.contentstack.com" },
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "mcpServers": {
+    "contentstack": { "url": "https://mcp-profile-hub.contentstack.com/api/mcp" }
+  }
 }

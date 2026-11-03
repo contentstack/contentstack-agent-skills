@@ -88,7 +88,7 @@ A `400 invalid_refresh_token` therefore means "something refreshed and didn't wr
 
 Two ways to survive it:
 
-- **Re-mint before the run**: `csdx auth:login --oauth`, re-export the token. Fine for a short run. A coin-flip for a long one.
+- **Re-mint before the run**: `csdx auth:login --oauth`, then re-export the token (§ [Export the `csdx` OAuth token for a script](#export-csdx-token)). Fine for a short run. A coin-flip for a long one.
 - **Refresh in-process**: hold the refresh token and `client_id`, refresh when stale, and retry once on a 401. Refresh tokens rotate, so after each refresh **write the new pair back** to the store it came from (atomically, keeping every other field).
 
 **A bare `curl` in a loop has neither.** If a snippet in this pack is going to run more than a few minutes, drive it from a script that refreshes. Don't paste a token into a shell loop and hope.
@@ -166,7 +166,7 @@ GET /v3/content_types   stack in a DIFFERENT org      -> 403 error_code 316
 
 ```bash
 # Read-only. Safe on any stack. Prints status codes only, never the token.
-for ep in "content_types?limit=1" "stacks/settings" "delivery_tokens?limit=1"; do
+for ep in "content_types?limit=1" "stacks/settings" "stacks/delivery_tokens?limit=1"; do
   code=$(curl -s -o /dev/null -w '%{http_code}' \
     -H "authorization: Bearer $CS_OAUTH_ACCESS_TOKEN" -H "api_key: $CS_API_KEY" \
     "https://api.contentstack.io/v3/$ep")
@@ -193,6 +193,28 @@ A script closes that gap by preferring the env var, then falling back to **readi
 **If the host blocks reading that file**, the login is fine: don't send the user to `--auth`. Say what was blocked and offer: approve the read, an allow rule `Read(<that path>/**)`, or `export CS_OAUTH_ACCESS_TOKEN`. Meanwhile use the MCP's tools where they cover the task.
 
 The MCP refreshes on its own schedule: `token_issued_at + expires_in` (3600s), refreshed within **5 minutes** of expiry. Match that margin in your script, so neither hands out a token the other would have rotated.
+
+<a id="export-csdx-token"></a>
+
+### Export the `csdx` OAuth token for a script
+
+`csdx` keeps its session in an **encrypted** config, so `cat` shows nothing usable. Read it through the CLI's own `configHandler` from `@contentstack/cli-utilities` (checked against `@contentstack/cli-utilities` 2.0.1). **Ask the user first**, as for any stored session. The snippet prints no token, it only exports one:
+
+```bash
+# Read-only. Exports CS_OAUTH_ACCESS_TOKEN and CS_ORG_UID into this shell.
+eval "$(node -e '
+const u = require(require.resolve("@contentstack/cli-utilities",
+  { paths: [process.argv[1] + "/@contentstack/cli"] }));
+const c = u.configHandler;
+if (c.get("authorisationType") !== "OAUTH") { console.error("csdx is not logged in with --oauth"); process.exit(1); }
+const age = (Date.now() - new Date(c.get("oauthDateTime"))) / 60000;
+if (age > 55) { console.error("csdx token is " + Math.round(age) + " min old: run csdx auth:login --oauth"); process.exit(1); }
+console.log("export CS_OAUTH_ACCESS_TOKEN=" + JSON.stringify(c.get("oauthAccessToken")));
+console.log("export CS_ORG_UID=" + JSON.stringify(c.get("oauthOrgUid") || ""));
+' "$(npm root -g)")"
+```
+
+`npm root -g` locates the global `csdx` install. Run it in the shell the script runs in, then `CS_AUTH="authorization: Bearer $CS_OAUTH_ACCESS_TOKEN"` as usual. Don't call `authHandler.checkExpiryAndRefresh()` from a script to refresh: on a non-OAuth session it clears the CLI's whole login, and it prints to stdout. When the token is stale, re-run `csdx auth:login --oauth` (a fresh pair, stored by the CLI itself) and export again.
 
 ## Why a session authtoken is the last rung, not a convenience
 
