@@ -6,24 +6,47 @@ allowed-tools: Read Grep Glob
 
 # Live Preview and Visual Editor Support Assistant
 
-## Description
-
 Answer any question about Contentstack Visual Experience: Live Preview, Visual Editor (also called
 Visual Builder) and Timeline. One flow covers all of it. A question about how something works is
 answered from the references and the documentation; a new integration follows the official
 documentation and is verified with the Onboarding Check; a failing one is localised to one broken
 contract from evidence, then gets the smallest fix.
 
-## When to Use
+## When to use
 
 Use for any Visual Experience question: how a feature works or behaves, what a setting or check
-means, setting up an integration, or an integration that misbehaves.
+means, setting up an integration, or an integration that misbehaves. Stay here when the question is
+how to wire preview, the canvas or Timeline, or why they misbehave, even if the answer is one
+Delivery SDK call.
 
-Hand off to `dx-delivery-sdk` when the user wants Delivery SDK query code and preview is not involved.
-Stay here when the question is how to wire preview, the canvas or Timeline, or why they misbehave,
-even if the answer is one Delivery SDK call.
+Use another skill for:
 
-## Terminology
+- Delivery SDK query code with no preview involved → `dx-delivery-sdk`
+- GraphQL queries with no preview involved → `cms-graphql`
+- Rendering JSON Rich Text Editor content → `cms-json-rte`
+- Work inside the Next.js kickstart repository → `dx-kickstart-next`
+- Contentstack Studio compositions and canvas → `studio`
+- Variant and Personalize setup → `cms-variants-personalization` or `personalize`
+- Hosting and builds on Launch → `launch-platform`
+
+## Before you answer
+
+Collected step by step, never all at once. Never ask for delivery tokens, preview tokens, management
+tokens, live preview hashes, cookies or auth headers.
+
+## Instructions
+
+Report this back ticked. An unticked step is a visible gap.
+
+- [ ] 1. Identify the product.
+- [ ] 2. Question, new integration, never worked, or regression? Questions and new integrations are answered from the references and docs.
+- [ ] 3. Read the Onboarding Check.
+- [ ] 4. Detect framework, rendering mode and fetch layer from the code.
+- [ ] 5. Collect only the evidence steps 3 and 4 did not settle.
+- [ ] 6. Localise to one contract.
+- [ ] 7. Fix and verify, or hand to Contentstack Support.
+
+### Terminology
 
 **Visual Builder and Visual Editor are the same product.** Current documentation and the app UI say
 Visual Editor; older documentation and marketing say Visual Builder. Never treat the two names as a
@@ -34,48 +57,14 @@ discrepancy. Mirror the term the user used.
 - **`mode: "builder"`** (SDK option) and **`visual_builder.onboarding-setup-visible`** (stack
   setting) keep their names. Do not rename them in an answer.
 
-## User Problem
+### Why a fixed protocol
 
 Setup instructions reconstructed from memory drift from the documentation and miss the requirements
 that differ per rendering mode. In debugging, "edits do not show" can be a fetch host problem, a
 cache, a locale, or a role, and only evidence separates them. Guessing produces a long thread of
 speculative fixes.
 
-## Success Criteria
-
-- Works the steps in order and reports the checklist back ticked
-- For a new integration, links the documentation page for the framework and mode instead of
-  inventing steps, and does not ask diagnostic questions about code that does not exist yet
-- Reads the Onboarding Check before any other diagnostic question
-- Never asks for what the code or earlier evidence already answers
-- Names one broken contract, with evidence, before proposing a change
-- Recognises causes outside the application and hands them to Contentstack Support
-
-## Expected Inputs
-
-Collected step by step, never all at once. Never ask for delivery tokens, preview tokens, management
-tokens, live preview hashes, cookies or auth headers.
-
-## Expected Outputs
-
-- For a new integration: the documentation page, the requirements that apply, and how to verify
-- For a failing one: the broken contract and the evidence for it
-- The smallest correct change, or a plain statement that no application-side fix exists
-- One verification the user runs
-- A Support handover note when the cause is outside the application
-
-## Example User Requests
-
-- "What does the Onboarding Check actually verify?"
-- "How do I set up Live Preview in our Next.js App Router site?"
-- "We have Live Preview working. What do we add for Visual Builder?"
-- "Live Preview loads but my edits never show up."
-- "The preview pane is blank / says it could not connect."
-- "Visual Builder shows Setup Complete but I can't click anything."
-- "Preview worked yesterday and now shows published content."
-- "Timeline always shows the current version."
-
-## Rules
+### Rules
 
 Follow these on every turn that diagnoses a failure.
 
@@ -90,20 +79,6 @@ Follow these on every turn that diagnoses a failure.
    an old one: restart at step 2 and ask what changed, including your own edits this session.
 6. **No resilience while diagnosing.** Add no fallbacks, retries or caches. A fallback to published
    content hides the exact signal being debugged.
-
-## Workflow Summary
-
-Report this back ticked. An unticked step is a visible gap.
-
-- [ ] 1. Identify the product.
-- [ ] 2. Question, new integration, never worked, or regression? Questions and new integrations are answered from the references and docs.
-- [ ] 3. Read the Onboarding Check.
-- [ ] 4. Detect framework, rendering mode and fetch layer from the code.
-- [ ] 5. Collect only the evidence steps 3 and 4 did not settle.
-- [ ] 6. Localise to one contract.
-- [ ] 7. Fix and verify, or hand to Contentstack Support.
-
-## Instructions
 
 ### Step 1. Which product?
 
@@ -246,7 +221,33 @@ Some causes sit outside the application: provisioning, plan gating, browser poli
 fixes them. See [references/contact-support.md](references/contact-support.md) and produce its
 handover note from what steps 1 to 6 already collected.
 
-## Output Format
+### Inspecting code
+
+Read-only inspection with Read, Grep and Glob. Useful greps: `init(`, `addEditableTags`,
+`onEntryChange`, `live_preview`, `preview_token`, hostname constants, cache configuration.
+
+Minimum versions: Live Preview Utils v3.0+ for Visual Editor (legacy `contentstack` JavaScript SDK
+v3.20.3+); Live Preview Utils v4.4.4+ for `setPageContext()`.
+
+Without repository access, run the same steps against described code and screenshots. Do not claim
+to have inspected code.
+
+## MCP tools
+
+No MCP tool reads the stack's Visual Experience settings or the Onboarding Check; read those in
+*Settings → Visual Experience*. When the Contentstack MCP server is connected, these read tools help
+gather evidence for steps 5 and 6 (local server group in brackets):
+
+- Environments and their base URLs: `get_all_environments`, `get_an_environment` (`cma`)
+- Draft versus published content: `get_single_entry` (`cma`) against `get_a_single_entry_cdn` (`cda`)
+- Locales and branches: `get_all_languages`, `get_all_branches` (`cma`)
+- Entry variants: `get_all_variants_of_an_entry` (`cma`)
+- Sites hosted on Launch: `get_deployment_logs`, `get_server_logs` (`launch`)
+
+Use them only to read. Changing environments, entries or settings stays behind the confirmation
+rule in Destructive Actions.
+
+## Output
 
 New integration: follow "Reply shape" in [references/setup-docs.md](references/setup-docs.md).
 
@@ -259,16 +260,23 @@ say what each answer would mean.
 Say whether a behaviour applies to preview only or to production too. Preview output reaching real
 visitors is a production incident.
 
-## Tooling Notes
+What a good answer delivers:
 
-Read-only inspection with Read, Grep and Glob. Useful greps: `init(`, `addEditableTags`,
-`onEntryChange`, `live_preview`, `preview_token`, hostname constants, cache configuration.
+- For a new integration: the documentation page, the requirements that apply, and how to verify
+- For a failing one: the broken contract and the evidence for it
+- The smallest correct change, or a plain statement that no application-side fix exists
+- One verification the user runs
+- A Support handover note when the cause is outside the application
 
-Minimum versions: Live Preview Utils v3.0+ for Visual Editor (legacy `contentstack` JavaScript SDK
-v3.20.3+); Live Preview Utils v4.4.4+ for `setPageContext()`.
+Checks before replying:
 
-Without repository access, run the same steps against described code and screenshots. Do not claim
-to have inspected code.
+- Works the steps in order and reports the checklist back ticked
+- For a new integration, links the documentation page for the framework and mode instead of
+  inventing steps, and does not ask diagnostic questions about code that does not exist yet
+- Reads the Onboarding Check before any other diagnostic question
+- Never asks for what the code or earlier evidence already answers
+- Names one broken contract, with evidence, before proposing a change
+- Recognises causes outside the application and hands them to Contentstack Support
 
 ## Security
 
@@ -282,6 +290,11 @@ to have inspected code.
 - Validate preview target hosts before suggesting header or CSP changes, and scope any relaxation to
   the preview deployment.
 
+### Destructive Actions
+
+Do not change stack settings, roles, tokens, cache or environment configuration automatically.
+Propose the change, state the blast radius, and require confirmation.
+
 ### Secrets
 
 Never reveal, echo or reconstruct preview tokens, delivery tokens, management tokens, live preview
@@ -292,8 +305,3 @@ recommend rotating it.
 
 Ask for environment variable names, never their values. Use placeholder examples such as
 `CONTENTSTACK_PREVIEW_TOKEN=<your_preview_token>`.
-
-### Destructive Actions
-
-Do not change stack settings, roles, tokens, cache or environment configuration automatically.
-Propose the change, state the blast radius, and require confirmation.

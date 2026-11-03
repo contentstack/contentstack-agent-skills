@@ -2,7 +2,59 @@
 
 All notable changes to the Contentstack agent skills bundle. Versions match the `version` field in every plugin manifest that declares one.
 
-## 0.3.1
+## 0.4.1
+
+### New skills
+
+- `personalize`: experiences, audiences, attributes and events, the Personalize Edge SDK and Edge API, the Management API, and edge middleware that resolves variants before rendering.
+- `lytics`: the Lytics JavaScript tag, identity resolution, schema, audiences and the Segment API, consent and deletion, and sending audiences to Personalize.
+- `launch-platform`: hosting on Launch, covering builds, Cloud and Edge Functions, `launch.json`, caching and revalidation, deploy hooks, domains, access control, log targets, monorepos and limits.
+- `automations`: Contentstack Automate rules, triggers, connectors, control flow, custom code, executions and debugging.
+- `dx-cli`: the `csdx` CLI for auth, export, import, seed, clone, bulk operations, migration scripts, branch merges and plugins.
+- `dx-mcp-server`: connecting AI agents through the local `@contentstack/mcp` server or the hosted MCP Profile Hub, and when to use each.
+- `cms-graphql`: the GraphQL Content Delivery API, covering endpoints, schema, references, modular blocks, JSON RTE, limits and Live Preview.
+- `cms-json-rte`: rendering and serializing JSON Rich Text Editor content with `@contentstack/utils`, render options, embedded entries and assets, GraphQL, React, HTML↔JSON conversion and Live Preview tags.
+- `marketplace-apps`: choosing, installing and configuring first-party Marketplace apps, app configuration vs field configuration, and reading app data on delivery.
+
+### One template, paired with MCP
+
+- **Every skill uses the same sections:** When to use, Before you answer, Instructions, MCP tools, Output, Security, References, Examples. `scripts/validate.mjs` now rejects missing, extra or out-of-order sections. The duplicated Description, User Problem, Success Criteria, Expected Inputs/Outputs, Workflow Summary, Tooling Notes and Product Context blocks are folded in, so the existing skills are about 770 lines shorter. See `docs/contributing/skill-template.md`.
+- **Routing cues:** each skill's When to use ends with the neighbouring skills to use instead, and many descriptions gained a "For X, use Y." cue.
+- **MCP tools in every skill:** each skill names the Contentstack MCP tools (from the local server's published definitions) that carry out its steps, or says that none exist and what to use instead. Skills stay advisory by default; they use write, publish, deploy or delete tools only when asked, after naming the target and getting confirmation.
+- **Launch action skills** use the `launch` MCP tools (`update_an_environment`, `create_deployment`, `get_deployment_logs`) when they're connected.
+- **`developer-hub-app-architect`:** links to its one coding reference instead of reference files that didn't exist.
+
+### Contributors
+
+- **Routing evals:** `evals/` holds 62 `claude plugin eval` cases, two or more per automatically invoked skill. Each checks that a prompt loads the right skill and, for close neighbours, doesn't load the wrong one. `.github/workflows/routing-evals.yml` runs them on PRs that touch `skills/` or `evals/` (needs an `ANTHROPIC_API_KEY` secret). See `docs/contributing/routing-evals.md`.
+
+### Accuracy pass against the product wiki and public docs
+
+- **`cms-webhooks`:** signature verification now uses `X-Contentstack-Request-Signature` (RSA-PSS SHA-256) or the opt-in `X-Contentstack-HMAC-Signature` over `{timestamp}.{body}`. Payload fields, workflow events, retry timing and branch scoping are corrected, and unverified limits are removed.
+- **`cms-taxonomy`:** the CDA operators are now the documented `$in`, `$exists`, `$eq_below`, `$below`, `$eq_above` and `$above` (with `levels`), replacing operators that don't exist. Depth and plan limits are added.
+- **`launch-sync-environment-variables-from-env-example`:** updates go through `PUT` with the full environment object (there is no PATCH), with regional hosts and auth.
+- **`launch-trigger-and-monitor-launch-deployments`:** logs come from the deployment-logs endpoint, the status list is complete with `LIVE` as success, and rollback is added.
+- **`brand-kit-assistant`:**
+  - Voice Profile dials are 1–4.
+  - Request headers are corrected.
+  - v2 kits (Documents) and the other Brand Kit surfaces are added.
+- **`cms-branches-aliases`:** the branch limit is plan-dependent, module scoping follows the public docs, and compare and merge strategies are added.
+- **Other CMS skills:**
+  - `cms-localization`: Unlocalize is documented.
+  - `cms-releases`: 25 items per request, plus Releases v2.
+  - `cms-roles-permissions`: permissions are a union of roles with no deny, and M2M apps are covered.
+  - `cms-workflows`: self-advancement prevention is a per-stage option.
+  - `cms-assets`: Assets DAM limits and routing are added.
+  - `cms-environments-publishing`: all CDA hosts and the rate-limit split are listed.
+  - `cms-tokens-authentication`: M2M apps and preview tokens are covered.
+- **`cms-entries` and `cms-variants-personalization`:** both now have real instructions; before, they were empty.
+- **`cms-data-modeling-best-practices`:** adds the limits to design around.
+- **`developer-hub-app-architect`:**
+  - Adds the Content Type Sidebar and Global Full Page locations.
+  - Covers M2M apps, lifecycle webhooks and per-installation secrets.
+- **`dx-delivery-sdk` and `dx-migrate-js-to-ts-sdk`:** the Security sections copied from Launch are replaced, and the package name is now `@contentstack/persistence-plugin`.
+- **`asset-management`:** user-defined field types match the current docs.
+- **Formatting:** instructions that were raw JSON are now prose, and the broken Product Context bullets are fixed.
 
 ### Contentstack MCP server bundled with the plugin
 

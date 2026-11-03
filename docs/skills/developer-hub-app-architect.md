@@ -5,7 +5,7 @@ description: "Turn Contentstack Developer Hub and Marketplace app ideas into con
 
 # Developer Hub App Architect
 
-**Slug:** `developer-hub-app-architect` · **Product:** Developer Hub · **Type:** Advisory (read-only) · **Ships references**
+**Slug:** `developer-hub-app-architect` · **Product:** Developer Hub · **Type:** Advisory (acts through MCP tools on request) · **Ships references**
 
 Turns Developer Hub and Marketplace app ideas into concrete implementations: it chooses the right UI location, maps the architecture, generates boilerplate-aligned React/TypeScript code, and troubleshoots setup, SDK, manifest, proxy, and publishing issues.
 
@@ -20,7 +20,8 @@ When designing or building a Contentstack Developer Hub or Marketplace app, choo
 
 ## What it covers
 
-- **Location selection**: always identifies the best Contentstack UI location before writing code; prefers the smallest location that fits; compares candidates by user context, SDK surface, and complexity.
+- **App type and target**: standard apps vs machine-to-machine apps (client credentials, organization-only, no UI), and stack vs organization targets.
+- **Location selection**: covers all ten UI locations, including Content Type Sidebar and Global Full Page; always identifies the best Contentstack UI location before writing code; prefers the smallest location that fits; compares candidates by user context, SDK surface, and complexity.
 - **Developer Hub setup**: manifest, base URL, route mapping, location enabling, advanced settings variables, proxy/rewrite, install, and deploy steps.
 - **SDK & integration**: `@contentstack/app-sdk` patterns for location access, config read/write, field updates, asset replacement, iframe sizing, and typed guards; proxy/API rewrites for external integrations with secrets kept server-side.
 - **Troubleshooting**: checks route, manifest, location, SDK init, iframe context, config persistence, proxy behavior, and install scope, in that order, leading with the most likely cause.
@@ -38,9 +39,13 @@ Ships a Developer Hub coding reference (`references/developer-hub-coding-referen
 - "Why is my app loading but `appSdk.location.CustomField` is undefined?"
 - "Turn this app idea into manifest config, route plan, and starter code."
 
+## MCP tools
+
+With the MCP server's `developerhub` group connected, the agent can list, create, update, install and uninstall apps and manage their OAuth settings (`get_all_apps`, `create_an_app`, `install_an_app`, `update_app_oauth` and others). Hosting and Marketplace publishing stay in the Developer Hub UI.
+
 ## Safety notes
 
-Never exposes OAuth client secrets or app signing keys; keeps app credentials server-side via proxy variables or secure env vars. Validates installation scopes and never grants broader permissions than required. For publish/delete/revoke/uninstall flows, explains the impact first and requires confirmation of the target app/environment/installation.
+Advisory by default; uses the MCP tools only when you ask. Never exposes OAuth client secrets or app signing keys; keeps app credentials server-side via proxy variables or secure env vars. Validates installation scopes and never grants broader permissions than required. Before creating, installing, uninstalling or deleting an app, or changing its OAuth settings, names the app and target and waits for confirmation.
 
 ## Related
 

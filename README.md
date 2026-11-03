@@ -1,6 +1,6 @@
 # Contentstack Skills
 
-A bundle of ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools, covering CMS implementation, Brand Kit guidance, delivery SDK development, kickstart maintenance, migration workflows, Developer Hub app architecture, Launch automation, and Contentstack Studio.
+A bundle of ready-to-use [Contentstack](https://www.contentstack.com) agent skills for AI coding tools, covering CMS implementation, GraphQL delivery, Brand Kit guidance, delivery SDK development, the CLI and MCP servers, kickstart maintenance, migration workflows, Developer Hub app architecture, Marketplace apps, JSON RTE rendering, Launch hosting and automation, Personalize, Lytics, Automate, and Contentstack Studio.
 
 ## What's in here?
 
@@ -71,12 +71,15 @@ If you only want the skills, disable the `contentstack` MCP server in your tool'
 | Slug | Title | Product | What it helps with |
 | --- | --- | --- | --- |
 | `asset-management` | Asset Management | Assets | Assets DAM spaces and workspaces, folders, asset types and metadata, localization, saved views, AI tagging and alt text, duplicate management, versions, trash and restore, visual markups, and CMS integration. |
+| `automations` | Automations | Automate | Contentstack Automate workflows: triggers, connectors and connected apps, If-Else and loops, custom code, HTTP responses, executions and debugging, limits, and agent integration. |
 | `brand-kit-assistant` | Brand Kit Assistant | Brand Kit | Brand Kit concepts, setup, governance, Voice Profiles, Knowledge Vault, on-brand AI generation, and API-task routing. |
 | `cms-assets` | Contentstack Assets | CMS | Asset organization, image transformations, publishing lifecycle, CDN behavior, and asset limits. |
 | `cms-branches-aliases` | Branches & Aliases | CMS | Isolated content development, alias-based deployments, CI/CD integration, merge behavior, and rollback patterns. |
 | `cms-data-modeling-best-practices` | Contentstack Data Modeling Best Practices | CMS | Content type design, references, global fields, groups, modular blocks, JSON RTE, taxonomy, tags, and model simplification. |
 | `cms-entries` | Entries | CMS | Entry querying, localization, versioning, publishing, CDA usage, reference expansion, pagination, bulk operations, and Sync API patterns. |
 | `cms-environments-publishing` | Contentstack Environments & Publishing | CMS | Environment setup, publishing behavior, delivery and preview tokens, Sync API usage, CDN behavior, and publish queues. |
+| `cms-graphql` | GraphQL Content Delivery | CMS | GraphQL Content Delivery API endpoints and headers, generated schema, reference connections, modular blocks, JSON RTE, pagination, query and rate limits, and Live Preview with GraphQL. |
+| `cms-json-rte` | JSON Rich Text Editor | CMS | Rendering and serializing JSON RTE content with `@contentstack/utils`, custom render options, embedded entries and assets, HTML↔JSON conversion, and Live Preview tags. |
 | `cms-live-preview-visual-editor-support-assistant` | Live Preview and Visual Editor Support Assistant | Developer Experience | Live Preview, Visual Editor (Visual Builder) and Timeline setup or debugging: Onboarding Check, rendering-mode contracts (CSR, SSR, SSG, GraphQL), edit tags, FAQ-backed fixes, and Support handover. |
 | `cms-localization` | Contentstack Localization | CMS | Language setup, fallback chains, localized and unlocalized entries, non-localizable fields, and multi-locale publishing. |
 | `cms-releases` | Releases | CMS | Coordinated content deployment, release scheduling, staged deployment, webhook storm prevention, and CI/CD integration. |
@@ -87,12 +90,18 @@ If you only want the skills, disable the `contentstack` MCP server in your tool'
 | `cms-webhooks` | Contentstack Webhooks | CMS | Webhook configuration, event channels, payload handling, signature verification, retries, and reliable receiver design. |
 | `cms-workflows` | Workflows & Publish Rules | CMS | Workflow stages, approval flows, transition restrictions, publish governance, automation hooks, and common pitfalls. |
 | `developer-hub-app-architect` | Developer Hub App Architect | Developer Hub | Developer Hub and Marketplace app planning, UI location choices, React/TypeScript scaffolding, setup, SDK, manifest, proxy, and publishing issues. |
+| `marketplace-apps` | Marketplace Apps | Developer Hub | Choosing, installing and configuring first-party Marketplace apps (DAM, commerce, search, translation and more), and reading their field data on delivery. |
+| `dx-cli` | Contentstack CLI | Developer Experience | The `csdx` CLI: region and login, token aliases, export, import, seed and clone, bulk operations, migration scripts, branch diff and merge, and plugins such as tsgen, apps and Launch. |
 | `dx-delivery-sdk` | Delivery SDK | Developer Experience | Production-ready TypeScript with `@contentstack/delivery-sdk` for entries, assets, references, filters, sorting, pagination, locales, Live Preview, and Visual Builder. |
 | `dx-kickstart-next` | Contentstack Kickstart Next | Developer Experience | Maintaining Contentstack's Next.js kickstart: App Router structure, Delivery SDK setup, Live Preview, seeded stack alignment, env vars, validation, and PR reviews. |
+| `dx-mcp-server` | Contentstack MCP | Developer Experience | Connecting AI agents with the local `@contentstack/mcp` server or the hosted MCP Profile Hub: choosing, client setup, auth, tool groups and profiles, and least-privilege safety. |
 | `dx-migrate-js-to-ts-sdk` | Migrate JS to TS SDK | Developer Experience | Migration from the JavaScript Contentstack SDK to the TypeScript Delivery SDK, including API mapping, rewrites, and unsupported pattern callouts. |
-| `launch-sync-environment-variables-from-env-example` | Sync Launch environment variables from .env.example | Launch | Comparing a local `.env.example` with Launch environment variables and patching missing keys without printing secrets. |
+| `launch-platform` | Launch Platform | Launch | Hosting on Launch: frameworks and builds, Cloud and Edge Functions, launch.json routing, caching and revalidation, deploy hooks, domains, access control, log targets, monorepos, and limits. |
+| `launch-sync-environment-variables-from-env-example` | Sync Launch environment variables from .env.example | Launch | Comparing a local `.env.example` with Launch environment variables and adding missing keys with a full-object update, without printing secrets. |
 | `launch-trigger-and-monitor-launch-deployments` | Trigger and Monitor Launch Deployments | Launch | Triggering Launch deployments, polling deployment status, retrieving failure logs, and summarizing likely causes and next steps. |
+| `lytics` | Lytics | Lytics (Data & Insights) | Lytics projects, the JavaScript tag, identity resolution, schema and LQL, audiences and the Segment API, content affinity, consent and deletion, and connecting audiences to Personalize. |
 | `migration-companion` | Contentstack Migration Companion | Developer Experience | Guided Contentful-to-Contentstack migration workflow covering prerequisites, content migration, code migration, bundled validation scripts, and completion reporting. |
+| `personalize` | Personalize | Personalize | Experiences, audiences, attributes, impressions and conversions, the Personalize Edge SDK and Edge API, Management API, and edge middleware patterns that resolve variants before rendering. |
 | `studio` | Studio (preview) | Studio | Contentstack Studio end to end: SDK install, project provisioning, component registration, sections and templates, data binding, canvas and preview routes, verification, and troubleshooting. A router skill that loads one of 111 bundled specialist files per task. |
 
 ## How it works

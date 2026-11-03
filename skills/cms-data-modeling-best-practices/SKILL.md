@@ -1,57 +1,34 @@
 ---
 name: cms-data-modeling-best-practices
-description: "Guide developers to model content in Contentstack using the simplest reusable structure. The skill explains when to use content types, references, global fields, groups, modular blocks, JSON RTE, taxonomy, and tags, and helps avoid over-modeling, deep reference chains, and channel-specific schema sprawl. Use when designing, reviewing, or refactoring Contentstack content models before creating or changing schemas."
+description: "Guide developers to model content in Contentstack using the simplest reusable structure. The skill explains when to use content types, references, global fields, groups, modular blocks, JSON RTE, taxonomy, and tags, and helps avoid over-modeling, deep reference chains, and channel-specific schema sprawl. Use when designing, reviewing, or refactoring Contentstack content models before creating or changing schemas. For taxonomy hierarchies and CDA taxonomy filters, use cms-taxonomy."
 allowed-tools: Read Grep Glob
 ---
 
 # Contentstack Data Modeling Best Practices
 
-## Description
+Help pick the simplest Contentstack construct that fits, so editors work efficiently, delivery code stays simple, and schemas stay reusable, governed and easy to query.
 
-Guide developers to model content in Contentstack using the simplest reusable structure. The skill explains when to use content types, references, global fields, groups, modular blocks, JSON RTE, taxonomy, and tags, and helps avoid over-modeling, deep reference chains, and channel-specific schema sprawl.
+## When to use
 
-## When to Use
+- Designing a new content model, or reviewing and simplifying an existing one.
+- Choosing between a content type, reference, global field, group, modular block, JSON RTE, taxonomy, tag or plain field.
+- Planning localization and governance at the schema level.
+- Checking a model against query impact and stack limits.
 
-Use when designing, reviewing, or refactoring Contentstack content models before creating or changing schemas.
+Use another skill for:
 
-## User Problem
+- Taxonomy hierarchy design and taxonomy filters on the CDA → `cms-taxonomy`
+- Rendering JSON RTE content once it's modeled → `cms-json-rte`
+- Personalization variants of an entry → `cms-variants-personalization`
+- Locales and fallback chains → `cms-localization`
+- Making schema changes safely on a branch → `cms-branches-aliases`
+- Querying the entries a model produces → `cms-entries`
 
-Developers need a practical way to choose the right Contentstack construct so editors can work efficiently, delivery code stays simple, and schemas stay reusable, governed, and easy to query.
+## Before you answer
 
-## Success Criteria
+Gather the business goal, the current or proposed model, target channels and delivery needs, localization, reuse and governance requirements, sample content, and any performance or query constraints.
 
-Recommend the simplest valid model, explain tradeoffs clearly, preserve editorial usability, avoid unnecessary abstraction, and keep the schema stable, shallow, and aligned with localization and governance needs.
-
-## Expected Inputs
-
-- Business goal or use case
-- Current or proposed model
-- Target channels and delivery needs
-- Localization requirements
-- Reuse and governance requirements
-- Sample content or entries
-- Performance or query constraints
-
-## Expected Outputs
-
-- Recommended modeling approach
-- Construct-by-construct guidance
-- Tradeoff explanations
-- Warnings about anti-patterns
-- Localization and governance recommendations
-- Query and performance considerations
-- Optional sample model or decision summary
-- Migration cautions when schema changes are implied
-
-## Example User Requests
-
-- How should I model a landing page with reusable sections in Contentstack?
-- Should this data be a global field, group, or content type?
-- Review this content model and tell me what to simplify.
-- What is the best way to handle localization for shared content?
-- How do I model product categories for filtering and reuse?
-
-## Workflow Summary
+## Instructions
 
 1. Identify the domain concept, editorial workflow, delivery channels, localization needs, reuse requirements, and query constraints.
 2. Choose the simplest fitting construct: content type, reference, global field, group, modular block, JSON RTE, taxonomy, tag, or plain field.
@@ -60,8 +37,6 @@ Recommend the simplest valid model, explain tradeoffs clearly, preserve editoria
 5. Review localization and naming conventions.
 6. Call out anti-patterns and suggest simpler alternatives.
 7. Return a concise recommendation with migration cautions if needed.
-
-## Instructions
 
 ### Understand the goal
 
@@ -95,18 +70,31 @@ Give a concise recommendation, compare alternatives only when useful, and includ
 
 Use a content type for a real domain concept with its own lifecycle. Use a reference for reusable content with independent ownership. Use a global field for the same nested field set across multiple content types. Use a group for parent-owned nested data inside one content type. Use modular blocks for page-local composition. Use JSON RTE for narrative content. Use taxonomy for governed classification. Use tags for lightweight internal labels.
 
-## Output Format
+### Limits to design around
 
-Use concise, structured, instruction-oriented prose. Prefer bullets and short sections. State the recommended choice first when comparing options. Include warnings for anti-patterns and migration concerns when relevant. Do not expose secrets, API keys, or management tokens.
+- A content type schema can have up to 500 fields. A content type UID can be up to 200 characters.
+- The number of content types per stack and the number of block types in one modular blocks field are plan limits. Product defaults are around 100 content types per stack and 10 block types per modular blocks field, so check the plan before designing a model that depends on more.
+- Taxonomies can nest up to 10 levels deep.
 
-## Tooling Notes
+## MCP tools
 
-Read-only advisory skill. Prefer default CMS knowledge and documentation sources. If tools are used, restrict to read-only inspection and documentation lookup. Do not perform schema changes, publishing, or destructive actions.
+When the Contentstack MCP server is connected, these tools act on the stack (local server group in brackets):
+
+- Inspect: `get_all_content_types`, `get_a_single_content_type`, `get_all_references_of_ct`, `export_content_type`, `get_all_global_fields`, `get_a_single_global_field` (`cma`); `export_global_field` (`cma-extended`)
+- Change: `create_a_content_type`, `update_content_type` (`cma`); `create_a_global_field`, `update_a_global_field` (`cma-extended`)
+- Delete: `delete_content_type` (`cma`); `delete_a_global_field` (`cma-extended`)
+
+Read the existing model with the inspect tools before reviewing it. Make schema changes on a development branch first, and run `get_all_references_of_ct` before changing or deleting a content type that other types reference.
+
+## Output
+
+Use concise, structured, instruction-oriented prose. Prefer bullets and short sections. State the recommended choice first when comparing options. Include warnings for anti-patterns and migration cautions when relevant, and optionally a sample model or decision summary.
 
 ## Security
 
 ### Defaults
 
+- Advisory by default. Use the MCP tools above only when the user asks for the change.
 - Never expose management tokens or API keys.
 - Never ask users to paste secrets into the prompt.
 - Use environment variables for credentials in any example code.
@@ -116,7 +104,7 @@ Read-only advisory skill. Prefer default CMS knowledge and documentation sources
 
 ### Destructive Actions
 
-Do not perform destructive actions. Do not delete, publish, unpublish, or modify Contentstack resources. Provide guidance only.
+Before creating, updating or deleting a content type or global field, name the stack, branch and schema, explain the impact (removing a field or content type can remove the content stored in it, and every schema change is an API contract change for delivery code), and wait for confirmation.
 
 ### Secrets
 
@@ -125,14 +113,3 @@ Treat all credentials as sensitive. Never request or display management tokens, 
 ### Environment Variables
 
 Use environment variables for any credentialed examples or integrations. Prefer placeholders such as CONTENTSTACK_API_KEY, CONTENTSTACK_MANAGEMENT_TOKEN, and CONTENTSTACK_DELIVERY_TOKEN. Never hardcode secrets in examples or instructions.
-
-## Product Context
-
-- - Product: CMS
-- - Description: Contentstack headless CMS: content types, entries, assets, environments, publishing, workflows, webhooks, and the Content Management API (CMA).
-- - Product safety rules: - Never expose management tokens or API keys.
-- Always use environment variables for credentials.
-- Route all CMA calls through server-side proxies in browser apps.
-- Never hardcode stack API keys in client-side code.
-- - Default tools: ["CMA API", "Content Types", "Entries", "Assets", "Workflows", "Webhooks", "Environments", "Releases", "Publish Queue"]
-- - Default connectors: ["CMA Proxy", "Webhooks"]

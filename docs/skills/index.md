@@ -5,7 +5,7 @@ description: The full catalog of Contentstack Agent Skills, grouped by product.
 
 # Skills reference
 
-The bundle includes 24 skills across seven Contentstack products. Each links to a dedicated page with what it does, when it triggers, example prompts, and its safety notes.
+The bundle includes 33 skills across ten Contentstack products. Each links to a dedicated page with what it does, when it triggers, example prompts, and its safety notes.
 
 > Each skill page mirrors its canonical `skills/<slug>/SKILL.md`. The slug is the skill's identifier: use it with the [`skills` CLI](../get-started/skills-cli.md).
 
@@ -16,6 +16,8 @@ The bundle includes 24 skills across seven Contentstack products. Each links to 
 | [Assets](cms-assets.md) | `cms-assets` | Asset organization, Image Delivery API transforms, publishing lifecycle, CDN behavior, limits. |
 | [Branches & Aliases](cms-branches-aliases.md) | `cms-branches-aliases` | Isolated content development, alias-based zero-downtime deploys, CI/CD, merge & rollback. |
 | [Data Modeling Best Practices](cms-data-modeling-best-practices.md) | `cms-data-modeling-best-practices` | Choosing content types, references, global fields, groups, modular blocks, JSON RTE, taxonomy. |
+| [GraphQL Content Delivery](cms-graphql.md) | `cms-graphql` | GraphQL endpoints, schema, references, modular blocks, JSON RTE, limits, Live Preview. |
+| [JSON Rich Text Editor](cms-json-rte.md) | `cms-json-rte` | Rendering and serializing JSON RTE content, `@contentstack/utils`, embedded entries and assets, HTML conversion. |
 | [Entries](cms-entries.md) | `cms-entries` | CDA queries, reference expansion, pagination, versioning, publishing, bulk ops, Sync API. |
 | [Environments & Publishing](cms-environments-publishing.md) | `cms-environments-publishing` | Environment design, publishing pipeline, token types, Sync API, CDN, publish queue. |
 | [Localization](cms-localization.md) | `cms-localization` | Languages, fallback chains, localized vs unlocalized entries, non-localizable fields. |
@@ -31,6 +33,8 @@ The bundle includes 24 skills across seven Contentstack products. Each links to 
 
 | Skill | Slug | What it helps with |
 | --- | --- | --- |
+| [Contentstack CLI](dx-cli.md) | `dx-cli` | `csdx` setup and auth, export/import/seed/clone, bulk operations, migrations, branch merges, plugins. |
+| [Contentstack MCP](dx-mcp-server.md) | `dx-mcp-server` | Local MCP server vs hosted MCP Profile Hub, client setup, auth, tool scoping, safety. |
 | [Delivery SDK](dx-delivery-sdk.md) | `dx-delivery-sdk` | Production-ready TypeScript with `@contentstack/delivery-sdk` for entries, assets, queries, Live Preview. |
 | [Contentstack Kickstart Next](dx-kickstart-next.md) | `dx-kickstart-next` | Maintaining the Next.js kickstart: App Router, Delivery SDK setup, Live Preview, seed alignment, env vars, validation. |
 | [Migrate JS→TS SDK](dx-migrate-js-to-ts-sdk.md) | `dx-migrate-js-to-ts-sdk` | Migrating Delivery SDK code from the JavaScript SDK to the TypeScript SDK. |
@@ -53,7 +57,8 @@ The bundle includes 24 skills across seven Contentstack products. Each links to 
 
 | Skill | Slug | What it helps with |
 | --- | --- | --- |
-| [Sync Launch env vars from .env.example](launch-sync-environment-variables-from-env-example.md) | `launch-sync-environment-variables-from-env-example` | Comparing a local `.env.example` to a Launch environment and patching missing keys. |
+| [Launch Platform](launch-platform.md) | `launch-platform` | Launch hosting: builds, Cloud/Edge Functions, launch.json, caching, deploy hooks, domains, logs, limits. |
+| [Sync Launch env vars from .env.example](launch-sync-environment-variables-from-env-example.md) | `launch-sync-environment-variables-from-env-example` | Comparing a local `.env.example` to a Launch environment and adding missing keys. |
 | [Trigger & Monitor Deployments](launch-trigger-and-monitor-launch-deployments.md) | `launch-trigger-and-monitor-launch-deployments` | Triggering a Launch deploy, polling to completion, diagnosing failures from logs. |
 
 ## Brand Kit
@@ -67,6 +72,20 @@ The bundle includes 24 skills across seven Contentstack products. Each links to 
 | Skill | Slug | What it helps with |
 | --- | --- | --- |
 | [Developer Hub App Architect](developer-hub-app-architect.md) | `developer-hub-app-architect` | Designing & building Developer Hub / Marketplace apps: UI locations, manifest, SDK, proxy, publishing. |
+| [Marketplace Apps](marketplace-apps.md) | `marketplace-apps` | Choosing, installing and configuring first-party Marketplace apps, and reading their data on delivery. |
+
+## Personalize & Data
+
+| Skill | Slug | What it helps with |
+| --- | --- | --- |
+| [Personalize](personalize.md) | `personalize` | Experiences, audiences, attributes, events, Edge SDK and Edge API, Management API, edge middleware. |
+| [Lytics](lytics.md) | `lytics` | JavaScript tag, identity, schema, audiences and Segment API, consent and deletion, Personalize connection. |
+
+## Automate
+
+| Skill | Slug | What it helps with |
+| --- | --- | --- |
+| [Automations](automations.md) | `automations` | Automate workflows: triggers, connectors, control flow, custom code, executions, limits. |
 
 ## How skills get selected
 

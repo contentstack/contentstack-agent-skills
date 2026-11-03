@@ -1,72 +1,41 @@
 ---
 name: dx-migrate-js-to-ts-sdk
-description: "Migrate Contentstack Delivery SDK code from JavaScript to TypeScript. Rewrite setup, initialization, Stack, Entries, Assets, Query, pagination, cache, utils, taxonomy, and image transform usage while preserving behavior and calling out TypeScript-specific differences. Use when a user wants to migrate Contentstack Delivery SDK code from JavaScript to TypeScript."
+description: "Migrate Contentstack Delivery SDK code from JavaScript to TypeScript. Rewrite setup, initialization, Stack, Entries, Assets, Query, pagination, cache, utils, taxonomy, and image transform usage while preserving behavior and calling out TypeScript-specific differences. Use when a user wants to migrate Contentstack Delivery SDK code from JavaScript to TypeScript. For new TypeScript SDK code, use dx-delivery-sdk."
 argument-hint: "[javascript-snippet | file]"
 allowed-tools: Read Grep Glob
 context: fork
 agent: general-purpose
 ---
 
-# dx-migrate-js-to-ts-sdk
+# Migrate JavaScript Delivery SDK code to TypeScript
 
-## Description
+Move Delivery SDK code from the legacy JavaScript SDK (`contentstack`) to the TypeScript Delivery SDK (`@contentstack/delivery-sdk`) without losing functionality: API mappings, required packages, TypeScript-specific patterns, and JavaScript behavior with no direct equivalent.
 
-Migrate Contentstack Delivery SDK code from JavaScript to TypeScript. Rewrite setup, initialization, Stack, Entries, Assets, Query, pagination, cache, utils, taxonomy, and image transform usage while preserving behavior and calling out TypeScript-specific differences.
+## When to use
 
-## When to Use
+- Migrating Delivery SDK code from JavaScript to TypeScript.
+- Comparing JavaScript and TypeScript SDK APIs for Stack, Entries, Assets, Query, pagination, cache, utils, taxonomy or image transforms.
+- A migration-ready rewrite, a side-by-side comparison, or a concise list of breaking changes and limitations.
 
-Use when a user wants to migrate Contentstack Delivery SDK code from JavaScript to TypeScript.
-Use when comparing JavaScript and TypeScript SDK APIs for Stack, Entries, Assets, Query, pagination, cache, utils, taxonomy, or image transforms.
-Use when a user needs a migration-ready rewrite, a side-by-side comparison, or a concise list of breaking changes and limitations.
+Use another skill for:
 
-## User Problem
+- Writing new TypeScript SDK code that isn't a migration → `dx-delivery-sdk`
+- Rendering JSON RTE content with `@contentstack/utils` beyond the API change → `cms-json-rte`
+- Migrating content from Contentful → `migration-companion`
 
-The user needs to move existing Contentstack Delivery SDK code from JavaScript to TypeScript without losing functionality. They need the API differences, required packages, TypeScript-specific patterns, and unsupported JavaScript behavior translated clearly into working code.
+## Before you answer
 
-## Success Criteria
-
-Identifies the correct JavaScript-to-TypeScript SDK equivalents.
-Rewrites code into valid TypeScript SDK usage when source code is provided.
-Calls out required installs, initialization changes, and TypeScript-specific helper usage.
-Highlights limitations and unsupported patterns that may require redesign.
-Produces migration guidance and examples that are directly usable in code.
-
-## Expected Inputs
-
-- Existing JavaScript SDK code or snippets
-- Target runtime context, such as Node.js or React Native
-- Specific SDK areas involved, such as Stack, Entries, Assets, Query, caching, utils, taxonomy, or image transforms
-- Whether the user wants explanation, migration steps, or rewritten TypeScript code
-
-## Expected Outputs
-
-- Migration summary
-- API mapping notes
-- Rewritten TypeScript code examples
-- Warnings about limitations or unsupported features
-- Optional side-by-side JavaScript and TypeScript comparisons
-
-## Example User Requests
-
-- Migrate this Contentstack JavaScript SDK code to TypeScript.
-- Rewrite this Stack, Entry, and Query usage for the TypeScript Delivery SDK.
-- Show me the TypeScript equivalent for this JavaScript Contentstack snippet.
-- What changes do I need when moving from contentstack to @contentstack/delivery-sdk?
-- What are the limitations when migrating to the TypeScript Delivery SDK?
-- How do I rewrite cache policy usage for the TypeScript Delivery SDK?
-- How do I migrate utils-based HTML rendering from JavaScript to TypeScript?
-- Convert this taxonomy query from the JavaScript SDK to TypeScript.
-
-## Workflow Summary
-
-Identify the SDK area and current JavaScript pattern.
-Map the JavaScript API to the TypeScript equivalent.
-Adjust package installs, imports, and initialization.
-Rewrite code with TypeScript types and SDK methods.
-Call out limitations, cache requirements, utils changes, and unsupported query patterns.
-Provide a concise migration summary and examples.
+Get the existing JavaScript SDK code or snippets, the target runtime (Node.js or React Native), the SDK areas involved (Stack, Entries, Assets, Query, caching, utils, taxonomy, image transforms), and whether the user wants an explanation, migration steps, or rewritten code.
 
 ## Instructions
+
+1. Identify the SDK area and current JavaScript pattern.
+2. Map the JavaScript API to the TypeScript equivalent.
+3. Adjust package installs, imports, and initialization.
+4. Rewrite code with TypeScript types and SDK methods.
+5. Call out limitations, cache requirements, utils changes, and unsupported query patterns that may require redesign.
+6. Provide a concise migration summary and examples.
+
 
 ### Scope
 
@@ -78,45 +47,47 @@ Prefer TypeScript SDK equivalents from @contentstack/delivery-sdk. Preserve beha
 
 ### Key mappings
 
-Use contentstack.stack(...) instead of contentstack.Stack(...). Use stack.contentType(...), entry(...), asset(...), query(), fetch(), find(), paginate(), next(), previous(), locale(), includeReference(), includeEmbeddedItems(), includeContentType(), includeCount(), and taxonomy methods as appropriate. Note that cache support requires @contentstack/persistance-plugin and utils require @contentstack/utils.
+Use contentstack.stack(...) instead of contentstack.Stack(...). Use stack.contentType(...), entry(...), asset(...), query(), fetch(), find(), paginate(), next(), previous(), locale(), includeReference(), includeEmbeddedItems(), includeContentType(), includeCount(), and taxonomy methods as appropriate. Note that cache support requires @contentstack/persistence-plugin and utils require @contentstack/utils.
 
 ### Limitations
 
 Call out the 8KB URL limit, lack of multiple content type references in a single query, and lack of direct Global Field schema querying. Suggest include_global_field_schema for content type details when relevant. Mention assetFields support is region-limited to NA.
 
-### Examples
+### Migration examples
 
 Include at least one migration example when the user asks for help. Prefer side-by-side snippets or before/after code when useful. If the user provides source code, return a rewritten TypeScript version plus a short change summary. Include examples for cache, utils, query, taxonomy, and pagination when relevant.
 
-## Output Format
+### Tooling
 
-Be concise and migration-oriented.
-Use code blocks for code examples.
-When helpful, show JavaScript and TypeScript side by side.
-Explicitly call out unsupported or changed behavior.
-When source code is provided, include a rewritten TypeScript version.
-Do not invent SDK methods not present in the reference docs.
+- No tools are required by default. If code is provided, focus on transformation and explanation only.
+- If caching is involved, mention the persistence plugin requirement.
+- If utils are involved, mention the separate `@contentstack/utils` install.
+- If the user asks about image transforms, use the documented ImageTransform methods only.
 
-## Tooling Notes
+## MCP tools
 
-No tools are required by default.
-If code is provided, focus on transformation and explanation only.
-If caching is involved, mention the persistence plugin requirement.
-If utils are involved, mention the separate @contentstack/utils install.
-If the user asks about image transforms, use the documented ImageTransform methods only.
+The migration is a code transformation, so it needs no MCP tools. When the Contentstack MCP server is connected, the read tools `get_all_entries_cdn` and `get_a_single_entry_cdn` (`cda`) can confirm that a rewritten query returns the same entries as before, and `get_a_single_content_type` (`cma`) shows the field UIDs the code relies on.
+
+## Output
+
+- Be concise and migration-oriented: a migration summary, API mapping notes, rewritten TypeScript code, warnings about limitations, and optional side-by-side JavaScript and TypeScript comparisons.
+- Use code blocks for code examples.
+- Explicitly call out unsupported or changed behavior.
+- When source code is provided, include a rewritten TypeScript version.
+- Do not invent SDK methods not present in the reference docs.
 
 ## Security
 
 ### Defaults
 
-- Never expose deployment tokens or environment secrets.
-- Validate deployment targets before triggering.
-- Require confirmation for production deployments.
-- Never auto-deploy to production without review.
+- Advisory by default. Use the MCP tools above only to read the stack.
+- Delivery tokens are read-only and safe for client-side code; management tokens never belong in SDK code.
+- Preview tokens read unpublished content: use them only in preview deployments.
+- Never hardcode credentials in migrated code; read them from environment variables.
 
 ### Destructive Actions
 
-Do not perform destructive actions. If a request would delete, overwrite, or publish content, require explicit confirmation and explain the impact first.
+Do not perform destructive actions. If a request would delete, overwrite, or publish content, name the target, explain the impact and wait for explicit confirmation.
 
 ### Secrets
 
@@ -126,22 +97,13 @@ Never request, reveal, or echo delivery tokens, API keys, or other secrets. If c
 
 When environment variables are needed, use placeholder names and explain expected values. Never print real values or infer secrets from context.
 
-## Product Context
-
-- - Product: Developer Experience
-- - Description: Developer experience tooling
-- - Product safety rules: - Never expose deployment tokens or environment secrets.
-- Validate deployment targets before triggering.
-- Require confirmation for production deployments.
-- Never auto-deploy to production without review.
-
 ## Examples
 
 ### Basic SDK installation migration (few shot *)
 
 **User:** How do I migrate from the JavaScript Contentstack Delivery SDK to TypeScript?
 
-**Assistant:** Install @contentstack/delivery-sdk@latest, switch imports to @contentstack/delivery-sdk, and update initialization from contentstack.Stack(...) to contentstack.stack(...). If you need caching, install @contentstack/persistance-plugin@latest. If you need utils, install @contentstack/utils@latest.
+**Assistant:** Install @contentstack/delivery-sdk@latest, switch imports to @contentstack/delivery-sdk, and update initialization from contentstack.Stack(...) to contentstack.stack(...). If you need caching, install @contentstack/persistence-plugin@latest. If you need utils, install @contentstack/utils@latest.
 
 *Shows the core package and import changes.*
 
@@ -173,7 +135,7 @@ When environment variables are needed, use placeholder names and explain expecte
 
 **User:** Do I need anything extra for cache support in the TypeScript SDK?
 
-**Assistant:** Yes. Install @contentstack/persistance-plugin@latest and pass cacheOptions with a persistence store when using cache policies other than Policy.IGNORE_CACHE.
+**Assistant:** Yes. Install @contentstack/persistence-plugin@latest and pass a `PersistenceStore` as `cacheOptions.persistenceStore` when using cache policies other than Policy.IGNORE_CACHE.
 
 *Captures the cache plugin requirement.*
 

@@ -6,82 +6,82 @@ allowed-tools: Read Grep Glob
 
 # Contentstack Assets
 
-## Description
+Advise on organizing, delivering, transforming and publishing files in a stack's asset library, and on the limits and reference risks that come with them.
 
-Advise developers on organizing, delivering, and transforming assets in Contentstack. Cover folder structure, Image Delivery API transformations, publishing lifecycle, CDN behavior, and common limits.
+## When to use
 
-## When to Use
+- Organizing assets into folders and naming them.
+- Serving responsive or optimized images with the Image Delivery API.
+- Publishing, unpublishing, replacing or deleting assets, and what that does to references.
+- Upload limits and other asset library gotchas.
 
-Use when developers ask about uploading, organizing, delivering, transforming, publishing, or troubleshooting images and other media files in a stack's asset library.
+Use another skill for:
 
-For the standalone Assets DAM product (spaces, workspaces, duplicate sets, saved views, visual markups), use the `asset-management` skill instead.
+- The standalone Assets DAM (spaces, workspaces, duplicate sets, saved views, visual markups) and any reading or updating of user-defined fields → `asset-management`
+- Images embedded in JSON Rich Text Editor content → `cms-json-rte`
+- Fetching assets in code with the Delivery SDK → `dx-delivery-sdk`
+- Asset fields in a GraphQL query → `cms-graphql`
+- Environments and the publishing model in general → `cms-environments-publishing`
+- Third-party DAM connectors such as Bynder or Cloudinary → `marketplace-apps`
 
-This skill does not cover reading or updating user-defined fields (custom metadata). The stack asset library doesn't support them. Route those requests to the `asset-management` skill, which points to the Assets (DAM) API.
+## Before you answer
 
-## User Problem
-
-Developers need to organize assets effectively, serve optimized images, and understand how asset publishing and CDN delivery work. They also need to avoid broken references and common asset-management mistakes.
-
-## Success Criteria
-
-Recommend clear folder structures and naming patterns.
-Explain Image Delivery API transformations and responsive image delivery.
-Describe asset publishing, unpublishing, and replacement behavior correctly.
-Call out relevant limits, gotchas, and reference-breaking actions.
-
-## Expected Inputs
-
-- Asset type and use case
-- Image optimization requirements
-- Folder organization needs
-- Publishing or CDN questions
-
-## Expected Outputs
-
-- Folder structure recommendations
-- Image Delivery API transformation guidance
-- Publishing lifecycle explanations
-- Performance optimization tips
-
-## Example User Requests
-
-- How do I serve responsive images from Contentstack?
-- What image transformations does Contentstack support?
-- How should I organize my assets into folders?
-- Does deleting an asset break references in entries?
-- What is the maximum file size I can upload?
-
-## Workflow Summary
-
-Identify the asset type and use case.
-Recommend folder organization if needed.
-Explain Image Delivery API transforms for images.
-Describe publishing and CDN behavior.
-Flag limits, gotchas, and reference risks.
+Find out the asset type and use case, any image optimization requirements, how assets are organized today, and whether the question is about publishing or CDN delivery.
 
 ## Instructions
 
-[{"heading":"Folder organization","content":"Recommend a clear folder structure early in the project, such as /images/heroes, /images/products, and /documents/legal. Moving assets between folders preserves UIDs and references."},{"heading":"Image Delivery API","content":"Use images.contentstack.io for image delivery and support on-the-fly transforms with URL parameters such as width, height, quality, format, crop, trim, orient, overlay, pad, fit, and dpr. Recommend responsive delivery with width/height and dpr, WebP for modern browsers, and quality tuning for file size. Chain multiple transforms in one URL. Non-image assets serve from assets.contentstack.io."},{"heading":"Publishing lifecycle","content":"Explain that assets have their own publishing lifecycle independent of entries. An asset must be published to an environment before referenced entries display it on the live site. Unpublishing removes it from delivery for that environment but does not delete the file."},{"heading":"Replacing vs deleting","content":"Explain that replacing an asset creates a new version while keeping the same UID and references intact. Deleting an asset breaks all references to it in entries. Advise checking references before deletion."},{"heading":"Key limits","content":"State the main limits clearly: max file size is 700 MB via UI and 100 MB via API, max 10 assets per batch upload, default 10,000 assets per stack and 500,000 per organization, and filenames cannot be changed after upload. Note that Image Delivery API transforms do not apply to images inserted directly into Rich Text Editor fields."}],
+1. Identify the asset type and use case.
+2. Recommend a folder organization if needed.
+3. For images, explain the Image Delivery API transforms.
+4. Describe publishing and CDN behavior.
+5. Flag limits, gotchas and reference risks.
 
-## Output Format
+### Folder organization
+
+Recommend a clear folder structure early in the project, such as `/images/heroes`, `/images/products` and `/documents/legal`. Moving assets between folders preserves UIDs and references.
+
+### Image Delivery API
+
+Use `images.contentstack.io` for image delivery, with on-the-fly transforms through URL parameters such as `width`, `height`, `quality`, `format`, `auto`, `crop`, `trim`, `orient`, `overlay`, `pad`, `canvas`, `fit`, `dpr`, `blur`, `sharpen`, `brightness`, `contrast` and `saturation`. Recommend responsive delivery with width/height and dpr, WebP for modern browsers, and quality tuning for file size. Chain multiple transforms in one URL. Non-image assets serve from `assets.contentstack.io`.
+
+### Publishing lifecycle
+
+Assets have their own publishing lifecycle, independent of entries. An asset must be published to an environment before referenced entries display it on the live site. Unpublishing removes it from delivery for that environment but does not delete the file.
+
+### Replacing vs deleting
+
+Replacing an asset creates a new version while keeping the same UID and references intact. Deleting an asset breaks all references to it in entries. Advise checking references before deletion.
+
+### Key limits
+
+State the main stack asset library limits clearly: max file size is 700 MB via the UI and 100 MB via the API, max 10 assets per batch upload, 10,000 assets per stack by default, and filenames cannot be changed after upload. Image Delivery API transforms do not apply to images inserted directly into Rich Text Editor fields. The standalone Assets (DAM) product has different limits (up to 1.5 GB per asset, 100 assets per upload, 500,000 assets per workspace); route those questions to `asset-management`.
+
+## MCP tools
+
+When the Contentstack MCP server is connected, these tools act on the stack (local server group in brackets):
+
+- Inspect: `get_all_assets`, `get_a_single_asset`, `get_asset_reference` (`cma`); `get_assets_of_a_specific_folder`, `get_assets_and_subfolders_of_a_parent_folder`, `get_all_versions_of_an_asset` (`cma-extended`); `get_all_assets_cdn`, `get_a_single_asset_cdn` (`cda`)
+- Change: `publish_an_asset`, `unpublish_an_asset` (`cma`); `update_asset_details`, `create_asset_folder`, `update_asset_folder`, `set_asset_version_name` (`cma-extended`)
+- Delete: `delete_an_asset` (`cma`); `delete_asset_folder`, `delete_asset_version_name` (`cma-extended`)
+
+There is no upload tool; upload through the UI, the CMA or `csdx`. Run `get_asset_reference` before deleting an asset to see which entries use it.
+
+## Output
 
 Be concise and practical. Show Image Delivery API parameters inline when helpful. Prefer direct answers with short bullets when listing options or limits.
-
-## Tooling Notes
-
-Read-only advisory skill. Do not upload, delete, publish, or modify assets. Use only read-oriented guidance.
 
 ## Security
 
 ### Defaults
 
+- Advisory by default. Use the MCP tools above only when the user asks for the change.
 - Never expose tokens or API keys.
 - Delivery tokens and asset URLs are safe for client-side code.
-- Use environment variables for credentials in example code.
+- Use environment variables for credentials in example code, and route CMA calls through a server-side proxy in browser apps.
 
 ### Destructive Actions
 
-Do not perform destructive asset actions. If the user asks to delete, unpublish, or replace assets, explain the implications and recommend safe checks, but do not execute changes.
+Before deleting, unpublishing or replacing an asset, or deleting a folder, name the asset, the environments and the entries that reference it, explain the impact (a deleted asset breaks every reference to it), and wait for confirmation.
 
 ### Secrets
 
@@ -90,14 +90,3 @@ Never reveal management tokens, API keys, or other secrets. If code examples nee
 ### Environment Variables
 
 Use environment variables for any credentialed examples. Never hardcode stack API keys, management tokens, or delivery tokens in client-side code.
-
-## Product Context
-
-- - Product: CMS
-- - Description: Contentstack headless CMS: content types, entries, assets, environments, publishing, workflows, webhooks, and the Content Management API (CMA).
-- - Product safety rules: - Never expose management tokens or API keys.
-- Always use environment variables for credentials.
-- Route all CMA calls through server-side proxies in browser apps.
-- Never hardcode stack API keys in client-side code.
-- - Default tools: ["CMA API", "Content Types", "Entries", "Assets", "Workflows", "Webhooks", "Environments", "Releases", "Publish Queue"]
-- - Default connectors: ["CMA Proxy", "Webhooks"]
