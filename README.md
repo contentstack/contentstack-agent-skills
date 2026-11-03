@@ -60,6 +60,12 @@ npx skills add contentstack/contentstack-agent-skills --skill cms-entries --skil
 
 Use `--list` to see every skill, or leave out `--skill` to install them all. The CLI installs into the right folder for Claude Code, Cursor, Codex, Copilot, Gemini, Windsurf, Cline and others.
 
+## Contentstack MCP server
+
+Every plugin manifest here also connects the hosted [Contentstack MCP Profile Hub](https://www.contentstack.com/docs/developers/mcp-profile-hub) at `https://mcp-profile-hub.contentstack.com/api/mcp`, so installing the plugin gives the agent the skills and the Contentstack tools together. The server signs you in with OAuth in the browser the first time a tool is used: there is no API key to configure, and every call runs with your own Contentstack roles. At sign-in you pick your region, a profile and a stack.
+
+If you only want the skills, disable the `contentstack` MCP server in your tool's MCP settings after installing.
+
 ## Skills included
 
 | Slug | Title | Product | What it helps with |
@@ -101,7 +107,9 @@ skills/<slug>/SKILL.md            Source of truth: one folder per skill
 .cursor-plugin/                   Cursor plugin and marketplace
 .agents/plugins/marketplace.json  Codex marketplace
 plugin.json                       Agent Plugins manifest (Codex, VS Code)
-gemini-extension.json             Gemini CLI extension
+mcp.json                          MCP server for Agent Plugins (Codex, ChatGPT)
+.mcp.json                         MCP server for Claude Code and claude.ai
+gemini-extension.json             Gemini CLI extension (skills and MCP server)
 docs/                             Documentation: install, architecture, contributing, skill reference
 scripts/validate.mjs              Validates skills and manifests (runs in CI)
 ```
