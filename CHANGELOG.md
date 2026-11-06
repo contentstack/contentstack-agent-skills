@@ -16,6 +16,12 @@ All notable changes to the Contentstack agent skills bundle. Versions match the 
 
 ### Changed skills
 
+- **`studio` sends work to the Studio MCP first.** The router now uses the Studio MCP (built on Flux) whenever its tools are callable, and falls back to the bundled guides only for five named reasons. The new `fallback-map` says which guides continue a goal the Studio MCP stopped part-way through.
+  - The description also covers Live Preview, Visual Editor, Launch, content types and Personalize when they are part of Studio work.
+  - Definition of done: Studio writes a Section thumbnail only while it is empty (PNG, JPEG or WebP; SVG shows blank). The canvas route sits at the project's Canvas URL path. The site reads the preview token on preview environments only.
+  - SDK 2.0: `extendQuery` is deprecated; switch the reference on in the template instead. 404s are decided by `isCompositionNotFound` in a try/catch, with `isStudioEditorMode` gating the editor's empty page, never by `hasSpec`/`hasTemplate`. Object props must declare `properties`. Use `isNot` rather than `neq` on single selects. `schema_version` 1.1.0 is explained.
+  - Template URLs: the pattern is the content type prefix + `{{entry.url}}`, a typed or API-set `user_specified_pattern` never reverts, references in a URL pattern go in `url_queries.include`, ties break on fixed text rather than `composable_uid`, and the Custom Preview URL can be set by API. `build-connected-template` has a new "How template URLs work" section.
+  - `skills-index`, `install-contentstack-mcp` and `understand-contentstack-mcp` point to the Studio MCP for Studio work.
 - **`studio` matches Studio SDK 2.0.** Brought in the Studio team's latest guide fixes and checked them against the released SDK.
   - Missing built-ins now surface as `COMPONENT_NOT_REGISTERED` ("Studio's own components are not registered"). The fix is to import `@contentstack/studio-react` above the fetch, not to upgrade. Updated in `troubleshoot-canvas`, `troubleshoot-ssr-rendering` and `byoc-end-to-end`.
   - `upgrade-studio-sdk` has a 1.x → 2.0 section, checked by installing 1.9.0 and 2.0.1 side by side.
