@@ -37,6 +37,7 @@ The bundle includes 33 skills across ten Contentstack products. Each links to a 
 | [Contentstack MCP](dx-mcp-server.md) | `dx-mcp-server` | Local MCP server vs hosted MCP Profile Hub, client setup, auth, tool scoping, safety. |
 | [Delivery SDK](dx-delivery-sdk.md) | `dx-delivery-sdk` | Production-ready TypeScript with `@contentstack/delivery-sdk` for entries, assets, queries, Live Preview. |
 | [Contentstack Kickstart Next](dx-kickstart-next.md) | `dx-kickstart-next` | Maintaining the Next.js kickstart: App Router, Delivery SDK setup, Live Preview, seed alignment, env vars, validation. |
+| [SAP Spartacus Content Import](dx-sap-spartacus-import.md) | `dx-sap-spartacus-import` | Importing an SAP Commerce Cloud storefront's content into Contentstack for the Spartacus connector. |
 | [Migrate JS→TS SDK](dx-migrate-js-to-ts-sdk.md) | `dx-migrate-js-to-ts-sdk` | Migrating Delivery SDK code from the JavaScript SDK to the TypeScript SDK. |
 | [Live Preview & Visual Editor Support](cms-live-preview-visual-editor-support-assistant.md) | `cms-live-preview-visual-editor-support-assistant` | Setting up or debugging Live Preview, Visual Editor (Visual Builder) or Timeline across CSR, SSR, SSG, BFF. |
 | [Migration Companion](migration-companion.md) | `migration-companion` | Guided Contentful → Contentstack migration: content and application code. |

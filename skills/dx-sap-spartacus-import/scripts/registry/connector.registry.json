@@ -1,0 +1,178 @@
+{
+  "meta": {
+    "name": "sap-occ-to-connector-mapping-profile",
+    "version": "0.3.1",
+    "status": "draft",
+    "changelog": [
+      "0.3.1 — un-deferred navigation (nav pass: nav_resolve.py + model_connector.build_nav seed nav_node tree + link leaves + category/footer_navigation_component into global_slots). Added product_page/category_page authoring from layoutSamples (shared slugs /product, /category). Refactor also stopped over-seeding components from non-authored pages.",
+      "0.3.0 — initial connector reference-field mapping profile."
+    ],
+    "profile": "connector-reference-fields",
+    "generated_from": [
+      "electronics-spa",
+      "powertools-spa"
+    ],
+    "connector": "@contentstack/contentstack-spartacus-connector",
+    "content_types_source": "node_modules/@contentstack/contentstack-spartacus-connector/import-export/starter-pack/content_types/",
+    "philosophy": "Hybrid islands model (verified in connector code + CONTENT-MODEL.md). OCC renders the base of every page; Contentstack overrides ONLY authored slots. Functional components, unauthored slots, and non-content pages stay in OCC and are NOT seeded. Unit of control = the slot.",
+    "important": "This profile MAPS OCC inventory onto the connector's SHIPPED content types. It does NOT define content-type schemas — those are imported from the starter pack (via csdx or POSTing the JSON files). Idempotency: pages upsert by `url`; component entries upsert by `title` (set to the SAP component uid, which is unique).",
+    "differs_from_v1": "registry.json (v0.2.1) was a free-form model with a cms_content_slot entry type, a unified `banner`, and a passthrough catch-all. This profile instead conforms to the connector: named per-slot reference fields on per-template pages, one content type per SAP typecode, functional types left to OCC."
+  },
+  "page_types": {
+    "_note": "OCC page template -> connector page content type. Only these templates are authored in Contentstack; every other template (Login/Account/Cart/Checkout/SearchResults/Error/StoreFinder/...) is left to OCC and produces NO Contentstack page.",
+    "_slug_rule": "url = '/' for the homepage label; otherwise '/' + page label. page_type <- page.typeCode; template <- page.template.",
+    "LandingPage2Template": {
+      "content_type": "landing_page",
+      "slug_field": "url"
+    },
+    "ContentPage1Template": {
+      "content_type": "landing_page",
+      "slug_field": "url"
+    },
+    "ProductDetailsPageTemplate": {
+      "content_type": "product_page",
+      "slug_field": "url"
+    },
+    "ProductListPageTemplate": {
+      "content_type": "category_page",
+      "slug_field": "url"
+    },
+    "_note_content_pages": "Content pages (ContentPage1Template) land on landing_page: the connector resolves every per-route page against cmsPageContentType (landing_page), and the starter pack carries body_content/side_content there (connector PR #35, DX-31800)."
+  },
+  "slot_field_map": {
+    "_note": "SAP slot POSITION (from inventory slot.position) -> connector page reference-field uid. Reverse of the connector's SLOT_FIELD_TO_SAP_NAME. Positions not listed here are left to OCC. Shell positions (see global_slot_positions) are authored on the single global_slots entry, not on the page.",
+    "Section1": "section1",
+    "Section2": "section2",
+    "Section2A": "section2_a",
+    "Section2B": "section2_b",
+    "Section2C": "section2_c",
+    "Section3": "section3",
+    "Section4": "section4",
+    "Section5": "section5",
+    "BodyContent": "body_content",
+    "SideContent": "side_content",
+    "BottomHeaderSlot": "bottom_header_slot",
+    "ProductLeftRefinements": "product_left_refinements",
+    "ProductListSlot": "product_list_slot",
+    "ProductGridSlot": "product_grid_slot",
+    "SearchResultsListSlot": "search_results_list_slot",
+    "SearchResultsGridSlot": "search_results_grid_slot",
+    "Summary": "summary",
+    "UpSelling": "up_selling",
+    "CrossSelling": "cross_selling",
+    "Tabs": "tabs",
+    "PlaceholderContentSlot": "placeholder_content_slot",
+    "TopContent": "top_content",
+    "MiddleContent": "middle_content",
+    "BottomContent": "bottom_content",
+    "CenterRightContentSlot": "center_right_content_slot",
+    "CenterRightContent": "center_right_content",
+    "EmptyCartMiddleContent": "empty_cart_middle_content",
+    "LeftContentSlot": "left_content_slot",
+    "RightContentSlot": "right_content_slot",
+    "HomepageNavLink": "homepage_nav_link"
+  },
+  "global_slots": {
+    "_note": "Author ONLY content-managed shell slots. SiteContext (theme+language switcher) and SiteLinks (login/register + utility links) are FUNCTIONAL — authoring them partially overrode OCC's full shell and dropped the language dropdown + sign-in/register. Leave those to OCC (occFallback). Author logo (branding), category nav, and footer nav only.",
+    "content_type": "global_slots",
+    "upsert_by": "title",
+    "positions": {
+      "SiteLogo": "site_logo",
+      "NavigationBar": "navigation_bar",
+      "Footer": "footer"
+    },
+    "positions_left_to_occ": {
+      "SiteContext": "site_context (theme+language -> OCC)",
+      "SiteLinks": "site_links (login/register+links -> OCC)",
+      "SearchBox": "search_box (functional -> OCC)",
+      "MiniCart": "mini_cart (functional -> OCC)",
+      "HeaderLinks": "header_links (functional -> OCC)"
+    }
+  },
+  "component_map": {
+    "_note": "OCC typeCode -> connector component content type + field mapping (connector field uid <- OCC source). Only authored/content-bearing types appear here. title <- component.name (entry title is set to component.uid for idempotency; name is kept where a display field exists).",
+    "SimpleResponsiveBannerComponent": {
+      "content_type": "simple_responsive_banner_component",
+      "assets": true,
+      "fields": {
+        "url_link": "urlLink",
+        "media_mobile": "media.mobile",
+        "media_tablet": "media.tablet",
+        "media_desktop": "media.desktop",
+        "media_widescreen": "media.widescreen",
+        "media": "media.desktop"
+      }
+    },
+    "SimpleBannerComponent": {
+      "content_type": "simple_banner_component",
+      "assets": true,
+      "fields": {
+        "url_link": "urlLink",
+        "media": "media"
+      }
+    },
+    "ProductCarouselComponent": {
+      "content_type": "product_carousel_component",
+      "fields": {
+        "title": "title",
+        "products": "productCodes[space-split]"
+      }
+    },
+    "CMSParagraphComponent": {
+      "content_type": "cms_paragraph_component",
+      "fields": {
+        "content": "content"
+      }
+    },
+    "CMSLinkComponent": {
+      "content_type": "cms_link_component",
+      "fields": {
+        "link_name": "linkName",
+        "url": "url",
+        "target": "target"
+      }
+    },
+    "CMSFlexComponent": {
+      "content_type": "cms_flex_component",
+      "fields": {
+        "flex_type": "flexType"
+      }
+    },
+    "CategoryNavigationComponent": {
+      "content_type": "category_navigation_component",
+      "status": "nav-pass",
+      "_note": "NOT a regular slot component. Handled by the nav pass: nav_resolve.py resolves link leaves from OCC, model_connector.build_nav emits the nav_node tree + cms_link_component leaves + this component, placed into global_slots.navigation_bar. map_component skips it (status != mapped)."
+    },
+    "FooterNavigationComponent": {
+      "content_type": "footer_navigation_component",
+      "status": "nav-pass",
+      "_note": "see CategoryNavigationComponent; placed into global_slots.footer."
+    }
+  },
+  "navigation": {
+    "_note": "Navigation is seeded flat: nav_node_flat entries (node_id/parent_id/sort_order) plus a category_navigation_flat or footer_navigation_flat component that references the pool via all_nodes; the connector rebuilds the tree. See model_connector.build_nav.",
+    "nav_node": "nav_node_flat",
+    "category": "category_navigation_flat",
+    "footer": "footer_navigation_flat",
+    "link_leaf": "cms_link_component"
+  },
+  "occ_only_types": {
+    "_note": "Functional / commerce-driven components with no editorial content. Per the hybrid model these hydrate from OCC and are NOT seeded into Contentstack. Slots containing only these are left empty in CS (OCC fills them).",
+    "types": [
+      "MiniCartComponent",
+      "SearchBoxComponent",
+      "BreadcrumbComponent",
+      "CMSSiteContextComponent",
+      "ProductRefinementComponent",
+      "SearchResultsListComponent",
+      "CartSuggestionComponent",
+      "JspIncludeComponent",
+      "MerchandisingCarouselComponent",
+      "BundleCarouselComponent",
+      "CMSProductListComponent",
+      "CMSTabParagraphContainer",
+      "ProductAddToCartComponent",
+      "ProductReferencesComponent"
+    ]
+  }
+}
