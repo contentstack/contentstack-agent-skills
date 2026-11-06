@@ -24,6 +24,7 @@ If the user's message contains any phrase in the left column, Read the skill in 
 
 | If the user says… | Read |
 |---|---|
+| Any Studio request when the Studio MCP is connected | Use the Studio MCP (see `SKILL.md` § 1. Studio MCP first). The rows below apply when it isn't connected |
 | convert my project to Studio, make my project Studio compatible, Studio-compatible project, add Studio to my existing site without touching pages, minimal Studio setup, Studio as a fallback route, works with my locales in Studio | `convert-project-to-studio` |
 | add Studio to my app, is my project compatible, before I install | `analyze-project-fit` |
 | enable Studio, make this project Studio ready, make this project Studio enable, Studio setup, set up Studio, install Studio in my app | `convert-project-to-studio` |
@@ -159,6 +160,7 @@ Grouped by intent. Use when the user's message is Studio-shaped but no trigger p
 - **plan-studio-architecture**: analyze the starting point (existing code, part-built project, design, or prose), then print a plan for approval: Sections + linked schemas, Section Slots, registered **and** built-in components, CTs, Connected-vs-Freeform per page, build order. **Nothing is built until it's approved.** Run first for any non-trivial build request.
 - **match-existing-pattern**: **MANDATORY before authoring a Template or Section in a project that already has compositions.** Inflates every composition's `ui`, derives how the project builds (repeater + condition + sections, section list, single component, atoms), and reports the patterns as layer trees. With one pattern, build that way. With several, the user picks from previews. Prevents the rework of authoring something structurally foreign to what is already there.
 - **choose-connected-vs-freeform**: Connected default. Freeform is last resort. Emits the next skill.
+- **fallback-map**: when the Studio MCP stops part-way through a goal, look up the Studio MCP guide it was on and continue from the bundled guides listed beside it.
 
 ### 2. Install and configure the app
 

@@ -12,6 +12,8 @@ Run discovery on whole-project setup and API-provisioning flows, including when 
 
 # Install Contentstack MCP: preferred API execution layer
 
+> **Not the Studio MCP.** The Studio MCP is a different server from the Contentstack MCP. It runs Studio goals step by step (`list_goals`, `next_step`, `preview`, `apply`, `check`), and it is preferred for Studio work when its tools are callable (see [`SKILL.md`](SKILL.md) § 1. Studio MCP first). The Contentstack MCP stays for general CMA operations.
+
 > **MCP-first applies to supported callable operations.** For operations absent from the discovered tool schemas, a declined installation, an unsupported region, or a connection that cannot be recovered in this session, record the limitation and use the OAuth HTTP path. Never invent an MCP tool or assume a capability table from an older release is current.
 
 ## Discovery in the active host

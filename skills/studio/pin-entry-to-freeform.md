@@ -74,16 +74,24 @@ This skill succeeds only when ALL of the following are true. If any fails, surfa
 If you want to confirm the pinned entry flows through at runtime (not just in Studio), the canvas-app side uses:
 
 ```tsx
-// SSR — fetchCompositionData THROWS on a miss (it does not resolve with
-// hasSpec:false), so an unwrapped call 500s instead of 404ing. A compositionUid
-// lookup throws COMPOSITION_UID_NOT_FOUND (not NO_COMPOSITION_FOR_URL). Wrap it:
-// configure-csr-vs-ssr § "fetchCompositionData does not return not-found".
-const { specOptions, notFound: miss } = await resolveComposition(sdk, {
-  compositionUid: "<your-freeform-uid>",
-});
-if (miss) return notFound();
+// SSR — fetchCompositionData THROWS on a miss, so an uncaught call 500s instead
+// of 404ing. A compositionUid lookup throws COMPOSITION_UID_NOT_FOUND (not
+// NO_COMPOSITION_FOR_URL); isCompositionNotFound covers both.
+// Pattern: configure-csr-vs-ssr § "fetchCompositionData does not return not-found".
+import { isCompositionNotFound, type StudioComponentSpecOptions } from "@contentstack/studio-react";
+
+stack.livePreviewQuery({ live_preview: "" }); // shared stack: drop the last request's preview hash
+let specOptions: StudioComponentSpecOptions;
+try {
+  specOptions = await sdk.fetchCompositionData({ compositionUid: "<your-freeform-uid>" });
+} catch (err) {
+  if (!isCompositionNotFound(err)) throw err; // a real failure stays a 500
+  notFound();
+}
 return <StudioComponent specOptions={specOptions} />;
 ```
+
+Don't gate this page on `hasTemplate` (deprecated in studio-client 4.1.0, along with `hasSpec`): it is `false` for every Freeform page, so the check 404s them all.
 
 The pinned entry data is embedded inside `specOptions.spec` — you do NOT pass it via the `data` prop. `data` is a separate `Record<string, any>` for [runtime Component Default Data](wire-external-data.md) (external data outside Contentstack — live pricing, geo, etc.).
 

@@ -21,8 +21,8 @@ If Sections render but the Template shows "SDK Not Initialized," you're in the r
 When a request URL lands on a route that mounts `<StudioComponent>`, the SDK resolves it to a composition in three stages:
 
 1. **Pattern match**: every composition's `url` pattern is compiled into a regex. The request URL is matched against all of them. Wildcards / placeholders (`{{entry.url}}`, `*`) capture segments. Literals must appear verbatim.
-2. **Candidate ranking**: surviving patterns are ranked by **literal-character specificity** (how many non-placeholder characters they have). The most specific tier wins. Ties go to the next stage.
-3. **Entry lookup**: for patterns containing `{{entry.<field>}}` or `*`, the SDK queries the linked content type for an entry whose field matches the captured segment. If only one tied candidate has a matching entry, it wins. If multiple do, the first by `composable_uid` order wins (deterministic but arbitrary).
+2. **Candidate ranking**: surviving patterns are ranked by **literal-character specificity** (how much fixed text they have). The pattern with more fixed text wins. Ties go to the next stage.
+3. **Entry lookup**: on a tie, a Freeform template always counts as owning the address. A Connected template counts only when its content type has an entry there: for patterns containing `{{entry.<field>}}` or `*`, the SDK queries the linked content type for an entry whose field matches the captured segment. The first tied candidate that qualifies, in the order the templates are fetched, wins. That order isn't something you set, so give every template its own fixed text rather than relying on it.
 
 Most production bugs in this area are caused by:
 - **Authoring confusion** between "literal prefix in the pattern" vs "prefix stored on the entry's `url` field". When an entry's `url` field stores the full path (e.g. `/blog/post-1`) but the pattern's captured segment is just the slug (`post-1`), the entry lookup misses. Recent SDK versions handle this via a full-path `$or` branch in the entry query (see § Symptom-to-stage matrix below).
@@ -82,7 +82,7 @@ console.log(JSON.stringify(decodeUi(composition.ui), null, 2));
 
 The three-stage model above describes where resolution fails. This is what that failure looks like from the calling code, and it's the part most route wiring gets wrong.
 
-**`sdk.fetchCompositionData` throws on a miss. It does not resolve with `hasSpec: false`.** So the standard guard `if (!specOptions.hasSpec) notFound()` is unreachable on exactly the path it was written for: the `await` throws, the framework's error boundary catches it, and the visitor gets a **500 where a 404 belongs**. A "my 404 page never shows / unmatched URLs return 500" report is this, not a routing bug.
+**`sdk.fetchCompositionData` throws on a miss. It does not resolve with an empty result.** So a guard on the returned object (`if (!specOptions?.spec) notFound()`) is unreachable on exactly the path it was written for: the `await` throws, the framework's error boundary catches it, and the visitor gets a **500 where a 404 belongs**. A "my 404 page never shows / unmatched URLs return 500" report is this, not a routing bug.
 
 It throws a `ComposableStudioError` carrying a **`code`** and an **`errorClass`**. For the 404 decision read neither: call `isCompositionNotFound(err)`, true for exactly the codes below and for any added after your build shipped.
 
@@ -109,7 +109,7 @@ if (isCompositionNotFound(err)) { /* 404 */ } else { throw err; /* 500 */ }
 
 `useCompositionData` doesn't throw, it stores the same error object in `error`, so `isCompositionNotFound(error)` classifies identically.
 
-The wrapper that turns this into correct 404-vs-500 behavior lives in [`configure-csr-vs-ssr` § `fetchCompositionData` does not return "not found"](configure-csr-vs-ssr.md#resolve-composition-helper), one canonical `resolveComposition` helper. Don't hand-roll a second one, and never blanket-catch: a bare `catch { notFound() }` converts CDA outages and expired tokens into silent 404s.
+The route-level pattern that turns this into correct 404-vs-500 behavior (catch, `isCompositionNotFound`, preview-hash reset) is in [`configure-csr-vs-ssr` § `fetchCompositionData` does not return "not found"](configure-csr-vs-ssr.md#resolve-composition-helper). Never blanket-catch: a bare `catch { notFound() }` converts CDA outages and expired tokens into silent 404s. Never decide from `hasSpec` or `hasTemplate` either: both are deprecated in studio-client 4.1.0, and `hasTemplate` is `false` for every Freeform page, so gating on it 404s them.
 
 <a id="editor-vs-ssr-url-derivation"></a>
 

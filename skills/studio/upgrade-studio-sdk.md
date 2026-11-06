@@ -74,6 +74,15 @@ The public `studio-react` exports gained three names and lost none. Most 1.9.0 c
 | Canvas tokens | `StudioCanvas` writes no design-token variables | `StudioCanvas` writes the token `:root` variables itself once mounted | Delete any `<style>{getSSRStyles(null)}</style>` on the canvas page: it now only causes a hydration error. `grep -rn 'getSSRStyles(null)' src app` | [`setup-section-preview`](setup-section-preview.md) |
 | Internal packages | `studio-client` 3.2, `studio-registry` 1.10 | `studio-client` 4.1, `studio-registry` 2.0 | Nothing, unless `package.json` pins one of them directly: then bump it in the same change (step 3) or you get two registries | Step 3 |
 
+### Moving to 2.0: what to clean up
+
+Do these as part of the move. Each is a deprecation or a workaround, not a break, so the site keeps working while you get to them.
+
+- **`extendQuery` is deprecated.** 2.0 still honours it and warns once in development. Linked content is fetched because the reference is switched on in the template (ticked in Studio, saved as `resolvedReferences`). Switch the references on in the template first, check the page still shows the linked fields, then remove `extendQuery`. Removing it first loses those fields. Its `only` half (extra fields, not references) has no confirmed replacement in 2.0.1. `grep -rn 'extendQuery' src app`. Details: [`setup-template-preview-routes`](setup-template-preview-routes.md) § Fetching referenced fields.
+- **Keep the stale-preview-hash line for now.** Up to and including 2.0.1, the SDK sets a request's preview hash on the shared stack and never clears it, so every server fetch needs `stack.livePreviewQuery({ live_preview: "" })` in front of it. The next release (in alpha now) clears the hash itself. Remove the line only once the site runs that release, not before. `grep -rn 'live_preview: ""' src app`. Details: [`configure-csr-vs-ssr`](configure-csr-vs-ssr.md) § A server with a preview token can serve drafts to visitors.
+- **`registerJSONRTE` and `registerEmbeddedEntryRenderer` are deprecated.** Use `registerRTERenderer` instead. `grep -rnE 'registerJSONRTE|registerEmbeddedEntryRenderer' src`. Details: [`register-json-rte`](register-json-rte.md).
+- **`@contentstack/delivery-sdk` and `@contentstack/live-preview-utils` are separate upgrades.** Moving `studio-react` to 2.0 doesn't require bumping either. Upgrade them on their own, one at a time, with their own CHANGELOGs and a smoke test each.
+
 ### Also check: rules older guides and code got wrong
 
 These behave the same on 1.9.0 and 2.0.1, so they are not 2.0 changes. Code copied from older versions of these guides often breaks them, and an upgrade is a good time to fix it. TypeScript reports the first four.
@@ -85,7 +94,6 @@ These behave the same on 1.9.0 and 2.0.1, so they are not 2.0 changes. Code copi
 | Lazy components register through `registerLazyComponent` | `registerComponent({ …, component: () => import("./X") })` (runs, but doesn't type-check) | `registerLazyComponent(config, () => import("./X").then((m) => m.X))`; the loader resolves to the component, not the module | `grep -rn 'component: () => import' src` | [`register-component`](register-component.md) § 5b |
 | The hook takes no `searchQuery` | `useCompositionData({ url, searchQuery })` | `useCompositionData({ url })`; it reads `window.location` itself | `grep -rn 'useCompositionData(' src app` | [`setup-template-preview-routes`](setup-template-preview-routes.md) |
 | `styles` is an object of style groups | `styles: [ … ]` | `styles: { default: …, <group>: … }`; `default` arrives as `className` | `grep -rn 'styles: \[' src` | [`register-component`](register-component.md) § 5c |
-| `extendQuery` is deprecated | relied on silently | Still honoured, warns in development; no documented replacement for its `only` half | `grep -rn 'extendQuery' src app` | [`register-component-prop-contracts`](register-component-prop-contracts.md) |
 | `refetchData` needs a connected composition | `refetchData` on every page | Fall back to `refetchSpec` on freeform compositions and before the first load | `grep -rn 'refetchData' src app` | [`csr-and-ssr-requirements`](csr-and-ssr-requirements.md) |
 
 **After the bump:** restart the dev server (a running server keeps the old registrations), run the type check, then the smoke tests in step 4. Check the Components panel on the canvas: a registration that fails at runtime drops out of the palette without an error on the page.

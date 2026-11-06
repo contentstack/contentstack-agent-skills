@@ -26,7 +26,7 @@ Do **not** use `node -e "require('@contentstack/studio-react/package.json')"`: t
 
 **Availability has two independent halves**: the SDK in your app and the Studio editor. The editor half (declared variables in the Data Picker, the `action` prop picker) is **not yet rolled out on every data center**, so a stack whose editor lacks it can't author BYOS even with a correct SDK build. Check the DC alongside the export: [`analyze-project-fit`](analyze-project-fit.md) § 2b.
 
-**`BYOS ABSENT` means stop.** Releases up to `1.7.0` are ABSENT; `1.8.0` and later ship it (checked on npm: 1.8.0's `index.d.ts` exports `registerGlobalStateVariables`, `studioState` and `useStudioState`). This chapter applies only to a build that ships it. Either obtain such a build, or fall back to component-local state (a plain `useState` inside one registered component, no author binding, no cross-component sharing) and say so explicitly. Don't emit `useStudioState` against a package that can't import it.
+**`BYOS ABSENT` means stop.** Releases up to `1.7.0` are ABSENT; `1.8.0` and later ship it (checked on npm: 1.8.0's `index.d.ts` exports `registerGlobalStateVariables`, `studioState` and `useStudioState`). That includes 2.0.x: 2.0 removed no `studio-react` exports (checked against 1.9.0; unchanged in 2.0.x per the 2.0.1 comparison in [`upgrade-studio-sdk`](upgrade-studio-sdk.md#upgrade-1-to-2)). The export check above still applies. This chapter applies only to a build that ships it. Either obtain such a build, or fall back to component-local state (a plain `useState` inside one registered component, no author binding, no cross-component sharing) and say so explicitly. Don't emit `useStudioState` against a package that can't import it.
 
 ## Context
 

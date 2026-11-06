@@ -10,7 +10,7 @@ Phrases: "nothing is clickable in Visual Editor", "Visual Builder opens but I ca
 
 # Make every field and list editable in Visual Editor
 
-Checked against `@contentstack/studio-react` 1.9.0 and `@contentstack/live-preview-utils` 4.5.3, in their code and on a rendered page (2026-10-07). Visual Editor works from the `data-cslp` edit tags in the page's HTML, so each check below is a count of tags, not a look at the page.
+Checked against `@contentstack/studio-react` 1.9.0 and `@contentstack/live-preview-utils` 4.5.3, in their code and on a rendered page (2026-10-07); unchanged in 2.0.x per the 1.9.0 → 2.0.1 comparison in [`upgrade-studio-sdk`](upgrade-studio-sdk.md#upgrade-1-to-2), which lists no change to edit tags or `fetchTemplateEntry`. Visual Editor works from the `data-cslp` edit tags in the page's HTML, so each check below is a count of tags, not a look at the page.
 
 ## 1. Live Preview must run in builder mode
 
@@ -59,7 +59,7 @@ Checked in the `live-preview-utils` code, not yet clicked through in Visual Edit
 
 A new entry holds only the fields someone has filled. A missing or `null` field gets no edit tag (tags are built from the entry's own keys) and its component shows the registered default ("Your text here"). An empty image is the worst case: a binding to `image.url` has nothing to tag. Two changes fix it, and both are needed:
 
-1. **Complete the entry.** `studioSdk.init({ fetchTemplateEntry })` (studio-react 1.9.0) receives `defaultFetch()`. Give every missing or `null` field an empty value from the content type schema: `""` for text, `{ url: "" }` for a file, `[]` for anything multiple, recursing into groups and blocks. Never touch existing values. The SDK tags the entry after this hook, so every field gets a tag.
+1. **Complete the entry.** `studioSdk.init({ fetchTemplateEntry })` (studio-react 1.9.0 and 2.0.x) receives `defaultFetch()`. Give every missing or `null` field an empty value from the content type schema: `""` for text, `{ url: "" }` for a file, `[]` for anything multiple, recursing into groups and blocks. Never touch existing values. The SDK tags the entry after this hook, so every field gets a tag.
    ```ts
    fetchTemplateEntry: async (ctx) => {
      const entry = await ctx.defaultFetch();

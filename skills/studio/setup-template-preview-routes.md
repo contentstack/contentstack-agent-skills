@@ -161,7 +161,7 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
      const searchQuery = new URLSearchParams(await searchParams).toString();
      // Unwrapped for clarity — this call THROWS when no composition matches, so
      // shipping it as-is returns 500 on every unclaimed URL. Step 5a (iii) has
-     // the production form using resolveComposition.
+     // the production form, with the catch and the preview-hash reset.
      const specOptions = await sdk.fetchCompositionData({ url, searchQuery });
      return <StudioRender specOptions={specOptions} />;
    }
@@ -181,7 +181,7 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
    }
    ```
 
-   `specOptions` is required and typed: a visitor render always has the object `resolveComposition` returned, and the editor branch builds a complete one with `spec: null`. Don't loosen it to `any` to make the editor branch compile.
+   `specOptions` is required and typed: a visitor render always has the object the fetch returned, and the editor branch builds one with `spec: null`. Don't loosen the prop to `any` to make the editor branch compile.
 
    **App Router CSR variant (SPAs only (no SEO requirement)**) emit at `app/_components/LinkedRoute.tsx`, marked `"use client"`. Skip this for any visitor-facing site. The SSR pattern above is the default:
 
@@ -206,7 +206,7 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
 
    - **The query string carries editor mode.** When Studio's iframe loads the template URL, it appends its params (`cs-composable-studio`, `hash`, locale, variant). On the server, forward the raw request query string as `searchQuery` (a string or `URLSearchParams`; both type-check), never a subset. In the browser `useCompositionData` takes no `searchQuery`: its first argument accepts only `url`, `composableUid` or `templateContentTypeUid`, and it reads `window.location` itself.
    - **Return an empty `<div />` (not `null`) when there's no spec.** Studio's canvas host queries the mount target after route render. If there's nothing in the DOM it can't drive it, and Studio shows "SDK Not Initialized" or a blank error. An empty div gives it something to attach to. **In wildcard mode this applies to the editor iframe only**, for real visitors the no-spec branch must render the 404 page instead, or the site never 404s. Step 5a (iii) has the gated version. Use that one.
-   - **No `extendQuery`.** It is deprecated in studio-react 2.x: still honoured, but it logs `[studio] extendQuery is deprecated … Tick the references in Studio instead` in development and goes away in the next major. References now travel with the composition, see § Fetching referenced fields below.
+   - **Linked content comes from the template, not the fetch.** A referenced entry's fields are fetched because the reference is switched on in the template (ticked in Studio, saved as `resolvedReferences`). The fetch takes no option for it. See § Fetching referenced fields below.
 
 5. **Register the catch-all route: pick `[...slug]` vs `[[...slug]]` based on existing app pages.**
 
@@ -343,16 +343,17 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
 
    The catch-all now owns unmatched URLs, so "no composition for this URL" is the site's 404 path. **Reuse the project's existing not-found page** (`app/not-found.tsx`, `pages/404.tsx`, the app's `NotFound` component, or the per-locale one under `app/[locale]/`). Create a new file only when none exists. **But the same no-spec condition happens legitimately inside Studio's iframe** for a template that hasn't been saved yet. 404 unconditionally and every unsaved template shows your 404 page in the canvas ("Template Did Not Load"). Gate on editor mode with `isStudioEditorMode`, imported from `@contentstack/studio-react` (§ Editor-mode detection below).
 
-   **`fetchCompositionData` throws on a miss. It does not resolve with an empty spec.** A guard like `if (!specOptions?.spec) notFound()` never runs on the path it was written for. The `await` rejects first and the visitor gets a **500 instead of your 404 page**. Use the canonical [`resolveComposition`](configure-csr-vs-ssr.md#resolve-composition-helper) wrapper (it clears a stale preview hash, classifies a miss as 404 and rethrows real failures), don't hand-roll a second one, and never blanket-catch.
+   **`fetchCompositionData` throws on a miss. It does not resolve with an empty spec.** A guard like `if (!specOptions?.spec) notFound()` never runs on the path it was written for. The `await` rejects first and the visitor gets a **500 instead of your 404 page**. Catch the error and call `isCompositionNotFound(err)`: `true` is a 404, `false` is a real failure that must stay a 500. Never blanket-catch, and never decide from the returned object. Clear the shared stack's preview hash before the fetch ([`configure-csr-vs-ssr`](configure-csr-vs-ssr.md#resolve-composition-helper) explains both).
 
    **Next.js App Router**: 404 for visitors, empty mount target for the editor:
 
    ```tsx
    // app/[...slug]/page.tsx (or [[...slug]])
    import { notFound } from "next/navigation";
-   import { isStudioEditorMode } from "@contentstack/studio-react";
-   import { sdk } from "@/lib/contentstack";
-   import { resolveComposition } from "@/lib/resolve-composition";
+   import {
+     isCompositionNotFound, isStudioEditorMode, type StudioComponentSpecOptions,
+   } from "@contentstack/studio-react";
+   import { sdk, stack } from "@/lib/contentstack";
    import { StudioRender } from "./StudioRender";
 
    type Props = {
@@ -360,26 +361,30 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
      searchParams: Promise<Record<string, string>>;
    };
 
+   // The editor's empty page: a null spec (not undefined: that crashes) asks
+   // Studio for the draft. Cast, because the type still lists deprecated fields.
+   function editorDraft(url: string, query: URLSearchParams) {
+     return {
+       spec: null, seo: null,
+       fetchOptions: { config: sdk.getConfig(), compositionQuery: { url },
+         searchQuery: query.toString(), options: {}, mode: "edit" },
+     } as StudioComponentSpecOptions;
+   }
+
    export default async function Page({ params, searchParams }: Props) {
      const { slug } = await params;
      const url = "/" + (slug ?? []).join("/");
      const query = new URLSearchParams(await searchParams);
 
-     // Throws on CDA/token/network failure (correctly → 500); returns notFound
-     // only when the SDK established there is no composition here.
-     const { specOptions, notFound: miss } = await resolveComposition(sdk, {
-       url,
-       searchQuery: query.toString(),
-     });
-
-     if (miss) {
-       // In Studio's iframe an unsaved template legitimately has no published spec —
+     stack.livePreviewQuery({ live_preview: "" }); // shared stack: drop the last request's preview hash
+     let specOptions: StudioComponentSpecOptions;
+     try {
+       specOptions = await sdk.fetchCompositionData({ url, searchQuery: query.toString() });
+     } catch (err) {
+       if (!isCompositionNotFound(err)) throw err;   // CDA/token/network failure → 500
+       // In Studio's iframe an unsaved template legitimately misses —
        // 404ing here is what produces "Template Did Not Load" in the canvas.
-       // A null spec (not undefined: that crashes) asks Studio for the draft.
-       if (isStudioEditorMode(query)) return <StudioRender specOptions={{
-         spec: null, hasSpec: false, hasTemplate: false, seo: null,
-         fetchOptions: { config: sdk.getConfig(), compositionQuery: { url },
-           searchQuery: query.toString(), options: {}, mode: "edit" } }} />;
+       if (isStudioEditorMode(query)) return <StudioRender specOptions={editorDraft(url, query)} />;
        notFound();   // real visitor → app/not-found.tsx
      }
      return <StudioRender specOptions={specOptions} />;
@@ -387,6 +392,10 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
    ```
 
    On the server `isStudioEditorMode` must be handed the request's params, as here. Called with no argument it reads `window.location`, and on the server it always answers `false`.
+
+   Call `notFound()` in `catch`, never inside `try`: it works by throwing, so your own `catch` would swallow it.
+
+   **Older SDKs (deprecated).** `hasSpec` and `hasTemplate` are deprecated in studio-client 4.1.0, which is why `editorDraft` casts instead of filling them in. Never decide a 404 from either: `hasTemplate` is `false` for every Freeform page, so gating on it 404s them. Earlier versions of this guide fetched through a hand-written `resolveComposition` helper; on 2.x the catch above replaces it ([`configure-csr-vs-ssr`](configure-csr-vs-ssr.md#resolve-composition-helper)).
 
    **Test the 404 with two URLs, not one.** `/definitely-not-a-page` fails at pattern match (`NO_COMPOSITION_FOR_URL`). A bad slug under a connected template (`/blog/zzz-not-an-entry`) matches the pattern and fails later at entry lookup (`URL_MATCHED_NO_ENTRY`). `isCompositionNotFound` covers both; a hand-rolled list that knows only the first still 500s on every mistyped slug. Full taxonomy: [`troubleshoot-composition-resolution` § Runtime error taxonomy](troubleshoot-composition-resolution.md).
 
@@ -411,6 +420,7 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
    import { useLocation } from "react-router-dom";
    import {
      StudioComponent, useCompositionData, isCompositionNotFound, isStudioEditorMode,
+     type StudioComponentSpecOptions,
    } from "@contentstack/studio-react";
    import { sdk } from "./lib/contentstack";
    import NotFound from "./pages/NotFound";   // the app's EXISTING 404 page — reuse it
@@ -430,9 +440,10 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
      if (error || !specOptions?.spec) {
        // Editor iframe, unsaved template: null-spec options as in App Router (not 404, not <div />).
        if (isStudioEditorMode(searchParams)) return <StudioComponent specOptions={{
-         spec: null, hasSpec: false, hasTemplate: false, seo: null,
+         spec: null, seo: null,
          fetchOptions: { config: sdk.getConfig(), compositionQuery: { url: pathname },
-           searchQuery: searchParams.toString(), options: {}, mode: "edit" } }} />;
+           searchQuery: searchParams.toString(), options: {}, mode: "edit" },
+       } as StudioComponentSpecOptions} />;
        return <NotFound />;
      }
      return <StudioComponent specOptions={specOptions} />;
@@ -461,7 +472,7 @@ Fix, in order: (1) a route in the app matches the template's URL, (2) that route
 
    **Wildcard mode: three more checks. A pass on 1-4 says nothing about these. On a localized app repeat 5 to 7 once per locale, at each locale's Base URL:**
    5. **Chrome.** The rendered template URL shows the site header and footer, exactly once each.
-   6. **404: two URLs, both must return 404 and neither may 500.** (a) `http://localhost:5173/definitely-not-a-page`, fails at pattern match. (b) A valid prefix with a bad slug under a connected template, e.g. `/blog/zzz-not-an-entry`, matches the pattern and fails later at entry lookup, with a different error id. A 500 on either means the fetch isn't wrapped ([`resolveComposition`](configure-csr-vs-ssr.md#resolve-composition-helper)). A blank page or empty div means the no-spec branch never got the 404 wiring from step 5a (iii).
+   6. **404: two URLs, both must return 404 and neither may 500.** (a) `http://localhost:5173/definitely-not-a-page`, fails at pattern match. (b) A valid prefix with a bad slug under a connected template, e.g. `/blog/zzz-not-an-entry`, matches the pattern and fails later at entry lookup, with a different error id. A 500 on either means the fetch's error isn't caught and checked with `isCompositionNotFound` ([`configure-csr-vs-ssr`](configure-csr-vs-ssr.md#resolve-composition-helper)). A blank page or empty div means the no-spec branch never got the 404 wiring from step 5a (iii).
    7. **Editor exemption.** Create a template and open it in Studio WITHOUT saving. The canvas renders it. If the 404 page appears there instead, the `isStudioEditorMode` gate is missing or reading the wrong params.
 
 8. **Print next steps verbatim:**
@@ -528,9 +539,10 @@ Many apps already own a catch-all (`app/[...slug]/page.tsx` serving CMS pages, a
 ```tsx
 // app/[...slug]/page.tsx — the app's EXISTING catch-all, with Studio chained in
 import { notFound } from "next/navigation";
-import { isStudioEditorMode } from "@contentstack/studio-react";
-import { sdk } from "@/lib/contentstack";            // lib/studio on the minimal-add branch
-import { resolveComposition } from "@/lib/resolve-composition";
+import {
+  isCompositionNotFound, isStudioEditorMode, type StudioComponentSpecOptions,
+} from "@contentstack/studio-react";
+import { sdk, stack } from "@/lib/contentstack";     // lib/studio on the minimal-add branch
 import { getCmsPage, CmsPage } from "@/lib/cms";     // the app's own lookup and page — unchanged
 import { StudioRender } from "./StudioRender";
 
@@ -550,23 +562,22 @@ export default async function Page({ params, searchParams }: Props) {
   // 2. A Studio composition. Read searchParams only here, so the app's own
   //    pages above never touch it.
   const query = new URLSearchParams(await searchParams);
-  const { specOptions, notFound: miss } = await resolveComposition(sdk, {
-    url,
-    searchQuery: query.toString(),
-  });
-  if (!miss) return <StudioRender specOptions={specOptions} />;
-
-  // 3. Neither: Studio's editor iframe gets the draft (step 5a iii), visitors
-  //    get the app's own 404.
-  if (isStudioEditorMode(query)) return <StudioRender specOptions={{
-    spec: null, hasSpec: false, hasTemplate: false, seo: null,
-    fetchOptions: { config: sdk.getConfig(), compositionQuery: { url },
-      searchQuery: query.toString(), options: {}, mode: "edit" } }} />;
-  notFound();
+  stack.livePreviewQuery({ live_preview: "" }); // shared stack: drop the last request's preview hash
+  let specOptions: StudioComponentSpecOptions;
+  try {
+    specOptions = await sdk.fetchCompositionData({ url, searchQuery: query.toString() });
+  } catch (err) {
+    if (!isCompositionNotFound(err)) throw err; // a real failure stays a 500
+    // 3. Neither: Studio's editor iframe gets the draft, visitors get the
+    //    app's own 404. Copy editorDraft from step 5a (iii) into this file.
+    if (isStudioEditorMode(query)) return <StudioRender specOptions={editorDraft(url, query)} />;
+    notFound();
+  }
+  return <StudioRender specOptions={specOptions} />;
 }
 ```
 
-- **Keep the app's branch byte-for-byte.** Its data fetching, `generateStaticParams` and `generateMetadata` stay as they are. Chain `generateMetadata` the same way: the app's metadata when its page exists, else `specOptions.seo` from `resolveComposition`, else `{}`.
+- **Keep the app's branch byte-for-byte.** Its data fetching, `generateStaticParams` and `generateMetadata` stay as they are. Chain `generateMetadata` the same way: the app's metadata when its page exists, else `specOptions.seo` from the Studio fetch, else `{}` (catch the fetch's error there too).
 - **Read `searchParams` only in the Studio branch.** Awaiting it opts that render into dynamic rendering. Reading it after the app's branch has returned keeps the app's own pages rendering the way they did (static or ISR); only URLs that fall through to Studio become dynamic ([`configure-csr-vs-ssr` § Static generation and caching](configure-csr-vs-ssr.md#static-generation-and-caching)).
 - **The 404 is still the app's.** `notFound()` renders the existing `not-found.tsx`. If the app's branch used to call `notFound()` itself on a miss, move that call to step 3.
 - **React Router `path="*"` page route:** same order inside its element. Run the app's lookup, then `useCompositionData({ url: pathname })`, then the existing not-found UI, with the editor exemption from step 5a (iii).
@@ -591,16 +602,13 @@ The param names are an internal contract between Studio and the SDK, which is wh
 
 <a id="fetching-referenced-fields"></a>
 
-## Fetching referenced fields: `extendQuery` is deprecated
+## Fetching referenced fields: switch the reference on in the template
 
-Older snippets passed `extendQuery: { <ct_uid>: { includeReferences, only } }` to widen the entry fetch. In studio-react 2.x it is deprecated and slated for removal in the next major. It still works, but in development it logs once: *"[studio] `extendQuery` is deprecated … Tick the references in Studio instead — they are saved with the composition."*
+**Linked content is fetched because the reference is switched on in the template.** An author ticks the reference in Studio on the data source, and Studio saves it with the composition as `resolvedReferences`. The SDK applies that saved set to the request it belongs to (the template entry, or a pinned entry). The fetch call takes no option for it.
 
-What replaces it:
+- **Compositions written by API** carry the same saved set in the composition entry's `data_sources`, under the data source's `resolvedReferences`. List every reference path the composition's parts read. The canonical shape is in [`author-composition-entry`](author-composition-entry.md) and [`resolve-reference-depth`](resolve-reference-depth.md); this skill doesn't restate it. No API exists to "tick" references other than writing that field. When it's ambiguous for your SDK version, author the reference once in Studio, read the saved entry back with the CMA, and copy that shape.
 
-- **Bindings decide the fetch.** The SDK derives `include[]` paths from what the composition binds, so a bound referenced field is fetched without any app-side option.
-- **References the bindings don't name are ticked in Studio** on the data source and saved with the composition. The SDK applies the saved set to the request it belongs to (the template entry, or a pinned entry).
-- **Compositions written by API** carry the same saved set in the composition entry's `data_sources`, under the data source's `resolvedReferences`. The canonical shape is in [`author-composition-entry`](author-composition-entry.md) and [`resolve-reference-depth`](resolve-reference-depth.md); this skill doesn't restate it. No API exists to "tick" references other than writing that field. When it's ambiguous for your SDK version, author the reference once in Studio, read the saved entry back with the CMA, and copy that shape.
-- **Extra fields, not references** (the `only` half of `extendQuery`): no Studio-side or API replacement is documented as of 2.0.1. Prefer one binding per field, and keep `extendQuery.only` to the components that truly need a whole entry ([`migrate-page-to-studio` § Studio fetches only the fields your bindings name](migrate-page-to-studio.md)).
+**`extendQuery` is deprecated** (confirmed by the Studio team). Older snippets passed `extendQuery: { <ct_uid>: { includeReferences, only } }` to `fetchCompositionData` to widen the entry fetch. 2.x still honours it and logs a deprecation warning once in development, and it goes away in a later major. Don't add it to new code. A site that passes it today should switch the references on in the template, check the page still shows the linked fields, then remove it. Its `only` half (extra fields, not references) has no documented replacement as of 2.0.1: prefer one binding per field ([`migrate-page-to-studio` § Studio fetches only the fields your bindings name](migrate-page-to-studio.md)).
 
 ## Environment Base URL: must be reachable + include locale segment
 
@@ -637,7 +645,9 @@ Run this against the **exact composed address** Studio uses (env base URL + comp
 
 ## Bare `{{entry.url}}` catch-all: hazard once a second template exists
 
-A composition `url` of just `{{entry.url}}` (no literal prefix) matches **every** path. With one template that's convenient. Add a second and the bare pattern usually wins or ties on specificity, so URLs you meant for the new template resolve to the old one, and ties break deterministically-but-arbitrarily by `composable_uid`, so it can look random across machines.
+A composition `url` of just `{{entry.url}}` (no literal prefix) matches **every** path. With one template that's convenient. Add a second and the bare pattern can tie with it or catch URLs you meant for the new template.
+
+How the SDK picks between templates that match the same address: the pattern with more fixed text wins. On a tie, a Freeform template always counts as owning the address, and a Connected one only when its content type has an entry there. The first that qualifies, in the order the templates are fetched, wins. That order isn't something you set, so a tie can look random.
 
 Give every template at least one literal segment (`/blog/{{entry.url}}`, `/rewards`). If a genuine site-wide fallback is wanted, keep exactly one bare pattern and make every other template more specific. Diagnosis + ranking mechanics: [`troubleshoot-composition-resolution`](troubleshoot-composition-resolution.md) § Symptom-to-stage matrix (rows on specificity ties and bare placeholders).
 
@@ -671,7 +681,7 @@ Analytics / commerce embeds that `throw` on failure show up as scary-but-harmles
 | Header/footer vanish on Studio-rendered pages | They were imported per `page.tsx` / per page component, and the catch-all replaced those files | Lift chrome into the layout (Next `app/layout.tsx`) or a React Router layout route wrapping the catch-all, step 5a (ii) |
 | Header and footer render twice | Code layout renders them AND the template has Header/Footer Sections on it | One owner only. Strip whichever side isn't the chosen `chromeOwner` |
 | Site chrome wraps the `/canvas` section-authoring iframe | `/canvas` was nested inside the chrome layout, so every Section is authored inside a full page header + footer: spacing, sticky positioning, and viewport measurements all read wrong | Register `/canvas` outside the chrome layout (React Router). Next.js: the chrome gate in the root layout ([`setup-section-preview`](setup-section-preview.md) step 2), since a route group can't escape the root layout |
-| Unmatched URLs render blank instead of 404ing | The no-spec branch returns an empty `<div />`, correct for the editor iframe, wrong for visitors, and the catch-all now owns every unmatched URL | Gate on `isStudioEditorMode`: empty div in the editor, 404 page for visitors, step 5a (iii) |
+| Unmatched URLs render blank instead of 404ing | The no-spec branch returns an empty `<div />`, correct for the editor iframe, wrong for visitors, and the catch-all now owns every unmatched URL | Gate on `isStudioEditorMode`: the editor's empty page (`editorDraft`) in the editor, 404 page for visitors, step 5a (iii) |
 | Unsaved templates show the 404 page inside Studio's canvas ("Template Did Not Load") | The 404 fires unconditionally on no-spec. An unsaved template legitimately has no published spec | Same gate, other direction. Import `isStudioEditorMode` from `@contentstack/studio-react` and pass it the request's params on the server (§ Editor-mode detection) |
 | React Router: the app's `<Route path="*" element={<NotFound />} />` left in place | Both it and the Studio catch-all are `path="*"`. First match wins, so one of them is dead code, usually the 404 | Remove the old route. Render `NotFound` from `LinkedRoute`'s visitor no-spec branch |
 

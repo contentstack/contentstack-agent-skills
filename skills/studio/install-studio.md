@@ -84,7 +84,7 @@ Before doing anything destructive, check whether the user already has `@contents
 - Search for `Contentstack.stack({` or `contentstack.stack({`. The existing stack factory is what to reuse.
 - Search for `ContentstackLivePreview.init(`. If present, do NOT call `init()` again. Doing so double-initializes the channel.
 - Add `@contentstack/studio-react` only.
-- Create a SEPARATE module (e.g. `lib/studio.ts`) that imports the existing `stack` and calls `studioSdk.init({ stackSdk: stack, contentTypeUid: "<studioContentTypeUid>", cslp: { appendTags: true } })`, using the uid resolved in § 0c. Export `sdk`, and export the stack it passed as `stack`: [`resolveComposition`](configure-csr-vs-ssr.md#resolve-composition-helper) imports it (step 6b). This branch needs § 0c exactly as much as the greenfield one does.
+- Create a SEPARATE module (e.g. `lib/studio.ts`) that imports the existing `stack` and calls `studioSdk.init({ stackSdk: stack, contentTypeUid: "<studioContentTypeUid>", cslp: { appendTags: true } })`, using the uid resolved in § 0c. Export `sdk`, and export the stack it passed as `stack`: every server route clears the preview hash on it before fetching (step 6b). This branch needs § 0c exactly as much as the greenfield one does.
 - Do not modify the existing `lib/contentstack.ts` (or equivalent module).
 
 The full emit would clobber a custom stack factory. If NEITHER package is installed, proceed with the greenfield emit below.
@@ -461,36 +461,12 @@ curl -s "https://<studio-api-host>/v1/projects" \
 
    `export const sdk = studioSdk.init(...)`: the return value is the live SDK that downstream skills call (`sdk.fetchCompositionData(...)`). The `studioSdk` namespace export is un-initialized.
 
-6b. **Create `lib/resolve-composition.ts` next to the init file, on every branch.** Every server route fetches through it. It does two things a bare `sdk.fetchCompositionData` call doesn't:
+6b. **Export the stack next to `sdk`, on every branch.** Server routes import both from the init module and need the stack for two things a bare `await sdk.fetchCompositionData(...)` misses:
 
-   - **Clears the last request's preview hash off the shared stack.** The stack above lives for the whole server process. The SDK sets a request's `hash` on it but never clears it, so after one Studio preview every later visitor is served that session's drafts until restart. Reproduced on a live app.
-   - **Turns a miss into a 404 and leaves real failures as 500s**, via `isCompositionNotFound`.
+   - **Clear the last request's preview hash off the shared stack.** The stack above lives for the whole server process. The SDK sets a request's `hash` on it but never clears it (up to and including 2.0.1), so after one Studio preview every later visitor is served that session's drafts until restart. Reproduced on a live app. Each route calls `stack.livePreviewQuery({ live_preview: "" })` before its fetch.
+   - **Turn a miss into a 404 and leave real failures as 500s.** Each route catches the fetch's error and calls `isCompositionNotFound(err)` from `@contentstack/studio-react`.
 
-   ```ts
-   // lib/resolve-composition.ts — server-only
-   import { isCompositionNotFound, type studioSdk } from "@contentstack/studio-react";
-   // The Delivery stack your Studio sdk was initialized with (`stackSdk`). On the
-   // minimal-add branch that module is lib/studio.ts.
-   import { stack } from "@/lib/contentstack";
-
-   type StudioSdk = ReturnType<typeof studioSdk.init>;
-   type FetchArgs = Parameters<StudioSdk["fetchCompositionData"]>;
-
-   export async function resolveComposition(sdk: StudioSdk, args: FetchArgs[0], opts: FetchArgs[1] = {}) {
-     // Clearing first is always safe: when this request carries a hash, the SDK
-     // sets it again itself.
-     stack.livePreviewQuery({ live_preview: "" });
-     try {
-       const specOptions = await sdk.fetchCompositionData(args, opts);
-       return { specOptions, notFound: false as const };
-     } catch (err) {
-       if (isCompositionNotFound(err)) return { specOptions: null, notFound: true as const };
-       throw err;   // real failure — must stay a 500
-     }
-   }
-   ```
-
-   This is the canonical helper from [`configure-csr-vs-ssr` § resolveComposition](configure-csr-vs-ssr.md#resolve-composition-helper), which explains both halves. Vite SPAs fetch in the browser with `useCompositionData` and don't need it until they add a server render.
+   The route-level pattern, and why both halves matter, is in [`configure-csr-vs-ssr` § `fetchCompositionData` throws](configure-csr-vs-ssr.md#resolve-composition-helper). No helper file is needed on SDK 2.x. Vite SPAs fetch in the browser with `useCompositionData` and need neither until they add a server render.
 
 7. **Create `.env.local`** (gitignored) with the collected values:
    ```
@@ -621,7 +597,7 @@ This skill succeeds only when ALL of the following are true. If any fails, do no
 - [ ] Delivery credentials passed the delivery read; preview credentials passed `verify-setup` Layer 6 on the preview host. These are separate checks.
 - [ ] The target environment has a non-empty Base URL for **every locale the app serves** (asserted from the `environments` pre-flight — the default locale alone is not enough on a localized app), or the user was told which locales are missing and stopped
 - [ ] `src/lib/contentstack.ts` (or framework equivalent) exists with the three SDK inits
-- [ ] On a server-rendering framework, `lib/resolve-composition.ts` exists (step 6b), imports the same `stack` the init passed as `stackSdk`, and clears the preview hash before each fetch
+- [ ] On a server-rendering framework, the init module exports the same `stack` it passed as `stackSdk` (step 6b), and every server fetch clears the preview hash on it first
 - [ ] **`cslp: { appendTags: true }` is set in `studioSdk.init`**. Every Studio project is a Visual Editor project. With this off or absent, `studioAttributes` and every `$`-twin arrive empty across the whole app and no component-level fix helps. See [`complete-the-build`](complete-the-build.md) item 1.
 - [ ] Live Preview init is wrapped in **try/catch** and the `live_preview` block on the stack is **conditional on a non-empty preview token**
 - [ ] **A Studio project was resolved from an actual `GET /v1/projects` listing, not assumed.** With 2+ projects the user picked; with exactly 1 it was named back to them. Its `connectedStackApiKey` equals `<stackApiKey>`

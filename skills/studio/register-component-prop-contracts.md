@@ -31,6 +31,8 @@ This is the **preferred path** for wrapping an existing production component who
 
 **Bindable: `type: "object"` bound to a matching entry Group / Global Field.** Same idea for a single-entry-object shape (a nested `cta: { label, href }` binding into an entry Group with matching sub-fields). Groups live on the entry, no `resolvedReferences` step.
 
+**From SDK 2.0, an `object` prop must declare `properties`.** The same holds for a group, a global field, or a modular block bound as an object. List each sub-field the component reads (`cta: { type: "object", properties: { label: { type: "string" }, href: { type: "href" } } }`).
+
 **When array/object won't fit: reach for the Repeater or the adapter pattern.** If the list iterates a **Modular Block** (polymorphic, each item can be a different block type), template authors need to **swap a different child Section per template instance**, or the production leaf's shape doesn't reduce cleanly to array-item scalars, use one of:
 
 - **`build-repeating-section`**: greenfield parent+child+Repeater pattern with a Section Slot for template-author swaps.
