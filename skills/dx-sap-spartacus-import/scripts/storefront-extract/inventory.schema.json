@@ -1,0 +1,149 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://contentstack/sap-spartacus/inventory.schema.json",
+  "title": "Storefront Content Inventory",
+  "description": "Normalized output of storefront-extract. The single contract consumed by content-model, cs-seed, and verify. One file per baseSite.",
+  "type": "object",
+  "required": [
+    "schemaVersion", "site", "primaryLanguage", "languages", "counts",
+    "componentTypeInventory", "slots", "contentPages", "navigation",
+    "i18n", "mediaManifest"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "site": { "type": "string", "description": "baseSite uid, e.g. electronics-spa" },
+    "source": { "type": "string", "description": "OCC base url the inventory was read from" },
+    "catalogVersion": { "type": "string", "description": "Online (published) unless overridden" },
+    "primaryLanguage": { "type": "string" },
+    "languages": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+
+    "counts": {
+      "type": "object",
+      "required": ["contentPages", "componentTypes", "componentInstances"],
+      "properties": {
+        "contentPages": { "type": "integer" },
+        "layoutSamples": { "type": "integer" },
+        "uniqueSlots": { "type": "integer" },
+        "sharedSlots": { "type": "integer" },
+        "componentTypes": { "type": "integer" },
+        "componentInstances": { "type": "integer" },
+        "navigationNodes": { "type": "integer" },
+        "mediaAssets": { "type": "integer" }
+      }
+    },
+
+    "componentTypeInventory": {
+      "type": "object",
+      "description": "typeCode -> {instances, fields[]}. Used to diff against the registry to find unknown types (Gate 1).",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["instances", "fields"],
+        "properties": {
+          "instances": { "type": "integer" },
+          "fields": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+
+    "slots": {
+      "type": "object",
+      "description": "slotId -> slot metadata. shared=true marks a global slot reused across pages.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "position": { "type": ["string", "null"] },
+          "shared": { "type": ["boolean", "string", "null"] },
+          "name": { "type": ["string", "null"] },
+          "firstSeenOn": { "type": "string" }
+        }
+      }
+    },
+
+    "contentPages": {
+      "type": "object",
+      "description": "page label -> normalized page.",
+      "additionalProperties": { "$ref": "#/definitions/page" }
+    },
+
+    "layoutSamples": {
+      "type": "object",
+      "description": "One representative Product/Category page each (layout structure only; records stay in commerce).",
+      "additionalProperties": { "$ref": "#/definitions/page" }
+    },
+
+    "navigation": {
+      "type": "object",
+      "description": "navigationNode uid -> raw resolved node tree (children + entry references). Captured now; activated in registry v0.2.",
+      "additionalProperties": { "type": "object" }
+    },
+
+    "i18n": {
+      "type": "object",
+      "description": "language -> { componentUid -> { field -> localized string } } for non-primary languages.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+
+    "mediaManifest": {
+      "type": "object",
+      "description": "media code -> {url, mime, altText, bytes?}. url needs the host prefix and carries the ?context= download token.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["url"],
+        "properties": {
+          "url": { "type": ["string", "null"] },
+          "mime": { "type": ["string", "null"] },
+          "altText": { "type": ["string", "null"] },
+          "bytes": { "type": "integer" }
+        }
+      }
+    },
+
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+
+  "definitions": {
+    "page": {
+      "type": "object",
+      "required": ["label", "template", "slots"],
+      "properties": {
+        "label": { "type": ["string", "null"] },
+        "uid": { "type": ["string", "null"] },
+        "title": { "type": ["string", "null"] },
+        "template": { "type": ["string", "null"] },
+        "typeCode": { "type": ["string", "null"] },
+        "robotTag": { "type": ["string", "null"] },
+        "slots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["slotId", "components"],
+            "properties": {
+              "slotId": { "type": ["string", "null"] },
+              "position": { "type": ["string", "null"] },
+              "shared": { "type": ["boolean", "string", "null"] },
+              "components": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["typeCode"],
+                  "properties": {
+                    "uid": { "type": ["string", "null"] },
+                    "typeCode": { "type": "string" }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
