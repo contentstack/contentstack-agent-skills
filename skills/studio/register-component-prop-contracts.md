@@ -48,6 +48,28 @@ The narrow non-CMS use for `type: "array"` / `type: "object"` remains: authoring
 
 `build-section` Step 5e enforces this at bind time. Catching it at registration saves a round trip.
 
+### Lists passed as a prop
+
+An array prop renders, but its items are only editable in Visual Editor if the component spreads their tags. Studio sends `$<prop>` for the whole list and `$<prop>Items`, an array with one tag per item. Spread `$<prop>` on the list's wrapper and `$<prop>Items[i]` on each item's element. Declare both:
+
+```tsx
+import type { Cslptag } from "@contentstack/studio-react";
+
+interface GalleryProps {
+  images?: { url?: string; description?: string }[];
+  $images?: Cslptag;
+  $imagesItems?: Cslptag[];
+}
+```
+
+```tsx
+<ul {...$images}>
+  {images.map((img, i) => <li key={img.url ?? i} {...$imagesItems?.[i]}>…</li>)}
+</ul>
+```
+
+Fields inside each item carry their own tags under `item.$`. The full pattern, and a **known issue** with the per-item tag format in studio-registry 2.0.1 (add, move and delete may not work on a list passed as a prop yet), are in [`register-component-cslp` § Lists passed as a prop](register-component-cslp.md#lists-passed-as-a-prop).
+
 ## Studio fetches only the fields your bindings name
 
 On the live site the SDK does not fetch whole entries. It builds the Delivery API query from the composition's bindings: `include[]` for the references they cross, and an `only[]` projection listing the fields they name. **Inside the Studio canvas and Visual Builder it skips the projection and fetches every field.** So a component that reads fields no binding names renders correctly while you author, then receives a stripped object on the published page: a product card bound to a whole referenced entry got `{ uid }` with no title, price or images, and nothing logged an error.

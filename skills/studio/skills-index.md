@@ -46,8 +46,8 @@ If the user's message contains any phrase in the left column, Read the skill in 
 | register component, add my React component to Studio, palette missing my components, no thumbnail on my components, palette shows text placeholder instead of image | `register-component` |
 | array prop binding rules, object prop shape, imageurl accepts string or object, link prop leaves, entry.title not resolving | `register-component-prop-contracts` |
 | component must be layout-agnostic, null-safe rendering, component breaks when binding is empty | `register-component-render-contracts` |
-| cslp tags, dollar props, studioAttributes contract, values not editable in Visual Editor | `register-component-cslp` |
-| nothing clickable in Visual Editor, Visual Builder stuck on "Initializing the editor", can't add / reorder / delete list items in Visual Editor, no "+" on an empty list, new entry shows "Your text here" or its fields can't be clicked, image under an overlay can't be selected | `make-visual-editor-editable` |
+| cslp tags, dollar props, studioAttributes contract, values not editable in Visual Editor, list passed as a prop not editable, `$<prop>Items`, tags inside listed entries (`item.$`), passing tags down to child components | `register-component-cslp` |
+| nothing clickable in Visual Editor, Visual Builder stuck on "Initializing the editor", can't add / reorder / delete list items in Visual Editor, items of a list passed as a prop (array prop) can't be clicked, no "+" on an empty list, new entry shows "Your text here" or its fields can't be clicked, image under an overlay can't be selected | `make-visual-editor-editable` |
 | component registered but not in palette, registration fails silently, registration pitfalls | `register-component-pitfalls` |
 | register JSON RTE, render json_rte, **HTML RTE, rich text field, markdown field, RichText component, rich text renders as raw HTML, RTE shows `<p>` tags as text, rich text renders blank, embedded entries in RTE, embedded assets in RTE, embed a card inside rich text, custom element type in RTE, registerRTERenderer, registerJSONRTE deprecated** | `register-json-rte` |
 | BYOC, use my components in Studio, Studio with my design system | `byoc-end-to-end` |
@@ -253,7 +253,7 @@ Grouped by intent. Use when the user's message is Studio-shaped but no trigger p
 - **embed-composition**: embed ONE editable region in a code-owned page via `useCompositionData({ compositionUid })`.
 - **resolve-reference-depth**: walk a reference chain one hop at a time by declaring each hop's path, then stop and ask the user for a path, an entry uid or a depth as soon as a path cannot be derived. Why `include_all_depth` measured inert, why `include[]` takes schema paths rather than payload paths, and telling an unresolved stub apart from genuinely empty content.
 - **resolve-reference-depth-pitfalls**: `error_code 141` and the pitfall table for walking reference depth.
-- **make-visual-editor-editable**: builder mode, list tags (`<field>` and `<field>.<N>`) so items can be added, moved and deleted, the empty-list "+", new entries editable before anyone types (`fetchTemplateEntry`), and overlays that block selection.
+- **make-visual-editor-editable**: builder mode, list tags (`<field>` and `<field>.<N>`) so items can be added, moved and deleted, for a Repeater and for a list passed as a prop (`$<prop>` and `$<prop>Items`), the empty-list "+", new entries editable before anyone types (`fetchTemplateEntry`), and overlays that block selection.
 
 ### 12. Author by API — start here and the contract
 

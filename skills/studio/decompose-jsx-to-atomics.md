@@ -189,6 +189,14 @@ Three rules that follow, and they are not optional:
 2. **Root only.** Spreading `studioAttributes` on an inner element makes Studio measure the wrong box, so selection and drop-targeting land in the wrong place.
 3. **Never hand-build a `$`-twin.** It arrives as a prop when the field is bound. Constructing one yourself produces a tag pointing at nothing.
 
+**A component made of atoms hands each tag down.** When a registered component renders smaller ones, pass each value's tag along with the value, and let the atom spread it:
+
+```tsx
+<Heading text={title} $text={$title} />
+```
+
+Every atom takes the same kind of `$` prop and spreads it on its own element. Passing only the value (`<Heading text={title} />`) leaves it unclickable, however well the atom is written. Worked example, a hero built from Badge, Heading, Text, Button and Image: [`register-component-cslp` § Components built from smaller ones](register-component-cslp.md#components-built-from-smaller-ones).
+
 The full contract, the `wrap` alternative and the `cslp: { appendTags: true }` prerequisite live in [`register-component` § The `studioAttributes` contract](register-component.md). Do not restate them, but do not ship an atom without them either.
 
 ## Inputs needed from the user

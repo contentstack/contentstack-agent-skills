@@ -40,6 +40,10 @@ curl -s "<page URL>" | grep -o 'data-cslp="[^"]*\.<field>\(\.[0-9]*\)\?"' | sort
 
 Expect the `<field>` line and one `<field>.<N>` line per item.
 
+**A list passed as a prop.** When a registered component takes the whole list as an `array` prop and maps it itself, there is no Repeater, and the component places the tags. Studio sends `$<prop>` (the list tag) and `$<prop>Items` (one item tag per item). The component spreads `$<prop>` on the list's wrapper and `$<prop>Items[i]` on each item's element ([`register-component-cslp` § Lists passed as a prop](register-component-cslp.md#lists-passed-as-a-prop)). Same check: the `<field>` line and one tag per item.
+
+Known issue: studio-registry 2.0.1 builds these item tags as `<field>.$0`, `<field>.$1`, not `<field>.0`, so the check above does not match them. Look for them with `grep -o 'data-cslp="[^"]*\.<field>\.\$[0-9]*"'`. Until the SDK team settles the format, clicking works, but add, move and delete may not work on a list passed as a prop. See the note in [`register-component-cslp`](register-component-cslp.md#lists-passed-as-a-prop).
+
 ## 3. An empty list should offer "+"
 
 Visual Editor shows its "This page doesn't have any … added" panel, with a "+", inside an element that has the list tag **and** the class `visual-builder__empty-block-parent`, for a field that exists in the content type schema. It looks for that class only after a change to the page's children (a `childList` mutation), never at start-up, and never after a class change alone. So add the class in the browser after mount, inside the editor only, then append an empty comment node to trigger the scan:
@@ -79,6 +83,7 @@ Visual Editor selects the nearest tagged ancestor of the clicked element. A grad
 
 - [ ] Live Preview runs with `mode: "builder"` and `editInVisualBuilderButton: { enable: false }`.
 - [ ] Every list renders a `<field>` tag and one `<field>.<N>` tag per item.
+- [ ] Every list passed as a prop spreads `$<prop>` on its wrapper and `$<prop>Items[i]` on each item, and renders a `<field>` tag and one tag per item.
 - [ ] No Section or Section Slot is the Repeater's direct child: a Box is.
 - [ ] An empty list's wrapper gets `visual-builder__empty-block-parent` after mount, inside the editor only.
 - [ ] `fetchTemplateEntry` completes the entry, and a new entry's empty fields, the image included, render tagged elements.
