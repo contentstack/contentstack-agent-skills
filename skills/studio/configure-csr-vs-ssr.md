@@ -137,6 +137,57 @@ export function createStudioSdk() {
 
 With a per-request stack nothing carries over between requests, so the hash reset has nothing to clear on it. Keep the `isCompositionNotFound` catch for the 404.
 
+<a id="preview-link-not-accepted"></a>
+### A preview link whose code is no longer accepted
+
+A preview link carries its code in the query (`hash` or `live_preview`). Once that code expires, or when someone copies the link to a visitor, the preview host turns it down with a 4xx. The SDK throws `UPSTREAM_ERROR`, which is not a not-found, so the catch above rethrows it and the page is a **500**. Measured: `/?live_preview=x&hash=x` answered 500.
+
+Only on a request that carries `hash` or `live_preview`, retry once as a plain visitor request:
+
+- **Retry when** the error's `code` is `UPSTREAM_ERROR` and `findings.status` is a 4xx other than 404. On SDK 1.x the same case arrives as `COMPOSITION_NOT_FOUND` with `details.statusCode` 400.
+- **Before retrying,** clear the hash on the stack and remove `live_preview`, `hash`, `preview_timestamp`, `content_type_uid` and `entry_uid` from the query. Keep the locale.
+- **Decide the 404 and `isStudioEditorMode` from the query actually fetched**, so a made-up address with a made-up code is still a 404.
+- **Rethrow everything else.**
+
+```ts
+import { isCompositionNotFound, type StudioComponentSpecOptions } from "@contentstack/studio-react";
+import { sdk, stack } from "@/lib/studio.server";
+
+const PREVIEW_PARAMS = ["live_preview", "hash", "preview_timestamp", "content_type_uid", "entry_uid"];
+
+// The preview host turned the link's code down: a 4xx that isn't a 404.
+function previewCodeRefused(err: unknown): boolean {
+  const e = err as { code?: string; findings?: { status?: number } };
+  const status = e?.findings?.status;
+  return e?.code === "UPSTREAM_ERROR" && typeof status === "number" && status >= 400 && status < 500 && status !== 404;
+}
+
+// specOptions is undefined on a miss; decide the 404 (and the editor's empty page) from `query`.
+export async function fetchPage(url: string, query: Record<string, string>, locale: string):
+  Promise<{ specOptions?: StudioComponentSpecOptions; query: Record<string, string> }> {
+  const attempt = async (q: Record<string, string>) => {
+    stack.livePreviewQuery({ live_preview: "" });
+    try {
+      const searchQuery = new URLSearchParams(q).toString();
+      return { specOptions: await sdk.fetchCompositionData({ url, searchQuery }, { locale }), query: q };
+    } catch (err) {
+      if (isCompositionNotFound(err)) return { specOptions: undefined, query: q };
+      throw err;
+    }
+  };
+  try {
+    return await attempt(query);
+  } catch (err) {
+    const isPreview = "hash" in query || "live_preview" in query;
+    if (!isPreview || !previewCodeRefused(err)) throw err;
+    const plain = Object.fromEntries(Object.entries(query).filter(([k]) => !PREVIEW_PARAMS.includes(k)));
+    return attempt(plain);
+  }
+}
+```
+
+At the route, a missing `specOptions` is the miss: `isStudioEditorMode(result.query)` renders the editor's empty page, and anything else is the framework's 404. Measured after the change: the expired link answered 200 with the published page, a made-up address with a made-up code answered 404, and a real preview opened from Visual Editor still showed the draft.
+
 <a id="static-generation-and-caching"></a>
 
 ## Static generation and caching on a Studio route (Next.js)

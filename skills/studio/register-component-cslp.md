@@ -103,11 +103,27 @@ Give the placeholder a size, so it has an area to click. See [`make-visual-edito
 A `type: "array"` prop bound to a multi-value field ([`register-component-prop-contracts`](register-component-prop-contracts.md) § Array & object props) is mapped by the component itself, with no Repeater. Studio sends two tags for it:
 
 - `$<prop>`: one tag for the whole list. Spread it on the list's wrapper.
-- `$<prop>Items`: an array with one tag per item, in list order. Spread `$<prop>Items[i]` on item `i`'s element.
+- `$<prop>Items`: an array with one tag per item, in list order. Spread item `i`'s tag on its element, through `itemTag($<prop>Items, i)` (below).
 
-Declare both next to the list:
+**Pass every item tag through `itemTag`.** studio-registry 2.0.1, still the latest published, builds item tags as `<field>.$0`, `<field>.$1` (`${tag}.$${idx}` in `retrieve-data.js`). Live Preview Utils (4.5.3 and 4.6.1) reads everything after the locale as the field path, looks up `gallery.$0` and finds nothing. In Visual Editor every such item shows "Invalid CSLP tag" when clicked, can't be edited, and the list has no "+". With the tags as `<field>.0` the item selects as its field (Destination : Gallery) with its "+" and move arrows. The helper drops the `$`, and passes a tag that is already right through unchanged, so it keeps working once the SDK is fixed:
 
 ```tsx
+// lib/item-tag.ts
+import type { Cslptag } from "@contentstack/studio-react";
+
+// studio-registry 2.0.1 writes "<field>.$<n>"; Visual Editor reads "<field>.<n>".
+export const itemTag = (items: Cslptag[] | undefined, i: number): Cslptag | undefined => {
+  const t = items?.[i];
+  const v = t?.["data-cslp"];
+  return typeof v === "string" ? { ...t, "data-cslp": v.replace(/\.\$(\d+)$/, ".$1") } : t;
+};
+```
+
+Declare both tags next to the list:
+
+```tsx
+import { itemTag } from "@/lib/item-tag";
+
 interface GalleryProps {
   images?: { url?: string; description?: string }[];
   $images?: Cslptag;
@@ -118,7 +134,7 @@ export function Gallery({ images = [], $images, $imagesItems }: GalleryProps) {
   return (
     <ul className="gallery" {...$images}>
       {images.map((img, i) => (
-        <li key={img.url ?? i} {...$imagesItems?.[i]}>
+        <li key={img.url ?? i} {...itemTag($imagesItems, i)}>
           <img src={img.url} alt={img.description ?? ""} />
         </li>
       ))}
@@ -129,7 +145,7 @@ export function Gallery({ images = [], $images, $imagesItems }: GalleryProps) {
 
 Visual Editor needs both: the list tag on the wrapper and an item tag on each item. Check them as in [`make-visual-editor-editable`](make-visual-editor-editable.md) § 2.
 
-> **Known issue: per-item tag format (studio-registry 2.0.1, open with the SDK team).** studio-registry 2.0.1 builds the `$<prop>Items` tags as `<field>.$0`, `<field>.$1`. The SDK's own entry tags and Visual Editor's list controls use `<field>.0` ([`make-visual-editor-editable`](make-visual-editor-editable.md) § 2). Until the SDK team settles the format, clicking an item works, but add, move and delete may not work on a list passed as a prop. Spread the tags as shown anyway; the component code does not change when the format is fixed.
+**Check:** no `data-cslp` on the page ends in `.$<n>` (`curl -s <url> | grep -o 'data-cslp="[^"]*\.\$[0-9]*"'` prints nothing). Restart the dev server after adding the helper: Studio keeps the components it registered at start-up. The SDK fix to report is to build the tag as `${tag}.${idx}`. The Studio MCP carries the same rule and refuses `.$<n>` tags when it records a site's set-up.
 
 ## Fields inside each listed item
 
@@ -157,7 +173,7 @@ export function TripList({ trips = [], $trips, $tripsItems }: TripListProps) {
   return (
     <ul className="trips" {...$trips}>
       {trips.map((trip, i) => (
-        <li key={trip.uid} {...$tripsItems?.[i]}>
+        <li key={trip.uid} {...itemTag($tripsItems, i)}>
           <img src={trip.image?.url} alt="" {...tagOf(trip, "image")} />
           <h3 {...tagOf(trip, "title")}>{trip.title}</h3>
           <p {...tagOf(trip, "price")}>{trip.price}</p>

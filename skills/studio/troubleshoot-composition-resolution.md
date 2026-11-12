@@ -95,6 +95,8 @@ It throws a `ComposableStudioError` carrying a **`code`** and an **`errorClass`*
 
 Every other class is real breakage and **never a 404**: `SETUP_INVALID` (a wrong connection value), `SERVER_ERROR`, `NETWORK_ERROR`. That split is the point. All three used to arrive under one name reading "composition not found", so a route branching on it returned **404 on pages that exist**.
 
+**`UPSTREAM_ERROR` with a 4xx on a preview link means the link's code is no longer accepted.** When the request carries `hash` or `live_preview` and `findings.status` is a 4xx other than 404, the preview host turned the code down: it expired, or the link was copied to someone outside the editor. On SDK 1.x it arrives as `COMPOSITION_NOT_FOUND` with `details.statusCode` 400. The fix is not a 404. Retry once without the preview parameters, as in [`configure-csr-vs-ssr`](configure-csr-vs-ssr.md#preview-link-not-accepted).
+
 **Read `err.causes` first.** The SDK attaches `{ cause, fix }` pairs generated for that specific failure, ordered most likely first. It's the fastest diagnosis available and most people never look at it.
 
 **`content_type_url_pattern` relocates the failure. This is the trap.** With `url_metadata.url_source: "content_type_url_pattern"`, the composition's pattern covers a whole URL family (`/blog/{{entry.title}}` matches any `/blog/*`). A mistyped slug therefore **passes** stage 1 and dies at stage 3: `URL_MATCHED_NO_ENTRY`, not `NO_COMPOSITION_FOR_URL`. Both are `NOT_FOUND`, so the predicate covers both — but route code that hand-rolls a list of names and only knows the first 404s correctly for `/nonsense` and 500s for `/blog/nonsense`. Test both.

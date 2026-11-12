@@ -351,8 +351,9 @@ curl -s "https://<studio-api-host>/v1/projects" \
              environment: process.env.NEXT_PUBLIC_CONTENTSTACK_ENVIRONMENT!,
            },
            clientUrlParams: { host: "<region-app-host>" }, // e.g. app.contentstack.com (NA), eu-app.contentstack.com (EU)
-           editButton: { enable: true, exclude: ["outsideLivePreviewPortal"] },
+           editButton: { enable: true }, // the pane's Edit button opens Visual Editor; no exclude. Visitors never load this (no preview token)
            editInVisualBuilderButton: { enable: false }, // else a "Start Editing" link on every page
+           // Changed init()? Restart the dev server: Live Preview keeps its first instance.
          }),
        )
        .catch((err) => console.warn("[studio] Live Preview init failed; continuing without LP.", err));
@@ -438,7 +439,7 @@ curl -s "https://<studio-api-host>/v1/projects" \
              environment: import.meta.env.VITE_CONTENTSTACK_ENVIRONMENT!,
            },
            clientUrlParams: { host: "<region-app-host>" }, // e.g. app.contentstack.com (NA), eu-app.contentstack.com (EU)
-           editButton: { enable: true, exclude: ["outsideLivePreviewPortal"] },
+           editButton: { enable: true }, // the pane's Edit button opens Visual Editor; no exclude. Visitors never load this (no preview token)
            editInVisualBuilderButton: { enable: false },
          }),
        )

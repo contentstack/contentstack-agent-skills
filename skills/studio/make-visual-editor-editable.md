@@ -14,7 +14,7 @@ Checked against `@contentstack/studio-react` 1.9.0 and `@contentstack/live-previ
 
 ## 1. Live Preview must run in builder mode
 
-`live-preview-utils` defaults to `mode: "preview"`, and its editing layer returns early unless the mode is `builder`. Visual Editor then loads the page, sits on "Initializing the editor…", and nothing can be clicked. The init options live in [`install-studio`](install-studio.md) § the `lib/contentstack` snippets: `mode: "builder"`, an explicit `ssr`, `editButton.exclude: ["outsideLivePreviewPortal"]` and `editInVisualBuilderButton: { enable: false }` (builder mode otherwise adds a floating "Start Editing" link to every page it runs on).
+`live-preview-utils` defaults to `mode: "preview"`, and its editing layer returns early unless the mode is `builder`. Visual Editor then loads the page, sits on "Initializing the editor…", and nothing can be clicked. The init options live in [`install-studio`](install-studio.md) § the `lib/contentstack` snippets: `mode: "builder"`, an explicit `ssr`, `editButton: { enable: true }` with no `exclude` (the Edit button is how an author goes from the Live Preview pane to Visual Editor) and `editInVisualBuilderButton: { enable: false }` (builder mode otherwise adds a floating "Start Editing" link to every page it runs on).
 
 Check: open the page directly (not in Visual Editor) with a preview token set. With builder mode and the "Start Editing" button enabled, `[data-testid="vcms-start-editing-btn"]` appears, which proves the editing layer started. Then turn that button off again.
 
@@ -40,9 +40,9 @@ curl -s "<page URL>" | grep -o 'data-cslp="[^"]*\.<field>\(\.[0-9]*\)\?"' | sort
 
 Expect the `<field>` line and one `<field>.<N>` line per item.
 
-**A list passed as a prop.** When a registered component takes the whole list as an `array` prop and maps it itself, there is no Repeater, and the component places the tags. Studio sends `$<prop>` (the list tag) and `$<prop>Items` (one item tag per item). The component spreads `$<prop>` on the list's wrapper and `$<prop>Items[i]` on each item's element ([`register-component-cslp` § Lists passed as a prop](register-component-cslp.md#lists-passed-as-a-prop)). Same check: the `<field>` line and one tag per item.
+**A list passed as a prop.** When a registered component takes the whole list as an `array` prop and maps it itself, there is no Repeater, and the component places the tags. Studio sends `$<prop>` (the list tag) and `$<prop>Items` (one item tag per item). The component spreads `$<prop>` on the list's wrapper and `itemTag($<prop>Items, i)` on each item's element ([`register-component-cslp` § Lists passed as a prop](register-component-cslp.md#lists-passed-as-a-prop)). Same check: the `<field>` line and one tag per item.
 
-Known issue: studio-registry 2.0.1 builds these item tags as `<field>.$0`, `<field>.$1`, not `<field>.0`, so the check above does not match them. Look for them with `grep -o 'data-cslp="[^"]*\.<field>\.\$[0-9]*"'`. Until the SDK team settles the format, clicking works, but add, move and delete may not work on a list passed as a prop. See the note in [`register-component-cslp`](register-component-cslp.md#lists-passed-as-a-prop).
+studio-registry 2.0.1 builds these item tags as `<field>.$0`, `<field>.$1`, which Visual Editor rejects as "Invalid CSLP tag" (no edit, no "+"). The `itemTag` helper rewrites them to `<field>.0`. Check that none is left: `grep -o 'data-cslp="[^"]*\.\$[0-9]*"'` on the rendered page prints nothing. Restart the dev server after adding the helper. See [`register-component-cslp`](register-component-cslp.md#lists-passed-as-a-prop).
 
 ## 3. An empty list should offer "+"
 
@@ -83,7 +83,7 @@ Visual Editor selects the nearest tagged ancestor of the clicked element. A grad
 
 - [ ] Live Preview runs with `mode: "builder"` and `editInVisualBuilderButton: { enable: false }`.
 - [ ] Every list renders a `<field>` tag and one `<field>.<N>` tag per item.
-- [ ] Every list passed as a prop spreads `$<prop>` on its wrapper and `$<prop>Items[i]` on each item, and renders a `<field>` tag and one tag per item.
+- [ ] Every list passed as a prop spreads `$<prop>` on its wrapper and `itemTag($<prop>Items, i)` on each item, and renders a `<field>` tag and one tag per item. No `data-cslp` on the page ends in `.$<n>`.
 - [ ] No Section or Section Slot is the Repeater's direct child: a Box is.
 - [ ] An empty list's wrapper gets `visual-builder__empty-block-parent` after mount, inside the editor only.
 - [ ] `fetchTemplateEntry` completes the entry, and a new entry's empty fields, the image included, render tagged elements.

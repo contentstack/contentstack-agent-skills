@@ -50,7 +50,7 @@ The narrow non-CMS use for `type: "array"` / `type: "object"` remains: authoring
 
 ### Lists passed as a prop
 
-An array prop renders, but its items are only editable in Visual Editor if the component spreads their tags. Studio sends `$<prop>` for the whole list and `$<prop>Items`, an array with one tag per item. Spread `$<prop>` on the list's wrapper and `$<prop>Items[i]` on each item's element. Declare both:
+An array prop renders, but its items are only editable in Visual Editor if the component spreads their tags. Studio sends `$<prop>` for the whole list and `$<prop>Items`, an array with one tag per item. Spread `$<prop>` on the list's wrapper and each item's tag on its element, through the `itemTag` helper. Declare both:
 
 ```tsx
 import type { Cslptag } from "@contentstack/studio-react";
@@ -64,11 +64,11 @@ interface GalleryProps {
 
 ```tsx
 <ul {...$images}>
-  {images.map((img, i) => <li key={img.url ?? i} {...$imagesItems?.[i]}>…</li>)}
+  {images.map((img, i) => <li key={img.url ?? i} {...itemTag($imagesItems, i)}>…</li>)}
 </ul>
 ```
 
-Fields inside each item carry their own tags under `item.$`. The full pattern, and a **known issue** with the per-item tag format in studio-registry 2.0.1 (add, move and delete may not work on a list passed as a prop yet), are in [`register-component-cslp` § Lists passed as a prop](register-component-cslp.md#lists-passed-as-a-prop).
+Fields inside each item carry their own tags under `item.$`. Without `itemTag`, studio-registry 2.0.1's item tags (`<field>.$0`) show "Invalid CSLP tag" in Visual Editor and the list has no "+". The helper, the full pattern and the check are in [`register-component-cslp` § Lists passed as a prop](register-component-cslp.md#lists-passed-as-a-prop).
 
 ## Studio fetches only the fields your bindings name
 
