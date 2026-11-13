@@ -14,7 +14,27 @@ migration) are the **fallback** for when Studio MCP can't be used. Its tools kee
 
 This SKILL.md is the only file loaded up front.
 
-## 1. Studio MCP first
+## When to use
+
+- Anything that mentions Contentstack Studio or its concepts: the Studio SDK, canvas, compositions, Connected or Freeform templates, sections, section slots, repeaters, registering components, BYOC, Studio preview routes, or making a project Studio-ready.
+- Live Preview, Visual Editor, Launch hosting, content types and entries, or Personalize audiences and variants, when they are part of Studio work (setting up Studio, the canvas, a template's content, hosting a Studio site, showing a Studio page's own version to an audience).
+
+Use another skill for:
+
+- Live Preview or Visual Editor problems that don't involve Studio → `cms-live-preview-visual-editor-support-assistant`
+- Delivery SDK code outside Studio → `dx-delivery-sdk`
+- Content model design in general → `cms-data-modeling-best-practices`
+- Rendering JSON RTE fields → `cms-json-rte`
+- Hosting the site on Launch → `launch-platform`
+- General MCP setup outside a Studio project → `dx-mcp-server`
+
+## Instructions
+
+1. If the Studio MCP's tools are callable here, do the work through it (§ 1).
+2. Otherwise, or for one of the reasons in § 2, say so and work from the bundled guides: resolve them as in § 3 and route through `skills-index.md` (§ 4).
+3. Apply the standing rules in § 5 and § 6 on every Studio turn that uses the guides.
+
+### 1. Studio MCP first
 
 Studio MCP is available when its tools are callable in this host: `list_goals`, `next_step`, `preview`,
 `apply`, `check` and `get_guide`. Check the tools themselves; a conversation flag or a remembered
@@ -36,7 +56,7 @@ With Studio MCP:
 5. **Keep a setup going.** Replies like "yes", "start" or "done" continue the Studio MCP's current goal with
    `next_step`; they are not new requests.
 
-### Not a reason to leave Studio MCP
+#### Not a reason to leave Studio MCP
 
 These are Studio MCP working as intended. Follow what it says:
 
@@ -45,7 +65,7 @@ These are Studio MCP working as intended. Follow what it says:
 - a missing permission or sign-in step Studio MCP explains;
 - Studio MCP declining a change because the stack, project or site isn't ready for it.
 
-## 2. When to use the bundled guides instead
+### 2. When to use the bundled guides instead
 
 Only in these cases:
 
@@ -70,7 +90,7 @@ sees what was done outside it, then continue with `next_step`.
 **Neither works.** If Studio MCP is unavailable and a guide won't resolve, stop, say what's missing
 (connect and sign in to Studio MCP, or reinstall the skill pack), and make no changes.
 
-## 3. Resolving a skill file
+### 3. Resolving a skill file
 
 The specialist guides sit next to this file, in the same folder: a skill named `<name>` is `<name>.md` beside this SKILL.md, and the lookup table is `skills-index.md` in the same folder. Every cross-reference in this file and in `skills-index.md` is written as `<name>` or `<name>.md`. Resolve all of them this way.
 
@@ -78,7 +98,7 @@ Fallback: if `<name>.md` isn't there, try `../<name>/SKILL.md` (a host that inst
 
 **If neither resolves, say so out loud**: "the Studio skill pack looks mis-installed, `<name>` didn't resolve", and do NOT quietly fall back to general knowledge. A silent fallback looks identical to the pack working, so the user never learns their install is broken.
 
-## 4. Working from the guides
+### 4. Working from the guides
 
 **Setup intent takes precedence over keyword matching.** “Enable Studio”, “make this project Studio ready”, “Studio setup”, and equivalent whole-app requests run `convert-project-to-studio` through verification. `install-studio` alone is for an explicit SDK-only request. Preserve the active setup objective across replies such as “yes”, “start”, and “OAuth done”; resume the pending step rather than routing that reply as a new task. Use the orchestrator's scoped completion checklist; authoring requirements below apply only when components or compositions are authored.
 
@@ -92,11 +112,11 @@ Fallback: if `<name>.md` isn't there, try `../<name>/SKILL.md` (a host that inst
 
 4. If nothing matches after both passes, answer from general Studio knowledge, but say so, and check whether a skill is missing that should exist.
 
-## 5. Standing rules when working from the guides
+### 5. Standing rules when working from the guides
 
 Studio MCP enforces these itself and sends them with each step. When working from the guides, they apply on every Studio turn.
 
-### Atomic and reusable, every time
+#### Atomic and reusable, every time
 
 **This applies on every Studio turn, whatever the user asked for. It is not optional and it is not only a planning concern.**
 
@@ -110,7 +130,7 @@ Before creating, registering, or authoring anything:
 
 If the user's request would skip this ("just register the page component", "make the whole page one section"), say what it costs (nothing reusable, authors can't reorder, bindings break) and propose the decomposed shape instead. Do it their way only if they confirm after hearing that.
 
-### Definition of done
+#### Definition of done
 
 **Also every Studio turn.** Eight deliverables decide whether what you built is usable by a marketer rather than only by a developer. Every one fails silently. The page still renders, nothing errors, and the gap surfaces only when a non-developer opens Studio:
 
@@ -125,7 +145,7 @@ If the user's request would skip this ("just register the page component", "make
 
 Read [`complete-the-build`](complete-the-build.md) for the how and the verification block. The runnable node count is in [`build-connected-template`](build-connected-template.md) § Post-build structural check. Never report a build done with any of these outstanding. Say "created, thumbnail pending" and then finish it. State them in the plan up front too, so what the user approves is what they get.
 
-### Auth preflight
+#### Auth preflight
 
 **Settle the credential before the first API call of the turn, not when one fails.** Every specialist repeats this. It lives here because it must hold even before a specialist is pulled. (With Studio MCP, sign-in is the Studio MCP's; follow what it says.)
 
@@ -135,7 +155,7 @@ Read [`complete-the-build`](complete-the-build.md) for the how and the verificat
 4. If nothing resolves, or a refresh returns `400 invalid_refresh_token`, hand the user `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` and wait. It needs a TTY and a browser, you cannot run it for them. The region must be **in** the command. `DEFAULT_REGION` is `NA`, so omitting it silently authenticates against NA prod.
 5. `403 error_code 316` is **not** an auth failure. It is a valid credential aimed at a stack outside its org. Re-authenticating fixes nothing. Check with `GET /v3/stacks` + `organization_uid`.
 
-## 6. Rules
+### 6. Rules
 
 - Studio MCP first, every Studio request. Use the guides only for a reason in § 2, and say which one.
 - When working from the guides: always re-Read the skill file. Never answer from a remembered summary. The source of truth is the file on disk.
@@ -144,17 +164,32 @@ Read [`complete-the-build`](complete-the-build.md) for the how and the verificat
 - If the user's request implies multiple skills (e.g. "install and set up preview routes"), pull each in the order they must run: skills-index.md's Trigger table encodes that ordering.
 - Prerequisite skills: many authoring skills assume `install-studio` + `configure-studio` are done. If the user's project state is unclear, run `analyze-project-fit` first.
 
-## Security (always, with Studio MCP or the guides)
+## MCP tools
+
+**Studio MCP (preferred for Studio work).** `list_goals`, `next_step`, `preview`, `apply`, `check` and `get_guide`. Some hosts list them under Flux's name (for example `Contentstack_Studio_Flux`). Every change goes through `preview`, then `apply` after the author's yes (§ 1).
+
+**Contentstack MCP (when working from the guides).** Studio is MCP-first for the operations the server supports. [`install-contentstack-mcp`](install-contentstack-mcp.md) covers discovering, installing and verifying the server, and [`understand-contentstack-mcp`](understand-contentstack-mcp.md) covers what it does and doesn't do. Common tools (local server group in brackets):
+
+- Inspect: `get_all_content_types`, `get_a_single_content_type`, `get_all_entries`, `get_single_entry`, `get_all_environments`, `get_all_languages` (`cma`)
+- Change: `create_a_content_type`, `update_content_type`, `create_an_entry`, `update_an_entry`, `publish_an_entry` (`cma`)
+- Delete: `delete_an_entry`, `delete_content_type` (`cma`)
+
+The server doesn't cover every Studio operation: the Studio API project list and configuration (`/v1/projects`) and some token and Live Preview operations need OAuth HTTP or the Studio UI. Use only tools the host actually lists, and never claim an MCP call ran when none did.
+
+## Security
+
+These apply always, with the Studio MCP or the guides.
 
 ### Defaults
 
+- Use MCP tools only for the Studio work the user asked for, and verify the target stack with a read call first.
 - Resolve credentials OAuth-first (see § Auth preflight). Ask before reading or refreshing another tool's stored OAuth session.
 - Delivery and preview tokens may reach the browser; management tokens, OAuth tokens and session authtokens never do.
 - Never disable TLS certificate or hostname verification, and never ship permissive frame headers (`frame-ancestors *`, `Access-Control-Allow-Origin: *`) outside local development or the canvas route.
 
 ### Destructive Actions
 
-Creating or changing stacks, content types, entries, compositions or Studio projects is a real mutation. State what will change and get confirmation first. Never delete or overwrite existing content, sections or templates without explicit approval.
+Creating or changing stacks, content types, entries, compositions or Studio projects is a real mutation. Name the stack, branch and items, state what will change, and get confirmation first. This applies to MCP tool calls and OAuth HTTP calls alike. Never delete or overwrite existing content, sections or templates without explicit approval.
 
 ### Secrets
 

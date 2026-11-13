@@ -14,7 +14,21 @@ consumes** (the create command produces a populated stack and a bundle with cred
 which feeds the code migration). Treat the artifact paths and counts that each command
 prints as state you must capture and carry forward.
 
-## Operating principles
+## When to use
+
+- Migrating, moving, switching, porting or re-platforming to Contentstack from another CMS. Contentful is supported today.
+- Content models, content, assets, locales, application integrations or website code that need to move.
+
+Use another skill for:
+
+- Upgrading Contentstack SDK code from JavaScript to TypeScript → `dx-migrate-js-to-ts-sdk`
+- Moving content between Contentstack stacks or branches, or `csdx cm:stacks:migration` scripts → `dx-cli`
+- Designing the target content model from scratch → `cms-data-modeling-best-practices`
+- Converting HTML RTE to JSON RTE, or rendering JSON RTE after the migration → `cms-json-rte`
+
+## Instructions
+
+### Operating principles
 
 Follow these throughout — they matter more than any single command:
 
@@ -94,7 +108,7 @@ Follow these throughout — they matter more than any single command:
   the user must run themselves (for example `contentful login` or a manual plugin install), and
   a template these instructions tell you to render verbatim (such as the Step 5 welcome message).
 
-## The migration at a glance
+### The migration at a glance
 
 | # | Step | Command (core) | Produces |
 |---|------|----------------|----------|
@@ -124,7 +138,7 @@ only the one you need, when you reach it.
 
 ---
 
-## Step 1 — Prerequisites & inputs
+### Step 1 — Prerequisites & inputs
 
 > **[PROGRESS]** Output the migration progress block:
 > Step 1 → `"in_progress"`, Steps 2–4 → `"pending"`.
@@ -147,7 +161,7 @@ Summary of sub-steps (full commands, messages, and tables are in the reference f
 - **1.6 — Contentful Space ID.** Auto-select a single space; otherwise present a numbered menu
   and wait. Capture `SPACE_ID`.
 
-### Eval — Verify Step 1 before proceeding
+#### Eval — Verify Step 1 before proceeding
 
 ```bash
 # Use the Node the checker validated (NODE_BIN_DIR from the prereq JSON).
@@ -184,7 +198,7 @@ Then proceed to Step 2. If any check fails, fix the issue (re-run the relevant s
 
 ---
 
-## Step 2 — Install the migrate CLI plugin
+### Step 2 — Install the migrate CLI plugin
 
 > **[PROGRESS]** Output the migration progress block:
 > Step 1 → `"completed"`, Step 2 → `"in_progress"`, Steps 3–4 → `"pending"`.
@@ -197,7 +211,7 @@ Summary: run the bundled install/update block, which installs or updates
 `PLUGIN_NPM_UNAVAILABLE`). On a failure marker, ask the user to install manually and wait for
 them to continue, then run the Eval.
 
-### Eval — Verify Step 2 before proceeding
+#### Eval — Verify Step 2 before proceeding
 
 ```bash
 PATH="<NODE_BIN_DIR>:$PATH" csdx migrate --help
@@ -211,7 +225,7 @@ If `migrate:create` is present, proceed to Step 3 (its **[PROGRESS]** block mark
 
 ---
 
-## Step 3 — Content Migration
+### Step 3 — Content Migration
 
 > **[PROGRESS]** Output the migration progress block:
 > Steps 1–2 → `"completed"`, Step 3 → `"in_progress"`, Step 4 → `"pending"`.
@@ -236,7 +250,7 @@ Summary of sub-steps (full commands, expected output, and parsing script are in 
 - **3.4 — Show the user a progress summary** (entity counts + final stack box).
 - **Token expiry mid-run:** re-run `csdx auth:login --oauth` and restart from 3.1.
 
-### Eval — Verify Step 3 before proceeding
+#### Eval — Verify Step 3 before proceeding
 
 Confirm the key artifacts exist:
 
@@ -272,7 +286,7 @@ Entries         53         53
 If all pass, proceed to Step 4 (its **[PROGRESS]** block marks Step 3 ✅ and Step 4 ⏳). If counts diverge or artifacts are missing, surface the discrepancy and
 point the user at `<LOG_DIR>` — do not proceed until resolved.
 
-### Session variables carried into Step 4
+#### Session variables carried into Step 4
 
 | Variable        | Value                                  | Purpose                                                  |
 | --------------- | -------------------------------------- | -------------------------------------------------------- |
@@ -287,7 +301,7 @@ point the user at `<LOG_DIR>` — do not proceed until resolved.
 
 ---
 
-## Step 4 — Code Migration
+### Step 4 — Code Migration
 
 > **[PROGRESS]** Output the migration progress block:
 > Steps 1–3 → `"completed"`, Step 4 → `"in_progress"`.
@@ -311,7 +325,7 @@ Summary of sub-steps (full detail in the reference file):
   file) → MIGRATE → LIVE PREVIEW → VERIFY with `bash "<SKILL_DIR>/scripts/run-all.sh" "<repoPath>"`. Hard-gate
   eval failures mean the migration is NOT done.
 
-### 4.5 — Guardrails
+#### 4.5 — Guardrails
 
 - Do NOT modify content modeling or move/import entries — out of scope for this step.
 - Convert every reference dereference to safe array access (`?.[0]`) and audit null safety
@@ -319,7 +333,7 @@ Summary of sub-steps (full detail in the reference file):
 - When a UID or behavior is uncertain, leave a `// TODO(migration):` comment and list it — never
   guess silently.
 
-### 4.6 — Wrap up
+#### 4.6 — Wrap up
 
 > **[PROGRESS]** Output the migration progress block:
 > Steps 1–4 all → `"completed"`. Then immediately proceed to Step 5.
@@ -342,12 +356,21 @@ Give the user a final summary of the whole migration journey:
 
 ---
 
-## Step 5 — Welcome to Contentstack 🎉
+### Step 5 — Welcome to Contentstack 🎉
 
 The migration is complete. Read [references/step-5-welcome-message.md](references/step-5-welcome-message.md)
 and display that message to the user — render it exactly as shown there, preserving the section
 headings, icons, and line breaks, and filling the file-location table with the real paths
 captured during this session.
+
+## MCP tools
+
+The migration runs on the Contentstack CLI and its migrate plugin, as the steps above describe; it doesn't need MCP. When the Contentstack MCP server is connected, its read tools are an optional way to verify the result in the new stack (local server group in brackets):
+
+- Inspect: `get_all_content_types`, `get_a_single_content_type`, `get_all_entries`, `get_all_assets`, `get_all_languages` (`cma`)
+- Check delivery: `get_all_entries_cdn` (`cda`)
+
+Don't use MCP write or delete tools to patch migrated content mid-run; rerun the relevant step instead.
 
 ## Security
 

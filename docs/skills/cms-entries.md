@@ -5,7 +5,7 @@ description: "Query, localize, version, publish, and structure Contentstack entr
 
 # Entries
 
-**Slug:** `cms-entries` · **Product:** CMS · **Type:** Advisory (read-only)
+**Slug:** `cms-entries` · **Product:** CMS · **Type:** Advisory (acts through MCP tools on request)
 
 Advises on querying, localizing, versioning, publishing, and structuring entries for efficient delivery, with a focus on CDA usage, reference expansion, pagination, bulk operations, and Sync API patterns.
 
@@ -20,7 +20,9 @@ When you ask about fetching entries, building CDA queries, handling localization
 - **Reference expansion**: including referenced entries in a CDA response.
 - **Pagination & performance**: paging through all entries of a content type efficiently.
 - **Versioning & publishing**: how versioning works, and the difference between saving and publishing.
-- **Localization**: locale-aware entry behavior.
+- **Localization**: locale-aware entry behavior, including `include_fallback`.
+- **Limits**: at most 100 entries per CDA request, up to 100 `include[]` paths, an 8 KB URL limit, bulk publish of up to 100 items, nested reference publishing with the `api_version: 3.2` header, and CMA limits of 10 requests per second (1 per second for bulk actions).
+- **Sync API**: an initial full sync plus `sync_token` deltas for mirrors, static builds and search indexes.
 
 For SDK code specifically, this pairs with the [Delivery SDK](dx-delivery-sdk.md) skill.
 
@@ -32,9 +34,13 @@ For SDK code specifically, this pairs with the [Delivery SDK](dx-delivery-sdk.md
 - "How do I include referenced entries in my CDA response?"
 - "How do I paginate through all entries of a content type?"
 
+## MCP tools
+
+With the Contentstack MCP server connected, the agent can read entries, references and versions (`cma`, `cma-extended`), check what the live site receives with `get_all_entries_cdn`, and create, update, publish, unpublish, localize, unlocalize or delete entries when asked. There are no bulk publish or Sync API tools.
+
 ## Safety notes
 
-Read-only advisory. Never creates, updates, publishes, or deletes entries. Delivery tokens are client-safe; management tokens are not. Use environment variables for credentials in examples.
+Advisory by default; uses the MCP tools only when you ask for the change. Before any write, publish, unpublish or delete it names the entries, locales and environments and waits for confirmation. Delivery tokens are client-safe; management tokens are not. Use environment variables for credentials in examples.
 
 ## Related
 

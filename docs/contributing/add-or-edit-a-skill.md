@@ -21,11 +21,12 @@ node scripts/validate.mjs
 ## Add a new skill
 
 1. Create a directory: `skills/<new-slug>/`.
-2. Add `SKILL.md` following the structure in [Anatomy of a SKILL.md](../how-it-works/skill-anatomy.md) and the rules in [Authoring conventions](authoring-conventions.md). The `name` must equal `<new-slug>`, and the `description` must include "Use when…" (1024 characters max).
+2. Copy the [skill template](skill-template.md) into `SKILL.md` and follow the rules in [Authoring conventions](authoring-conventions.md). List the Contentstack MCP tools that carry out the skill's steps under `## MCP tools`. The `name` must equal `<new-slug>`, and the `description` must include "Use when…" (1024 characters max).
 3. Add any `references/` or `scripts/` the skill needs.
 4. Add a row for the skill to the **Skills included** table in the root `README.md`.
 5. Add a documentation page under `docs/skills/<new-slug>.md` and link it from `docs/skills/index.md`.
-6. Run `node scripts/validate.mjs` and commit.
+6. Add at least two [routing eval](routing-evals.md) cases, `evals/routing-<new-slug>-1` and `-2`, and run them.
+7. Run `node scripts/validate.mjs` and commit.
 
 The plugin manifests point at the whole `skills/` folder, so a new skill needs no manifest change.
 
@@ -48,6 +49,7 @@ Use lowercase letters, digits, and single hyphens, max 64 characters.
 
 - `name` is missing, doesn't match the folder, or breaks the naming rules.
 - `description` is missing, lacks "Use when…", or is over 1024 characters.
+- `SKILL.md` has a `##` section outside the [template](skill-template.md), misses one of the required sections (When to use, Instructions, MCP tools, Security), or has them out of order.
 - `SKILL.md` has no `## Security` section, or it lacks `### Defaults`, `### Destructive Actions`, `### Secrets` or `### Environment Variables`.
 - A relative link in any markdown file under `skills/` doesn't resolve or points outside the skill's folder (code blocks are ignored).
 - A frontmatter value in `skills/` or `docs/` contains `: ` without quotes.
@@ -57,8 +59,12 @@ Use lowercase letters, digits, and single hyphens, max 64 characters.
 
 The GitHub Action in `.github/workflows/validate.yml` runs the validator on pull requests to any branch, on pushes to `main` and `next`, and manually (workflow dispatch). If it fails, run `node scripts/validate.mjs` locally, fix what it reports, and push again.
 
+`.github/workflows/routing-evals.yml` runs the [routing evals](routing-evals.md) on pull requests that change `skills/` or `evals/`.
+
 ## Related
 
+- [Skill template](skill-template.md)
+- [Routing evals](routing-evals.md)
 - [Authoring conventions](authoring-conventions.md)
 - [Anatomy of a SKILL.md](../how-it-works/skill-anatomy.md)
 - [Release & versioning](release-and-versioning.md)

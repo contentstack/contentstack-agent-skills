@@ -1,57 +1,35 @@
 ---
 name: dx-delivery-sdk
-description: "Help agents write correct, production-ready TypeScript using `@contentstack/delivery-sdk` for Contentstack entries, assets, references, filtering, sorting, pagination, locale, Live Preview, and Visual Builder support. Verify SDK behavior against the Delivery SDK Spec when method names, options, or chain order matter. Use when a user asks for Contentstack Delivery SDK code, query examples, helper functions, SDK setup, stack initialization, reference inclusion, filtering, sorting, pagination, typed entry fetching, asset fetching, Live Preview setup, Visual Builder support, SSR preview handling, or debugging SDK query chains."
+description: "Help agents write correct, production-ready TypeScript using `@contentstack/delivery-sdk` for Contentstack entries, assets, references, filtering, sorting, pagination, locale, Live Preview, and Visual Builder support. Verify SDK behavior against the Delivery SDK Spec when method names, options, or chain order matter. Use when a user asks for Contentstack Delivery SDK code, query examples, helper functions, SDK setup, stack initialization, reference inclusion, filtering, sorting, pagination, typed entry fetching, asset fetching, Live Preview setup, Visual Builder support, SSR preview handling, or debugging SDK query chains. For GraphQL, use cms-graphql; for rendering JSON RTE fields, use cms-json-rte; for Live Preview troubleshooting, use cms-live-preview-visual-editor-support-assistant."
 allowed-tools: Read Grep Glob
 ---
 
-# dx-delivery-sdk
+# Contentstack Delivery SDK
 
-## Description
+Write correct, production-ready TypeScript with `@contentstack/delivery-sdk`: entries, assets, references, filtering, sorting, pagination, locale, Live Preview and Visual Builder support. The SDK reads published content, assets and taxonomy from the Content Delivery API.
 
-Help agents write correct, production-ready TypeScript using `@contentstack/delivery-sdk` for Contentstack entries, assets, references, filtering, sorting, pagination, locale, Live Preview, and Visual Builder support. Verify SDK behavior against the Delivery SDK Spec when method names, options, or chain order matter.
+## When to use
 
-## When to Use
+- Delivery SDK setup and stack initialization.
+- Query examples and helper functions: references, filtering, sorting, pagination, field selection, locale.
+- Typed entry and asset fetching.
+- Live Preview, Visual Builder and SSR preview setup in SDK code.
+- Debugging SDK query chains.
 
-Use when a user asks for Contentstack Delivery SDK code, query examples, helper functions, SDK setup, stack initialization, reference inclusion, filtering, sorting, pagination, typed entry fetching, asset fetching, Live Preview setup, Visual Builder support, SSR preview handling, or debugging SDK query chains.
+Use another skill for:
 
-## User Problem
+- Migrating JavaScript SDK code to TypeScript → `dx-migrate-js-to-ts-sdk`
+- GraphQL queries → `cms-graphql`
+- Rendering JSON RTE fields and embedded items → `cms-json-rte`
+- Diagnosing broken Live Preview or Visual Editor setups → `cms-live-preview-visual-editor-support-assistant`
+- Work inside the Next.js kickstart repo → `dx-kickstart-next`
+- CDA query semantics beyond the SDK (raw REST, Sync API) → `cms-entries`
 
-Users need current, correct Contentstack Delivery SDK code with the right method names, chain order, and query patterns. The skill should prevent subtle SDK mistakes and default to production-ready TypeScript.
+## Before you answer
 
-## Success Criteria
+Identify the content type UID, any entry or asset UID, the field UIDs for filters, sorting, selection or references, the locale, the return shape the user wants, and whether SSR or Visual Builder is involved. Ask only for what is missing to build the query correctly.
 
-- Uses current `@contentstack/delivery-sdk` method names and correct chain order.
-- Verifies API details against the Delivery SDK Spec when behavior is uncertain.
-- Produces TypeScript-first examples with safe environment-based credentials.
-- Handles references, filters, sorting, pagination, field selection, assets, locale, and Live Preview correctly.
-- Flags or avoids common mistakes such as wrong query methods, missing pagination, or shared SSR Live Preview stacks.
-
-## Expected Inputs
-
-- Content type UID
-- Entry UID or asset UID when applicable
-- Field UIDs for filters, sorting, selection, or references
-- Locale when localized content is needed
-- Desired return shape or helper function behavior
-- SSR or Visual Builder context when Live Preview is involved
-
-## Expected Outputs
-
-- TypeScript code snippets
-- Reusable helper functions
-- Correct SDK query chains
-- Live Preview or SSR-safe stack setup
-- Debugging guidance for incorrect Contentstack SDK usage
-
-## Example User Requests
-
-- Write a Contentstack Delivery SDK query for blog posts with author references included.
-- Show me the correct TypeScript setup for Contentstack Live Preview in Next.js SSR.
-- Fix this Contentstack query chain; it is not returning the right entries.
-- Create a helper to fetch entries by URL with pagination and typing.
-- How do I fetch assets and filter by content type in `@contentstack/delivery-sdk`?
-
-## Workflow Summary
+## Instructions
 
 1. Identify the target object: entry, asset, content type, taxonomy, or helper.
 2. Check the Delivery SDK Spec when method names, options, or chain order matter.
@@ -59,9 +37,8 @@ Users need current, correct Contentstack Delivery SDK code with the right method
 4. Choose the correct SDK chain and method order.
 5. Add pagination, locale, field selection, and references as needed.
 6. Use safe TypeScript types and reusable helpers.
-7. Include error handling and common-mistake warnings when relevant.
+7. Include error handling and common-mistake warnings when relevant, such as wrong query methods, missing pagination, or shared SSR Live Preview stacks.
 
-## Instructions
 
 ### Identify the target
 
@@ -83,37 +60,45 @@ Apply references before `.query()`, use `QueryOperation` for filters, use `order
 
 For SSR or Visual Builder, create a new stack per request and apply live preview configuration before fetching. Do not reuse a Live Preview stack across requests.
 
-## Output Format
+### Packages and hosts
 
-Prefer TypeScript.
-Use concise, production-ready code blocks.
-Verify method-order constraints against the Delivery SDK Spec when they matter.
-Do not hardcode credentials.
-Call out pagination limits when returning multiple entries.
-Include brief notes for Live Preview or SSR safety when relevant.
+- Prefer `@contentstack/delivery-sdk` as the primary SDK.
+- Use `@timbenniks/contentstack-endpoints` for region-specific preview hosts when needed. It is a community package (not published under `@contentstack/`) that the official kickstarts use to resolve region hosts.
+- Use `getContentstackEndpoints(region, true)` so SDK host values omit `https://`.
+- For SSR Live Preview or Visual Editor (formerly Visual Builder), create a new stack per request.
+- Cache policies other than `Policy.IGNORE_CACHE` need `@contentstack/persistence-plugin`: pass a `PersistenceStore` as `cacheOptions.persistenceStore`.
 
-## Tooling Notes
+## MCP tools
 
-Prefer `@contentstack/delivery-sdk` as the primary SDK.
-Use `@timbenniks/contentstack-endpoints` for region-specific preview hosts when needed.
-Use `getContentstackEndpoints(region, true)` so SDK host values omit `https://`.
-For SSR Live Preview or Visual Builder, create a new stack per request.
+When the Contentstack MCP server is connected, use read tools to ground SDK code in the real stack instead of guessing UIDs (local server group in brackets):
+
+- Inspect the model: `get_all_content_types`, `get_a_single_content_type`, `get_all_global_fields`, `get_all_languages`, `get_all_environments` (`cma`)
+- Check what the SDK will return: `get_all_entries_cdn`, `get_a_single_entry_cdn`, `get_all_assets_cdn`, `get_a_single_asset_cdn` (`cda`)
+
+The `cda` tools read published content with a delivery token, the same data the SDK sees. This skill needs no write tools.
+
+## Output
+
+- Prefer TypeScript, in concise, production-ready code blocks.
+- Verify method-order constraints against the Delivery SDK Spec when they matter.
+- Do not hardcode credentials.
+- Call out pagination limits when returning multiple entries.
+- Include brief notes for Live Preview or SSR safety when relevant.
 
 ## Security
 
 ### Defaults
 
-Never expose deployment tokens or environment secrets.
-Validate deployment targets before triggering.
-Require confirmation for production deployments.
-Never auto-deploy to production without review.
-Never hardcode Contentstack credentials in examples.
-Avoid sharing preview tokens or other secrets in responses.
-For SSR Live Preview, do not reuse a stack instance across requests.
+- Advisory by default. Use the MCP tools above only to read the stack.
+- Delivery tokens are read-only and safe for client-side code.
+- Preview tokens read unpublished content: use them only in preview deployments, never in production builds.
+- Never put management tokens in SDK or client code.
+- Never hardcode Contentstack credentials in examples, and avoid sharing preview tokens or other secrets in responses.
+- For SSR Live Preview, do not reuse a stack instance across requests.
 
 ### Destructive Actions
 
-This skill does not perform destructive actions. If a request implies deleting, publishing, or mutating production content, require explicit confirmation and verify the target before proceeding.
+This skill does not perform destructive actions. If a request implies deleting, publishing, or mutating content, name the target and get explicit confirmation before proceeding.
 
 ### Secrets
 
@@ -123,23 +108,11 @@ Use environment variables for all credentials and tokens. Never print, infer, or
 
 Use `process.env` placeholders in examples. Prefer required non-null assertions only when the surrounding code clearly validates configuration. Do not suggest committing secrets to source control.
 
-## Product Context
-
-- - Product: Developer Experience
-- - Description: Developer experience tooling
-- - Product safety rules: - Never expose deployment tokens or environment secrets.
-- Validate deployment targets before triggering.
-- Require confirmation for production deployments.
-- Never auto-deploy to production without review.
-
 ## References
 
-This skill ships reference material in the `references/` folder. Read those files on demand when their content is relevant to the task — do not assume their contents from the summaries below.
+Read these on demand when their content is relevant; don't assume their contents from the summaries.
 
-### [Delivery SDK Spec](references/delivery-sdk-spec.md) (product doc, required)
-- Source: Official Docs (https://www.contentstack.com/docs/developers/sdks/content-delivery-sdk/typescript/reference.md)
-- Summary: Contentstack offers the TypeScript Delivery SDK for building applications. Below, is an in-depth guide and valuable resources to initiate your journey with our TypeScript Delivery SDK. Additionally, the SDK supports the creating applications for Node.js and React Native environments.
-- Read: `references/delivery-sdk-spec.md`
+- [Delivery SDK Spec](references/delivery-sdk-spec.md) (required): the TypeScript Delivery SDK reference for Node.js and React Native. Source: https://www.contentstack.com/docs/developers/sdks/content-delivery-sdk/typescript/reference.md
 
 ## Examples
 
