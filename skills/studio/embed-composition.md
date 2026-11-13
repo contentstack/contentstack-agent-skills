@@ -102,8 +102,8 @@ export function StudioEmbed({ compositionUid, fallback = null }: StudioEmbedProp
 
 ```tsx
 // app/_components/StudioEmbed.tsx — Server Component (no "use client")
-import { sdk } from "@/lib/contentstack";    // or @/lib/studio for additive integrations
-import { resolveComposition } from "@/lib/resolve-composition";  // configure-csr-vs-ssr
+import { isCompositionNotFound, type StudioComponentSpecOptions } from "@contentstack/studio-react";
+import { sdk, stack } from "@/lib/contentstack";    // or @/lib/studio for additive integrations
 import { StudioEmbedClient } from "./StudioEmbedClient";
 
 export async function StudioEmbed({ compositionUid, searchQuery = "" }: {
@@ -111,18 +111,24 @@ export async function StudioEmbed({ compositionUid, searchQuery = "" }: {
   searchQuery?: string;   // the page's request query string, so a preview hash applies here too
 }) {
   // fetchCompositionData THROWS when the composition is missing — it does not
-  // resolve empty. Unwrapped, a deleted or misspelled embed takes down the whole
+  // resolve empty. Uncaught, a deleted or misspelled embed takes down the whole
   // host page with a 500. An embed must degrade to nothing, never to an outage.
   // NOTE: a compositionUid lookup throws COMPOSITION_UID_NOT_FOUND — NOT the
-  // ..._BY_URL id. isCompositionNotFound (inside resolveComposition) covers every not-found case.
-  const { specOptions, notFound } = await resolveComposition(sdk, {
-    compositionUid,
-    // Required on the server (no window.location.search). Pass the page's own
-    // query: resolveComposition clears the preview hash on the shared stack, so
-    // an empty string here would undo the hash the page's fetch just set.
-    searchQuery,
-  });
-  if (notFound) return null;   // real failures still throw — see resolveComposition
+  // ..._BY_URL id. isCompositionNotFound covers every not-found case.
+  stack.livePreviewQuery({ live_preview: "" }); // shared stack: drop the last request's preview hash
+  let specOptions: StudioComponentSpecOptions;
+  try {
+    specOptions = await sdk.fetchCompositionData({
+      compositionUid,
+      // Required on the server (no window.location.search). Pass the page's own
+      // query: the line above clears the preview hash on the shared stack, so
+      // an empty string here would undo the hash the page's fetch just set.
+      searchQuery,
+    });
+  } catch (err) {
+    if (!isCompositionNotFound(err)) throw err;   // real failures still throw
+    return null;
+  }
   return <StudioEmbedClient specOptions={specOptions} />;
 }
 ```

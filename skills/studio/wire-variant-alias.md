@@ -93,21 +93,25 @@ This skill is for **user-driven branching only**. The variant is chosen based on
    - }
    + import { cookies } from "next/headers";
    + import { notFound } from "next/navigation";
-   + import { sdk } from "@/lib/contentstack";
-   + import { resolveComposition } from "@/lib/resolve-composition";
-   + import { StudioComponent } from "@contentstack/studio-react";
+   + import { sdk, stack } from "@/lib/contentstack";
+   + import { StudioComponent, isCompositionNotFound, type StudioComponentSpecOptions } from "@contentstack/studio-react";
    +
    + export default async function ProductPage({ params }) {
    +   const { sku } = await params;   // a Promise on Next 15+
    +   const variant = (await cookies()).get("variant-alias")?.value;
-   +   // fetchCompositionData THROWS on a miss — wrap it, or an unknown sku 500s
-   +   // instead of 404ing. resolveComposition: configure-csr-vs-ssr.
-   +   const { specOptions, notFound: miss } = await resolveComposition(
-   +     sdk,
-   +     { templateContentTypeUid: "product" },
-   +     { templateEntryUid: sku, variantAlias: variant || undefined },
-   +   );
-   +   if (miss) notFound();
+   +   // fetchCompositionData THROWS on a miss — catch it, or an unknown sku 500s
+   +   // instead of 404ing. Pattern: configure-csr-vs-ssr.
+   +   stack.livePreviewQuery({ live_preview: "" }); // shared stack: drop the last request's preview hash
+   +   let specOptions: StudioComponentSpecOptions;
+   +   try {
+   +     specOptions = await sdk.fetchCompositionData(
+   +       { templateContentTypeUid: "product" },
+   +       { templateEntryUid: sku, variantAlias: variant || undefined },
+   +     );
+   +   } catch (err) {
+   +     if (!isCompositionNotFound(err)) throw err; // a real failure stays a 500
+   +     notFound();
+   +   }
    +   return <StudioComponent specOptions={specOptions} />;
    + }
    ```

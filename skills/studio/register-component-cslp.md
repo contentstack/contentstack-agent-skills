@@ -16,7 +16,7 @@ Full reference: [CSLP tags: the `$` props that make bound values editable](regis
 
 **Silent-failure #1 in hand-written registered components:** a bindable prop is registered, the component renders the value fine, and **click-to-edit never attaches**. No error, no warning. The page looks finished and authors cannot touch it.
 
-Every bindable prop arrives **twice**: the resolved value under its own name, and the CSLP tag for the field it came from under the same name with a `$` prefix. The `$` prop holds one attribute, `data-cslp`, which is the field's address in the entry. It is the anchor Visual Editer attaches the edit affordance to. Its type is exported as `Cslptag`. You never construct one by hand.
+Every bindable prop arrives **twice**: the resolved value under its own name, and the CSLP tag for the field it came from under the same name with a `$` prefix. The `$` prop holds one attribute, `data-cslp`, which is the field's address in the entry. It is the anchor Visual Editor attaches the edit affordance to. Its type is exported as `Cslptag`. You never construct one by hand.
 
 ### Two things must both be true
 
@@ -70,6 +70,24 @@ export function Hero({
 
 The spread has to land on the element rendering the value, not on a parent. A tag on the wrapper makes the whole block one edit target instead of the field.
 
+**An image in an `<img>`.** The Hero above paints its image as a CSS background, so the tag sits on the `<section>`. For an `<img>`, spread the image's tag on the `<img>` itself. When the image is empty, still render a placeholder element carrying that tag, so an author can click it and pick an image:
+
+```tsx
+interface CardImageProps {
+  image?: string;
+  imageAlt?: string;
+  $image?: Cslptag;
+}
+
+export function CardImage({ image, imageAlt, $image }: CardImageProps) {
+  if (image) return <img src={image} alt={imageAlt ?? ""} {...$image} />;
+  // Empty image: keep an element with the tag, or there is nothing to click.
+  return $image ? <div className="card-image card-image--empty" {...$image} /> : null;
+}
+```
+
+Give the placeholder a size, so it has an area to click. See [`make-visual-editor-editable`](make-visual-editor-editable.md) § 4 for empty fields on a new entry.
+
 **Checklist for every component you register:**
 
 - [ ] `studioSdk.init` passes `cslp: { appendTags: true }`.
@@ -79,6 +97,155 @@ The spread has to land on the element rendering the value, not on a parent. A ta
 - [ ] Non-visible props (analytics IDs, aria labels not tied to visible text) don't strictly need one, but adding it costs nothing.
 
 **Verify from the rendered page, not from the source.** `curl -s <url> | grep -c 'data-cslp'`, or DevTools on the composition. Zero tags means `appendTags`. Some fields tagged and others not means those others aren't spreading their `$` prop. A tag reads `<ct_uid>.<entry_uid>.<locale>.<field_path>`, so you can confirm it points at the field you meant.
+
+## Lists passed as a prop
+
+A `type: "array"` prop bound to a multi-value field ([`register-component-prop-contracts`](register-component-prop-contracts.md) § Array & object props) is mapped by the component itself, with no Repeater. Studio sends two tags for it:
+
+- `$<prop>`: one tag for the whole list. Spread it on the list's wrapper.
+- `$<prop>Items`: an array with one tag per item, in list order. Spread item `i`'s tag on its element, through `itemTag($<prop>Items, i)` (below).
+
+**Pass every item tag through `itemTag`.** studio-registry 2.0.1, still the latest published, builds item tags as `<field>.$0`, `<field>.$1` (`${tag}.$${idx}` in `retrieve-data.js`). Live Preview Utils (4.5.3 and 4.6.1) reads everything after the locale as the field path, looks up `gallery.$0` and finds nothing. In Visual Editor every such item shows "Invalid CSLP tag" when clicked, can't be edited, and the list has no "+". With the tags as `<field>.0` the item selects as its field (Destination : Gallery) with its "+" and move arrows. The helper drops the `$`, and passes a tag that is already right through unchanged, so it keeps working once the SDK is fixed:
+
+```tsx
+// lib/item-tag.ts
+import type { Cslptag } from "@contentstack/studio-react";
+
+// studio-registry 2.0.1 writes "<field>.$<n>"; Visual Editor reads "<field>.<n>".
+export const itemTag = (items: Cslptag[] | undefined, i: number): Cslptag | undefined => {
+  const t = items?.[i];
+  const v = t?.["data-cslp"];
+  return typeof v === "string" ? { ...t, "data-cslp": v.replace(/\.\$(\d+)$/, ".$1") } : t;
+};
+```
+
+Declare both tags next to the list:
+
+```tsx
+import { itemTag } from "@/lib/item-tag";
+
+interface GalleryProps {
+  images?: { url?: string; description?: string }[];
+  $images?: Cslptag;
+  $imagesItems?: Cslptag[];
+}
+
+export function Gallery({ images = [], $images, $imagesItems }: GalleryProps) {
+  return (
+    <ul className="gallery" {...$images}>
+      {images.map((img, i) => (
+        <li key={img.url ?? i} {...itemTag($imagesItems, i)}>
+          <img src={img.url} alt={img.description ?? ""} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+Visual Editor needs both: the list tag on the wrapper and an item tag on each item. Check them as in [`make-visual-editor-editable`](make-visual-editor-editable.md) § 2.
+
+**Check:** no `data-cslp` on the page ends in `.$<n>` (`curl -s <url> | grep -o 'data-cslp="[^"]*\.\$[0-9]*"'` prints nothing). Restart the dev server after adding the helper: Studio keeps the components it registered at start-up. The SDK fix to report is to build the tag as `${tag}.${idx}`. The Studio MCP carries the same rule and refuses `.$<n>` tags when it records a site's set-up.
+
+## Fields inside each listed item
+
+Each referenced entry in a list, and each group or block item, carries its own tags under `item.$`: `trip.$.title`, `trip.$.image`. Spread them on the elements that render that item's title, image and price. A small helper keeps it readable:
+
+```tsx
+type Tagged = { $?: Record<string, Cslptag> };
+
+const tagOf = (o: Tagged | undefined, key: string): Cslptag | undefined => o?.$?.[key];
+
+interface Trip extends Tagged {
+  uid: string;
+  title?: string;
+  image?: { url?: string };
+  price?: string;
+}
+
+interface TripListProps {
+  trips?: Trip[];
+  $trips?: Cslptag;
+  $tripsItems?: Cslptag[];
+}
+
+export function TripList({ trips = [], $trips, $tripsItems }: TripListProps) {
+  return (
+    <ul className="trips" {...$trips}>
+      {trips.map((trip, i) => (
+        <li key={trip.uid} {...itemTag($tripsItems, i)}>
+          <img src={trip.image?.url} alt="" {...tagOf(trip, "image")} />
+          <h3 {...tagOf(trip, "title")}>{trip.title}</h3>
+          <p {...tagOf(trip, "price")}>{trip.price}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+The item tag on the `<li>` selects the item. The tags from `trip.$` select one field inside it. Each one points at that trip's own entry uid, so an edit lands on the referenced entry.
+
+## Components built from smaller ones
+
+A component that renders smaller components hands each value's tag down with it: `<Heading text={title} $text={$title} />`. Every atom takes the same kind of `$` prop and spreads it on its own element. Passing the value without its tag leaves it unclickable, however well the atom is written.
+
+A hero built from Badge, Heading, Text, Button and Image:
+
+```tsx
+import type { Cslptag, StudioAttributes } from "@contentstack/studio-react";
+
+// Atoms: each takes its value and the matching `$` prop, and spreads it.
+type TextAtomProps = { text?: string; $text?: Cslptag };
+
+const Badge = ({ text, $text }: TextAtomProps) => <span className="badge" {...$text}>{text}</span>;
+const Heading = ({ text, $text }: TextAtomProps) => <h1 {...$text}>{text}</h1>;
+const Text = ({ text, $text }: TextAtomProps) => <p {...$text}>{text}</p>;
+
+const Button = ({ label, href, $label }: { label?: string; href?: string; $label?: Cslptag }) => (
+  <a className="button" href={href} {...$label}>{label}</a>
+);
+
+const Image = ({ src, alt, $src }: { src?: string; alt?: string; $src?: Cslptag }) =>
+  src ? <img src={src} alt={alt ?? ""} {...$src} /> : $src ? <div className="image--empty" {...$src} /> : null;
+
+interface HeroProps {
+  badge?: string;
+  title?: string;
+  body?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+  image?: string;
+  imageAlt?: string;
+  $badge?: Cslptag;
+  $title?: Cslptag;
+  $body?: Cslptag;
+  $ctaLabel?: Cslptag;
+  $image?: Cslptag;
+}
+
+// The registered component: every value goes down with its tag.
+export function Hero({
+  badge, $badge,
+  title, $title,
+  body, $body,
+  ctaLabel, $ctaLabel, ctaHref,
+  image, $image, imageAlt,
+  studioAttributes,
+}: HeroProps & StudioAttributes) {
+  return (
+    <section className="hero" {...studioAttributes}>
+      <Badge text={badge} $text={$badge} />
+      <Heading text={title} $text={$title} />
+      <Text text={body} $text={$body} />
+      <Button label={ctaLabel} href={ctaHref} $label={$ctaLabel} />
+      <Image src={image} alt={imageAlt} $src={$image} />
+    </section>
+  );
+}
+```
+
+Leave out `$text={$title}` and the heading still renders the title, with no tag on it.
 
 ## The `studioAttributes` contract: the node's own CSLP tag and identity
 
@@ -191,6 +358,7 @@ A real audit of 19 atomic components found **0** spreading `studioAttributes`, s
 | Spread onto a semantic-props component (`<Card title={…} />`) | It never reaches a DOM node, so there is no ref for hit-testing | Use a plain tag, or a component that forwards DOM attributes |
 | `import { StudioAttributes }` as a value | It is a type-only export, breaks builds on `verbatimModuleSyntax` | `import type { StudioAttributes }` |
 | Registering `studioAttributes` as a prop | It is identity, not content. A CSLP tag or `<Slot data>` entry on it corrupts the node | Never register, tag, or bind it |
+| A prop added to a registered component only to pass tags or markup through (a tag prop on a layout component) | Every registered prop shows up as a setting in Studio once synced, so authors see a meaningless field | Use a plain element inside the component instead, and keep the registered props for content and settings |
 | Tags missing on every component at once | Almost always `cslp.appendTags` not enabled, not a component bug | Fix the SDK config first |
 
 **Verify in the browser** (both bags at once): open the component in Studio, inspect the rendered DOM, and confirm the component's root element carries `data-cslp` **and** each bound text/image element carries its own. A root with no tag means `studioAttributes` was dropped. A root with a tag but bare fields means the `$`-twins were.

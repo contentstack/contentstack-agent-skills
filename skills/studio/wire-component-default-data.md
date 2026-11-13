@@ -62,7 +62,7 @@ Use defaults for **palette preview + pre-binding state**. Use bindings for real 
 
    Rules by type:
    - **`choice`** defaults: write an array (`defaultValue: ["medium"]`). It works for single- and multi-select on every SDK version. Multi-select requires it. From `studio-registry` 1.7.0, single-select also accepts the bare value (`"medium"`) and converts it to an array. Before 1.7.0 a bare value renders with nothing selected.
-   - **`object`** parents do **not** take their own `defaultValue`: each child prop owns its default.
+   - **`object`** parents do **not** take their own `defaultValue`: each child prop owns its default. From SDK 2.0 an `object` prop (and a group, global field or modular block bound as an object) **must** declare `properties`, so the child props are always there to carry the defaults.
    - **`array`** props need two defaults: outer `defaultValue` (initial items the canvas shows) and `items.defaultValue` (each new row added later).
    - **`imageurl`** defaults must resolve: ship the placeholder asset alongside the component bundle at `placeholderAssetPath`.
 

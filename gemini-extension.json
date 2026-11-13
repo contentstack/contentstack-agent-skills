@@ -1,6 +1,6 @@
 {
   "name": "contentstack-skills",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Contentstack agent skills plus the hosted Contentstack MCP server: CMS modeling and APIs, Delivery SDK and GraphQL, Live Preview, Studio, Brand Kit, Personalize, Lytics, Launch, Automate, Developer Hub and Marketplace apps, the CLI, and migrations.",
   "mcpServers": {
     "contentstack": {

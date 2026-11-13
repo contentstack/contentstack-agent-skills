@@ -14,13 +14,15 @@ Part of the API-authoring set. Start at [`author-composition-via-api`](author-co
 
 **Symptom:** every API-authored Section shows a blank/placeholder tile in Studio's **Sections** accordion, while UI-authored ones show a picture of the section. Nothing errors.
 
-**Why.** Studio's Sections accordion renders `section.ui_preview.url` (`ui_preview` is a `file` field holding an asset). When an author saves a Section **in the Studio UI**, or opens one that has no thumbnail, the app screenshots the canvas node, converts the base64 to a blob, uploads it as an asset, and PUTs `{ entry: { ui_preview: <assetUid> } }` on the composition entry, fire-and-forget, master locale, then invalidates the sections query so the tile appears without a reload. **That whole chain lives in the editor.** A Section created through the API or the CMA has `ui_preview` empty until someone opens or saves it in Studio.
+**Why.** Studio's Sections accordion renders `section.ui_preview.url` (`ui_preview` is a `file` field holding an asset). When an author saves or opens a Section **in the Studio UI** and it has no thumbnail yet, the app screenshots the canvas node, converts the base64 to a blob, uploads it as an asset, and PUTs `{ entry: { ui_preview: <assetUid> } }` on the composition entry, fire-and-forget, master locale, then invalidates the sections query so the tile appears without a reload. **That whole chain lives in the editor.** A Section created through the API or the CMA has `ui_preview` empty until someone opens or saves it in Studio.
+
+**Studio writes it only while it's empty.** Once a thumbnail is set, Studio never replaces it, on save or on open. When a section's look changes, refresh the thumbnail yourself (Fix B, C or D). **Use PNG, JPEG or WebP.** An SVG asset shows as a blank tile.
 
 Same asymmetry family as `linked_sections`: the UI populates a field behind the scenes, so API authoring must do it explicitly.
 
 ### Fix A: zero-script backfill (best when the sections already exist)
 
-Open each Section in Studio, no edits needed. A Section with no thumbnail gets one once the canvas has rendered it, and **Save** takes one too. A Section whose props bind to entry data gets none on open until you pick a preview entry for it. The screenshot/upload/PUT chain backfills `ui_preview` with a real render of the section. Cheapest correct fix, and the thumbnail is an actual screenshot rather than a placeholder. Only worth scripting instead when the section count makes clicking impractical.
+Open each Section in Studio, no edits needed. A Section with no thumbnail gets one once the canvas has rendered it, and **Save** takes one too, but only while `ui_preview` is empty. This does not refresh an existing thumbnail. A Section whose props bind to entry data gets none on open until you pick a preview entry for it. The screenshot/upload/PUT chain backfills `ui_preview` with a real render of the section. Cheapest correct fix, and the thumbnail is an actual screenshot rather than a placeholder. Only worth scripting instead when the section count makes clicking impractical.
 
 ### Fix B: pick an image in the Edit Section modal (no canvas render, no script)
 
@@ -53,7 +55,7 @@ curl -X PUT "https://<cma-host>/v3/content_types/<compositions-CT>/entries/<sect
 
 **Precondition:** the compositions CT must carry the `ui_preview` file field. If it's missing, the CMA silently drops the key on write: 201/200 returned, field reads back absent. See [`provision-studio-project`](provision-studio-project.md).
 
-**What to use as the image.** A real screenshot of the rendered section is what the UI produces and what authors expect. A generated placeholder (labeled color block) is acceptable as a stopgap and still beats a blank tile, but say so rather than presenting it as a preview.
+**What to use as the image.** PNG, JPEG or WebP. An SVG uploads fine and then shows as a blank tile. A real screenshot of the rendered section is what the UI produces and what authors expect. A generated placeholder (labeled color block) is acceptable as a stopgap and still beats a blank tile, but say so rather than presenting it as a preview.
 
 ### MANDATORY: a section without `ui_preview` is not finished
 

@@ -118,6 +118,8 @@ The registration is a `registerComponent` call that names the component, gives i
    ```ts
    // Inline SVG → data URI (no network request from the canvas iframe). Swap the fills for brand tokens.
    const thumb = (svg: string) => `data:image/svg+xml,${encodeURIComponent(svg)}`;
+   // The Layers icon: 24×24, currentColor, plain shapes. A string, not a data URI.
+   const HeroIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 10h10M7 14h6"/></svg>`;
    const HeroGlyph = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80"><rect width="120" height="80" fill="#f4f4f7"/><rect x="12" y="20" width="72" height="10" fill="#6c5ce7"/><rect x="12" y="38" width="52" height="6" fill="#a0a0b0"/><rect x="12" y="54" width="28" height="10" rx="2" fill="#6c5ce7"/></svg>`;
 
    registerLazyComponent(
@@ -126,6 +128,7 @@ The registration is a `registerComponent` call that names the component, gives i
        displayName: "Hero",
        sections: ["Acme · Patterns"],
        thumbnailUrl: thumb(HeroGlyph),   // data:image/svg+xml,...
+       layerIcon: HeroIcon,              // inline SVG string: the Layers tree and the canvas label
        props: { /* … */ },
      },
      () => import("./components/Hero").then((m) => m.Hero),
@@ -133,6 +136,8 @@ The registration is a `registerComponent` call that names the component, gives i
    ```
 
    **One config object, not component-then-config.** `registerComponent(Hero, { name, … })` **throws `Component type is required.`** Verified against `@contentstack/studio-react@2.0.1`: `registerComponent` takes *one element* of the array `registerComponents` takes, so a component passed first is read as the config and `type` comes back undefined. **`type` and `component` are the only required fields**. `registerComponents([{ … }], options?)` takes an array of the same shape. The one two-argument form is `registerLazyComponent(config, loader)`: the config (everything except `component`) first, then the loader.
+
+   **Give each registration a `layerIcon` too.** Without one, every registered part shows Studio's default glyph in the Layers tree and on its label when selected in the canvas, so authors can't tell parts apart. Use an inline SVG string (24×24, stroke or fill in `currentColor`, plain shapes). An `http(s)` or `data:image` URL, or a path the site serves (`/icons/hero.svg`), also works. Not `icon`: that field takes Studio's built-in icon names. A bare name or a source path (`./icons/hero.svg`) gives the default glyph, and a value the registry can't use is dropped with a console warning. Restart the dev server after adding it (studio-registry 2.0.1: `RegisterComponentSchemaInput.layerIcon`, checked by `isValidLayerIcon`).
 
    **Retrofitting an existing registration file?** Every registration without `thumbnailUrl` is a blank tile today. Sweep them all: `grep -cE "register(Lazy)?Component\(" <file>` vs `grep -c "thumbnailUrl" <file>`. The counts must match.
 
@@ -317,6 +322,7 @@ This skill succeeds only when ALL of the following are true.
 - [ ] **Call-site literal sweep**. If this component is already used in production code, grep every JSX use of it. Every literal prop set at a call site (`isInteractive={false}`, `variant="compact"`, `columns={3}`, `isLogoBgWhite={false}`) becomes a `defaultValue` on the corresponding registered prop, or a named preset. Skipping this is the single most common cause of "composed page looks 80% right but wrong on hover/motion/spacing." Sample grep: `rg -t ts -o '<ComponentName[^>]*/?>' src | head`. If the component is new (no production call sites yet), acceptance is trivially satisfied, but state that explicitly.
 - [ ] **Image props**: every `imageurl` prop is bound to `<file_field>.url`, alt text is its own `string` prop bound to the asset's `description`, and the prop's TS type still accepts `string | { url?: string } | null | undefined` with internal coercion as a safety net. See [`register-component-prop-contracts`](register-component-prop-contracts.md) § Image props.
 - [ ] **Tolerant link signatures**: every `href`-typed prop binds against a link field's `href` leaf (never the whole link object). Where the design mandates a single link prop, the component coerces `string | {title, href}` inside via `href()` / `label()` helpers. See [`register-component-prop-contracts`](register-component-prop-contracts.md) § Tolerant link signatures.
+- [ ] **Layers icon**: every registration sets `layerIcon` (an inline 24×24 `currentColor` SVG string, or a URL the site serves), and the Layers tree shows it after a dev-server restart, not Studio's default glyph.
 - [ ] **Palette group + thumbnail**: the registration declares `sections: ["<Brand> · Elements | Patterns | Layouts"]` (never `"Template"` or `"Section"` in the name) and a `thumbnailUrl` data URI that visually previews the tier (step 5).
 
 ## After registering: plan your Section shape
