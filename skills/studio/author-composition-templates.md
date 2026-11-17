@@ -29,9 +29,9 @@ When your composition-authoring script writes `section-composition` nodes into a
 // Template composition entry (CMA write)
 {
   "title": "Product Page",
-  "url": "/products/{{entry.title}}",
+  "url": "/products/{{entry.url}}",              // the CT's prefix + {{entry.url}}
   "url_metadata": {
-    "url_source": "content_type_url_pattern",
+    "url_source": "content_type_url_pattern",       // never user_specified_pattern for the CT's own pattern
     "url_queries": "{\"include\":[],\"only\":{},\"where\":{}}"
   },
   "composable_uid": "product_page_template",
@@ -52,6 +52,8 @@ When your composition-authoring script writes `section-composition` nodes into a
   ]
 }
 ```
+
+The `url` is the connected content type's prefix + `{{entry.url}}` (here `/products/{{entry.url}}`). Don't send the content type's own pattern as `user_specified_pattern`: Studio puts the prefix in front of an address that already has it (seen live: `/blog//blog/hello`). The full rules are in [`author-composition-entry`](author-composition-entry.md#url-metadata-matched-pair) § `url` + `url_metadata`.
 
 The references can be bare `{uid, _content_type_uid}` stubs. The CMA stores them. The editor's `?include[]=` resolves them inline when loading. There's no UI-only metadata to mirror (unlike the section-side `selectedField`).
 
@@ -196,6 +198,8 @@ The `ui` value on the wire is the tree above, JSON-stringified, `zlib.compress`e
   }
 }
 ```
+
+`schema_version` decides how SDK 2.0 works out which references to fetch. From `"1.1.0"` it fetches exactly the saved set of references. Below it, the SDK also works paths out from the bindings. This example has no references, so `"1.0.0"` is safe. A composition written by API that reads references must list every reference path its parts read in `data_sources`, as if it were 1.1.0. Otherwise an author's next save in Studio changes what is fetched.
 
 `ui` is a top-level entry field, a sibling of `static_value`, never inside it. The `number` value is a bare `49` because this stack's compositions CT types `static_value.number.value` as `number`. On a CT built from [`provision-studio-project`](provision-studio-project.md) it is text, so write `"49"` ([`author-composition-entry`](author-composition-entry.md#wire-shapes) § Wire shapes).
 

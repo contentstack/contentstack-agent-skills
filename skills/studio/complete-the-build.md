@@ -25,9 +25,9 @@ Each is owned by exactly one skill. This file is the checklist and the gate: rea
 | 1 | `cslp: { appendTags: true }` in SDK init | once per project | [`install-live-preview`](install-live-preview.md) | Both tag bags arrive empty everywhere at once, no component fix helps |
 | 2 | `studioAttributes` spread on the root **and** `wrap: false` in the register entry, plus `$prop` twins on bound elements | **every** registered component | [`register-component-cslp`](register-component-cslp.md) § The `studioAttributes` contract | Element renders but Visual Editor can't select or inline-edit it. `wrap: false` without the spread is worse: the node is unselectable entirely |
 | 3 | `thumbnailUrl` data URI | **every** `registerComponent` call | [`register-component`](register-component.md) | Palette renders a text placeholder. A 20-component palette is an unbrowsable text wall |
-| 4 | `ui_preview` asset | **every** Section composition | [`author-composition-thumbnails`](author-composition-thumbnails.md) § Section thumbnails | Blank tile in the Sections accordion, authors can't tell sections apart. The CMA never populates it: a scripted build leaves every Section blank and nothing errors |
-| 5 | Live Preview enabled on the stack + preview token | once per project | [`enable-visual-experience`](enable-visual-experience.md) | Canvas blank / edits never reflect. Looks like a broken install |
-| 6 | The `/canvas` route mounted | once per project | [`setup-section-preview`](setup-section-preview.md) | `MISSING_CANVAS_URL`. Nothing can be authored at all |
+| 4 | `ui_preview` asset (PNG, JPEG or WebP) | **every** Section composition | [`author-composition-thumbnails`](author-composition-thumbnails.md) § Section thumbnails | Blank tile in the Sections accordion, authors can't tell sections apart. The CMA never populates it: a scripted build leaves every Section blank and nothing errors. Studio writes it only while it's empty and never replaces it after, so refresh it when the section's look changes. An SVG shows as a blank tile |
+| 5 | Live Preview enabled on the stack + preview token, read by the site on preview environments only (never on the live site) | once per project | [`enable-visual-experience`](enable-visual-experience.md) | Canvas blank / edits never reflect. Looks like a broken install |
+| 6 | The canvas route mounted at the project's **Canvas URL** path (often `/canvas`, but whatever the project's Configuration says) | once per project | [`setup-section-preview`](setup-section-preview.md) | `MISSING_CANVAS_URL`. Nothing can be authored at all |
 | 7 | **Published** to the environment the project targets | **every** Section and Template, and again after every tree edit | [`author-composition-via-api`](author-composition-via-api.md) | Delivery serves the previous version, or nothing. The CMA looks perfect and the canvas resolves the composition |
 | 8 | **The template is composed of Sections**, not one component bound to the page body | **every** Template | [`build-connected-template`](build-connected-template.md) § Post-build structural check | Nothing. The page renders correctly, matches production and passes every other check here: it simply has no Sections, no Section Slots and no reuse, and an author cannot rearrange it. The only way to see it is to count `section-composition` nodes |
 | 9 | Live Preview `mode: "builder"` (with `editInVisualBuilderButton: { enable: false }`) | once per project | [`install-studio`](install-studio.md) | Visual Editor opens on "Initializing the editor…" and nothing is clickable. Nothing errors |
@@ -43,7 +43,8 @@ They are constantly conflated, and fixing one does nothing for the other.
 |---|---|---|
 | Field | `thumbnailUrl` in the `registerComponent` call | `ui_preview` on the composition entry |
 | Lives in | your code | the CMA (a `file` field pointing to an asset) |
-| Made by | you, as an inline SVG data URI | Studio's editor on Save, or set by API |
+| Made by | you, as an inline SVG data URI | Studio's editor on Save, only while the field is empty (never replaced after), or set by API |
+| Format | SVG data URI | PNG, JPEG or WebP asset. An SVG shows blank |
 | Shows up in | the palette's Registered Components | the palette's Sections accordion |
 
 Between the two, **nothing in the Components panel is ever a blank tile.** That is the acceptance bar, not "most tiles have pictures".
@@ -84,7 +85,7 @@ grep -rn 'mode: "builder"\|fetchTemplateEntry' <init-file>
 curl -s "<new entry URL>" | grep -o 'data-cslp="[^"]*"' | sort -u
 ```
 
-**What the author sees in the Components panel (#3), checked without opening Studio.** The project's registered-components list in Studio stays empty for a code-registered library: registration happens in the browser, at runtime. To see the palette headlessly, read the registry on the `/canvas` page in development. `getComponentRegistryInstance` is exported by `@contentstack/studio-registry` (a dependency of `@contentstack/studio-react`, not re-exported by it in 2.0.1), so add it as a direct dev dependency at the same version before importing it, and keep the check out of production builds:
+**What the author sees in the Components panel (#3), checked without opening Studio.** The project's registered-components list in Studio stays empty for a code-registered library: registration happens in the browser, at runtime. To see the palette headlessly, read the registry on the canvas page (the project's Canvas URL path, often `/canvas`) in development. `getComponentRegistryInstance` is exported by `@contentstack/studio-registry` (a dependency of `@contentstack/studio-react`, not re-exported by it in 2.0.1), so add it as a direct dev dependency at the same version before importing it, and keep the check out of production builds:
 
 ```tsx
 // Dev-only, in the /canvas page (or a component it renders), after the registration module has run.
@@ -150,7 +151,7 @@ print('ui_preview field:', 'present' if 'ui_preview' in f else 'MISSING - writes
 Not a final sweep. Items 1, 5, 6 and 9 are **preflight**. They gate everything after them. Items 2, 3 and 4 are **per-piece**, done as each piece is created, never batched to the end:
 
 ```
-preflight  : 1 appendTags · 5 Live Preview + token · 6 /canvas route · 9 builder mode
+preflight  : 1 appendTags · 5 Live Preview + token · 6 canvas route · 9 builder mode
 per component : 2 CSLP tags · 3 thumbnailUrl   ← at registration time, same commit
 per section   : 4 ui_preview                   ← immediately after the composition write
 per template  : 8 Sections counted · 10 new entry editable

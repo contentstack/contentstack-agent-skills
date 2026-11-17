@@ -6,6 +6,8 @@ name: understand-contentstack-mcp
 
 What the Contentstack MCP server does, and what it does not. Read before installing, to decide whether it fits the task. Installing it is [`install-contentstack-mcp`](install-contentstack-mcp.md).
 
+> **Not the Studio MCP.** The Studio MCP is a different server from the Contentstack MCP. It runs Studio goals step by step (`list_goals`, `next_step`, `preview`, `apply`, `check`), and it is preferred for Studio work when its tools are callable (see [`SKILL.md`](SKILL.md) § 1. Studio MCP first). The Contentstack MCP stays for general CMA operations.
+
 ## What it does: and does NOT do
 
 Grounded in `contentstack.com/docs/agent-os/contentstack-mcp-server` **and verified against the CLI source** (`~/.npm/_npx/*/node_modules/@contentstack/mcp/dist/index.js`).

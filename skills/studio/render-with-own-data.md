@@ -62,7 +62,7 @@ This is not `<StudioComponent />`. That one owns a route and resolves compositio
    }
    ```
 
-   `sdk.fetchComposition(query, options?)` returns `Promise<StudioSpec>` whose `data` is intentionally empty: that's the bring-your-own-data path. `options` is the same `CompositionQueryOptions` as `sdk.fetchCompositionData` (`variantAlias`, `locale`, `templateEntryUid`, `extendQuery`, custom fetchers).
+   `sdk.fetchComposition(query, options?)` returns `Promise<StudioSpec>` whose `data` is intentionally empty: that's the bring-your-own-data path. `options` is the same `CompositionQueryOptions` as `sdk.fetchCompositionData` (`variantAlias`, `locale`, `templateEntryUid`, custom fetchers). Linked content comes from references switched on in the template, not from an option; the old `extendQuery` option is deprecated.
 
    Pages Router / Remix: call `sdk.fetchComposition` in `getServerSideProps` / `loader` and pass `spec` through props.
 

@@ -64,63 +64,58 @@ CSR works on **any** framework including App Router. The `isLoading` gate keeps 
 
 <a id="resolve-composition-helper"></a>
 
-## `fetchCompositionData` does not return "not found": it throws. Wrap it.
+## `fetchCompositionData` does not return "not found": it throws. Catch it.
 
-On a miss, `sdk.fetchCompositionData` **throws**. It does not resolve with `hasSpec: false`. Every `if (!specOptions.hasSpec) notFound()` line is therefore dead code on the path it was written for: the `await` throws first, the framework's error boundary catches it, and the visitor gets a **500 where a 404 belongs**.
+On a miss, `sdk.fetchCompositionData` **throws**. It never resolves with an empty result, so a guard on the returned object (`if (!specOptions?.spec) notFound()`) is dead code on the path it was written for: the `await` throws first, the framework's error boundary catches it, and the visitor gets a **500 where a 404 belongs**.
 
-What it throws is a `ComposableStudioError`. **Do not branch on a list of names.** Call `isCompositionNotFound(err)`, exported for exactly this decision:
-
-```ts
-import { isCompositionNotFound } from "@contentstack/studio-react";
-```
+What it throws is a `ComposableStudioError`. **Do not branch on a list of names.** Catch it and call `isCompositionNotFound(err)`, exported from `@contentstack/studio-react` for exactly this decision: `true` is a 404, `false` is a real failure that must stay a 500.
 
 It answers *did we establish that nothing is here?* and is the only thing that should decide a 404. A list of names has to be kept in step with the SDK, and the cost of drift is one-way: mistake a setup failure for a missing page and a wrong api key or a delivery outage returns **404 on pages that exist**, de-indexing a working site.
 
 Also on the error: `err.code` (the precise case, for logs and support) and `err.errorClass`, of which only `NOT_FOUND` is a 404. `err.causes` carries `{ cause, fix }` pairs for that failure, most likely first: log it in dev, it is the fastest diagnosis available.
 
+The pattern every server fetch on SDK 2.x uses, written at the route:
+
 ```ts
-// lib/resolve-composition.ts — server-only
-import { isCompositionNotFound, type studioSdk } from "@contentstack/studio-react";
-// The Delivery stack your Studio sdk was initialized with (`stackSdk`). On the
-// minimal-add branch that module is lib/studio.ts.
-import { stack } from "@/lib/contentstack";
+import { isCompositionNotFound, type StudioComponentSpecOptions } from "@contentstack/studio-react";
+// The sdk and the Delivery stack it was initialized with (`stackSdk`).
+// On the minimal-add branch that module is lib/studio.ts.
+import { sdk, stack } from "@/lib/studio.server";
 
-type StudioSdk = ReturnType<typeof studioSdk.init>;
-type FetchArgs = Parameters<StudioSdk["fetchCompositionData"]>;
+// The stack is shared by every request this server handles. The SDK SETS a
+// request's preview hash on it but never clears it, so without this line the
+// next visitor is served the last editor's drafts. Clearing first is always
+// safe: when this request carries a hash, the SDK sets it again itself.
+stack.livePreviewQuery({ live_preview: "" });
 
-export async function resolveComposition(sdk: StudioSdk, args: FetchArgs[0], opts: FetchArgs[1] = {}) {
-  // The stack is shared by every request this server handles. The SDK SETS a
-  // request's preview hash on it but never clears it, so without this line the
-  // next visitor is served the last editor's drafts. Clearing first is always
-  // safe: when this request carries a hash, the SDK sets it again itself.
-  stack.livePreviewQuery({ live_preview: "" });
-  try {
-    const specOptions = await sdk.fetchCompositionData(args, opts);
-    return { specOptions, notFound: false as const }; // resolved ⇒ renderable
-  } catch (err) {
-    if (isCompositionNotFound(err)) return { specOptions: null, notFound: true as const };
-    throw err;   // real failure — must stay a 500
-  }
+let specOptions: StudioComponentSpecOptions;
+try {
+  specOptions = await sdk.fetchCompositionData({ url, searchQuery }, { locale });
+} catch (err) {
+  if (!isCompositionNotFound(err)) throw err; // a real failure stays a 500
+  // A miss: the framework's 404 here (notFound(), { notFound: true }, a 404 Response).
 }
 ```
 
-**Every call on one request must forward the same `searchQuery`.** A layout or an embedded composition that passes `""` while the page passes the preview hash clears the hash the page's fetch just set, since both run concurrently on the same stack, and part of the page renders published content inside the editor ([`troubleshoot-canvas`](troubleshoot-canvas.md) § Live Preview state resets mid-request). Thread the page's query string down to them.
+**Inside Studio's editor, gate the empty page on `isStudioEditorMode(query)`**, also imported from `@contentstack/studio-react`. Pass it the request's query on the server. An unsaved template in the editor is the one miss that must not 404: render the editor's empty page there and the 404 for visitors ([`setup-template-preview-routes`](setup-template-preview-routes.md) step 5a (iii)).
 
-The `as const` flags let TypeScript narrow `specOptions` to non-null after `if (miss) notFound()`. [`install-studio`](install-studio.md) emits this file next to the SDK init, so every route that uses it gets the hash reset without thinking about it (§ A server with a preview token can serve drafts to visitors).
+**Every call on one request must forward the same `searchQuery`.** A layout or an embedded composition that passes `""` while the page passes the preview hash clears the hash the page's fetch just set, since both run concurrently on the same stack, and part of the page renders published content inside the editor ([`troubleshoot-canvas`](troubleshoot-canvas.md) § Live Preview state resets mid-request). Thread the page's query string down to them.
 
 **Do not blanket-catch.** A bare `try { … } catch { notFound() }` turns every CDA outage, expired delivery token, and network blip into a silent 404. The site looks empty instead of broken, and monitoring sees nothing. Ask the predicate. Rethrow the rest.
 
-**`content_type_url_pattern` moves the failure, it doesn't remove it.** With `url_metadata.url_source: "content_type_url_pattern"`, the composition's pattern matches a whole family of URLs (`/blog/{{entry.title}}` matches any `/blog/*`), so a bad slug sails past **pattern match** and dies at **entry lookup** — a different code, `URL_MATCHED_NO_ENTRY` rather than `NO_COMPOSITION_FOR_URL`. Both are `NOT_FOUND`, so the predicate covers both without you listing either; this is the case that used to catch people out when they hand-rolled the list. See [`troubleshoot-composition-resolution`](troubleshoot-composition-resolution.md) § Runtime error taxonomy.
+**`content_type_url_pattern` moves the failure, it doesn't remove it.** With `url_metadata.url_source: "content_type_url_pattern"`, the composition's pattern matches a whole family of URLs (`/blog/{{entry.url}}` matches any `/blog/*`), so a bad slug sails past **pattern match** and dies at **entry lookup** — a different code, `URL_MATCHED_NO_ENTRY` rather than `NO_COMPOSITION_FOR_URL`. Both are `NOT_FOUND`, so the predicate covers both without you listing either; this is the case that used to catch people out when they hand-rolled the list. See [`troubleshoot-composition-resolution`](troubleshoot-composition-resolution.md) § Runtime error taxonomy.
 
 **`useCompositionData` doesn't throw: it hands you the same object.** The hook catches the rejection and stores it verbatim in `error`, so `isCompositionNotFound(error)` classifies identically. An `if (error) return <ErrorState/>` branch renders an error state for URLs that simply have no composition.
 
-Every fetch snippet below is written against `resolveComposition`. If you copy a raw `sdk.fetchCompositionData` call from elsewhere, wrap it.
+Every fetch snippet below uses this pattern. If you copy a raw `sdk.fetchCompositionData` call from elsewhere, add the catch and the hash reset.
+
+**Older SDKs (deprecated).** `hasSpec` and `hasTemplate` on the spec options are deprecated in studio-client 4.1.0 and never decide a 404: a resolved fetch always has a spec, and `hasTemplate` is `false` for every Freeform page, so gating on it 404s them. Read `connectedContentTypeUid` if you need the composition's kind. Earlier versions of these guides also routed every fetch through a hand-written `resolveComposition(sdk, args, opts)` helper in `lib/resolve-composition.ts` (hash reset, then the same try/catch, returning `{ specOptions, notFound }`). A site that already has one can keep it while it calls `isCompositionNotFound`; new code writes the catch at the route.
 
 ## A server with a preview token can serve drafts to visitors
 
 The Delivery stack is shared by every request on a server process. `fetchCompositionData` sets a request's preview hash on it and never clears it when the next request has none (by design), so later visitor requests go to the preview host with the last hash. Measured: one request with `?live_preview=<hash>`, then the next plain request went to `rest-preview.contentstack.com`. Mechanism: [`troubleshoot-canvas`](troubleshoot-canvas.md) § shared stack instance hazard.
 
-A deployment with **no** preview token is safe ([`deploy-studio-site`](deploy-studio-site.md)). Everywhere else, [`resolveComposition`](#resolve-composition-helper) clears the hash before every fetch: `stack.livePreviewQuery({ live_preview: "" })`, after which the SDK re-applies the request's own `hash` / `live_preview` param when there is one (it only ever sets a hash that is present). A route that calls `sdk.fetchCompositionData` or `sdk.fetchComposition` directly needs that same line in front of the call.
+A deployment with **no** preview token is safe ([`deploy-studio-site`](deploy-studio-site.md)). Everywhere else, clear the hash before every fetch, as the [pattern above](#resolve-composition-helper) does: `stack.livePreviewQuery({ live_preview: "" })`, after which the SDK re-applies the request's own `hash` / `live_preview` param when there is one (it only ever sets a hash that is present). Every route that calls `sdk.fetchCompositionData` or `sdk.fetchComposition` needs that line in front of the call. Up to and including 2.0.1 the SDK doesn't clear the hash itself; the next release does, and the line can go once the site runs it ([`upgrade-studio-sdk`](upgrade-studio-sdk.md)).
 
 Measured: the plain request then stayed on the CDN. Requests in flight at the same time still share the stack, so on a preview server under concurrent load, create the stack and the Studio sdk **per request** instead of sharing one module-level instance:
 
@@ -140,7 +135,58 @@ export function createStudioSdk() {
 }
 ```
 
-With a per-request stack nothing carries over between requests, so the reset in `resolveComposition` has nothing to clear on it. Keep the helper for its 404 classification.
+With a per-request stack nothing carries over between requests, so the hash reset has nothing to clear on it. Keep the `isCompositionNotFound` catch for the 404.
+
+<a id="preview-link-not-accepted"></a>
+### A preview link whose code is no longer accepted
+
+A preview link carries its code in the query (`hash` or `live_preview`). Once that code expires, or when someone copies the link to a visitor, the preview host turns it down with a 4xx. The SDK throws `UPSTREAM_ERROR`, which is not a not-found, so the catch above rethrows it and the page is a **500**. Measured: `/?live_preview=x&hash=x` answered 500.
+
+Only on a request that carries `hash` or `live_preview`, retry once as a plain visitor request:
+
+- **Retry when** the error's `code` is `UPSTREAM_ERROR` and `findings.status` is a 4xx other than 404. On SDK 1.x the same case arrives as `COMPOSITION_NOT_FOUND` with `details.statusCode` 400.
+- **Before retrying,** clear the hash on the stack and remove `live_preview`, `hash`, `preview_timestamp`, `content_type_uid` and `entry_uid` from the query. Keep the locale.
+- **Decide the 404 and `isStudioEditorMode` from the query actually fetched**, so a made-up address with a made-up code is still a 404.
+- **Rethrow everything else.**
+
+```ts
+import { isCompositionNotFound, type StudioComponentSpecOptions } from "@contentstack/studio-react";
+import { sdk, stack } from "@/lib/studio.server";
+
+const PREVIEW_PARAMS = ["live_preview", "hash", "preview_timestamp", "content_type_uid", "entry_uid"];
+
+// The preview host turned the link's code down: a 4xx that isn't a 404.
+function previewCodeRefused(err: unknown): boolean {
+  const e = err as { code?: string; findings?: { status?: number } };
+  const status = e?.findings?.status;
+  return e?.code === "UPSTREAM_ERROR" && typeof status === "number" && status >= 400 && status < 500 && status !== 404;
+}
+
+// specOptions is undefined on a miss; decide the 404 (and the editor's empty page) from `query`.
+export async function fetchPage(url: string, query: Record<string, string>, locale: string):
+  Promise<{ specOptions?: StudioComponentSpecOptions; query: Record<string, string> }> {
+  const attempt = async (q: Record<string, string>) => {
+    stack.livePreviewQuery({ live_preview: "" });
+    try {
+      const searchQuery = new URLSearchParams(q).toString();
+      return { specOptions: await sdk.fetchCompositionData({ url, searchQuery }, { locale }), query: q };
+    } catch (err) {
+      if (isCompositionNotFound(err)) return { specOptions: undefined, query: q };
+      throw err;
+    }
+  };
+  try {
+    return await attempt(query);
+  } catch (err) {
+    const isPreview = "hash" in query || "live_preview" in query;
+    if (!isPreview || !previewCodeRefused(err)) throw err;
+    const plain = Object.fromEntries(Object.entries(query).filter(([k]) => !PREVIEW_PARAMS.includes(k)));
+    return attempt(plain);
+  }
+}
+```
+
+At the route, a missing `specOptions` is the miss: `isStudioEditorMode(result.query)` renders the editor's empty page, and anything else is the framework's 404. Measured after the change: the expired link answered 200 with the published page, a made-up address with a made-up code answered 404, and a real preview opened from Visual Editor still showed the draft.
 
 <a id="static-generation-and-caching"></a>
 
@@ -173,9 +219,9 @@ Preview and editor requests must never be served from a cache: they carry `hash`
      // The hook surfaces the rejection as `error`, so a plain `if (error)` branch
      // renders an error state for a URL that simply has no composition. Classify
      // first — a miss is a 404, everything else is a real error.
-     const isMiss = isCompositionNotFound(error);
-     if (error && !isMiss) return <ErrorState message={error instanceof Error ? error.message : String(error)} />;
-     if (isMiss || !specOptions?.spec) return <NotFound />;
+     if (error) return isCompositionNotFound(error)
+       ? <NotFound />
+       : <ErrorState message={error instanceof Error ? error.message : String(error)} />;
      return <StudioComponent specOptions={specOptions} />;
    }
    ```
@@ -188,28 +234,34 @@ Preview and editor requests must never be served from a cache: they carry `hash`
 3. **App Router: SSR through a client wrapper.** A Server Component fetches and computes the styles, a `"use client"` wrapper renders, and Next puts that output in the initial HTML (verified with `curl` in the App Router recipe). Initialize the sdk in a server-only module (no `"use client"`). Register components in a `"use client"` module the wrapper imports. Rendering `<StudioComponent />` directly in a Server Component fails with a Next.js client-component error: the renderer calls hooks.
    ```tsx
    // app/[[...slug]]/page.tsx — NO "use client"
-   import { getSSRStyles } from "@contentstack/studio-react";
-   import { sdk } from "@/lib/studio.server";
-   import { resolveComposition } from "@/lib/resolve-composition";
-   import { ClientRender } from "./ClientRender";
+   import { cache } from "react";
    import { notFound } from "next/navigation";
+   import { getSSRStyles, isCompositionNotFound, type StudioComponentSpecOptions } from "@contentstack/studio-react";
+   import { sdk, stack } from "@/lib/studio.server";
+   import { ClientRender } from "./ClientRender";
 
-   export default async function Page({ params, searchParams }) {
+   // One fetch per request, shared by the page and generateMetadata.
+   const getComposition = cache((url: string, searchQuery: string) => {
+     stack.livePreviewQuery({ live_preview: "" }); // shared stack: drop the last request's preview hash
+     return sdk.fetchCompositionData({ url, searchQuery }, { locale: "en-us" });
+   });
+
+   async function toQuery({ params, searchParams }) {
      const { slug } = await params;   // a Promise on Next 15+
      const url = "/" + (slug?.join("/") ?? "");
      const searchQuery = new URLSearchParams((await searchParams) as Record<string,string>).toString();
-     const { specOptions, notFound: miss } = await resolveComposition(
-       sdk,
-       { url, searchQuery },
-       { locale: "en-us" },
-     );
-     // resolveComposition rethrows real failures, so reaching here with miss=true
-     // genuinely means "no composition at this URL" — 404 is the right answer.
-     // Do NOT add `|| !specOptions.hasTemplate` here. hasTemplate is false for
-     // every FREEFORM composition (no connected content type), so that guard
-     // 404s every freeform page however it is published. `miss` already carries
-     // the only not-found answer there is.
-     if (miss) notFound();
+     return { url, searchQuery };
+   }
+
+   export default async function Page(props) {
+     const { url, searchQuery } = await toQuery(props);
+     let specOptions: StudioComponentSpecOptions;
+     try {
+       specOptions = await getComposition(url, searchQuery);
+     } catch (err) {
+       if (!isCompositionNotFound(err)) throw err; // a real failure stays a 500
+       notFound(); // in catch, never in try: it works by throwing
+     }
      // getSSRStyles here, never in ClientRender: hydration mismatch on the <style>.
      return (
        <>
@@ -219,22 +271,23 @@ Preview and editor requests must never be served from a cache: they carry `hash`
      );
    }
 
-   export async function generateMetadata({ params, searchParams }) {
-     const { slug } = await params;
-     const url = "/" + (slug?.join("/") ?? "");
-     // Metadata must never throw — a miss here should degrade to empty tags,
-     // not take down the page that resolves fine one line later.
-     const { specOptions } = await resolveComposition(sdk, {
-       url,
-       searchQuery: new URLSearchParams(await searchParams).toString(),
-     });
-     const seo = specOptions?.seo;
-     return seo
-       ? { title: seo.pageTitle, description: seo.pageDescription,
-           openGraph: { images: seo.openGraphImage ? [seo.openGraphImage] : [] } }
-       : {};
+   export async function generateMetadata(props) {
+     const { url, searchQuery } = await toQuery(props);
+     // Metadata must never throw — a miss here should degrade to empty tags;
+     // the page itself sends the 404 or the 500.
+     try {
+       const { seo } = await getComposition(url, searchQuery);
+       return seo
+         ? { title: seo.pageTitle, description: seo.pageDescription,
+             openGraph: { images: seo.openGraphImage ? [seo.openGraphImage] : [] } }
+         : {};
+     } catch {
+       return {};
+     }
    }
    ```
+   A wildcard catch-all also needs the editor exemption: an unsaved template opened in Studio misses too. Gate that branch on `isStudioEditorMode(query)` ([`setup-template-preview-routes`](setup-template-preview-routes.md) step 5a (iii)).
+
    Client wrapper (renders only; no styles or Live Preview here):
    ```tsx
    "use client";
@@ -257,18 +310,20 @@ Preview and editor requests must never be served from a cache: they carry `hash`
 4. **SSR: Next.js Pages Router.** Also full SSR: the composition DOM lands in the server HTML via `renderToString`. Register all components (built-ins + custom) at module scope in `pages/_app.tsx` with **static imports** so the same React instance runs server + client.
    ```ts
    // pages/[[...slug]].tsx
-   import { sdk } from "@/lib/studio.server";
-   import { resolveComposition } from "@/lib/resolve-composition";
-   import { getSSRStyles } from "@contentstack/studio-react";
+   import { sdk, stack } from "@/lib/studio.server";
+   import { getSSRStyles, isCompositionNotFound, type StudioComponentSpecOptions } from "@contentstack/studio-react";
 
    export async function getServerSideProps({ resolvedUrl }) {
      // NOT req.url: on client-side navigation it is /_next/data/<build>/....json.
      const { pathname, search } = new URL(resolvedUrl, "http://localhost");
-     const { specOptions, notFound } = await resolveComposition(sdk, {
-       url: pathname,
-       searchQuery: search.replace(/^\?/, ""),
-     });
-     if (notFound) return { notFound: true };
+     let specOptions: StudioComponentSpecOptions;
+     try {
+       stack.livePreviewQuery({ live_preview: "" }); // shared stack: drop the last request's preview hash
+       specOptions = await sdk.fetchCompositionData({ url: pathname, searchQuery: search.replace(/^\?/, "") });
+     } catch (err) {
+       if (!isCompositionNotFound(err)) throw err; // a real failure stays a 500
+       return { notFound: true as const };
+     }
      return {
        props: {
          // holds `undefined` values, which next dev refuses to serialize
@@ -287,16 +342,19 @@ Preview and editor requests must never be served from a cache: they carry `hash`
 5. **SSR (Remix).** Put sdk init in `app/lib/studio.server.ts` so secrets tree-shake out of the browser bundle.
    ```ts
    import { json } from "@remix-run/node";
-   import { sdk } from "~/lib/studio.server";
-   import { resolveComposition } from "~/lib/resolve-composition";
+   import { isCompositionNotFound } from "@contentstack/studio-react";
+   import { sdk, stack } from "~/lib/studio.server";
 
    export async function loader({ request }) {
      const url = new URL(request.url);
-     const { specOptions, notFound } = await resolveComposition(sdk, {
-       url: url.pathname,
-       searchQuery: url.search.replace(/^\?/, ""),
-     });
-     if (notFound) throw new Response("Not Found", { status: 404 });
+     let specOptions;
+     try {
+       stack.livePreviewQuery({ live_preview: "" }); // shared stack: drop the last request's preview hash
+       specOptions = await sdk.fetchCompositionData({ url: url.pathname, searchQuery: url.search.replace(/^\?/, "") });
+     } catch (err) {
+       if (!isCompositionNotFound(err)) throw err; // a real failure stays a 500
+       throw new Response("Not Found", { status: 404 });
+     }
      return json({ specOptions });
    }
    ```
@@ -355,7 +413,7 @@ Succeeds only when ALL of the following are true:
 - [ ] The route file uses the fetch path that matches the framework row in the decision table
 - [ ] Server-rendered routes emit `getSSRStyles(specOptions.spec)` alongside the markup, checked by loading the route with JavaScript disabled, or `curl`, and confirming Design-panel styling is already applied
 - [ ] Server-side paths forward `searchQuery` from the incoming request to `fetchCompositionData`
-- [ ] **Every `fetchCompositionData` call is wrapped**, via `resolveComposition` or an equivalent try/catch that classifies known not-found ids as 404 and **rethrows everything else**. No bare `await sdk.fetchCompositionData(...)` on a route, and no blanket `catch { notFound() }`
+- [ ] **Every `fetchCompositionData` call is in a `try` / `catch`** that sends the 404 only when `isCompositionNotFound(err)` and **rethrows everything else**. No bare `await sdk.fetchCompositionData(...)` on a route, no blanket `catch { notFound() }`, and no 404 decided from the returned object
 - [ ] **Verified with a real miss:** request a URL with no composition (e.g. `/no-such-page`) and a valid-prefix-but-bad-slug URL under a connected template (e.g. `/blog/zzz-not-an-entry`). **Both return 404, not 500.** The second one is the `content_type_url_pattern` case and fails at a different stage. Testing only the first proves nothing about it
 - [ ] On App Router, the main entry's `<StudioComponent />` is rendered inside a `"use client"` boundary (the RSC entry's `<StudioServerComponent />` renders in a Server Component instead)
 - [ ] If Live Preview is in scope for this route, the `LivePreviewBridge` from `install-live-preview` (step 7) is mounted in the app shell. Not needed for pure public SSR routes without Live Preview.
@@ -383,7 +441,7 @@ If acceptance fails, report exactly which step broke and stop.
 | **Coexisting `app/` dir while SSR-ing a `pages/` route** | The Pages-Router SDK React resolves to the app-page runtime, which gives a null dispatcher and a crash | Make the project Pages-Router-only for the Studio SSR route (remove `app/` from that workspace). |
 | **Judging SSR from `next dev`**: Repeater items intermittently render field defaults ("Your text here") | Per-boot dev race (recompile + module-init order + React StrictMode double-invoke) | Verify and ship from a **prod build**: `next build && next start`. Prod is deterministic. Dev is racy. |
 | **`dynamic(() => import('@contentstack/studio-react'))` for the canvas, prod build fails** | `Package path "." is not exported from package` | Older `studio-react` releases exposed `.` only under the `import` condition (2.0.1 adds `default`). On 2.x the dynamic import isn't needed at all: `StudioCanvas` is a client component that renders `null` until mount ([`setup-section-preview`](setup-section-preview.md) step 2). On an older SDK, dynamic-import a **local wrapper** that statically imports `StudioCanvas`. |
-| **Bare `await sdk.fetchCompositionData(...)` with an `if (!hasSpec) notFound()` guard below it** | Every unmatched URL returns **500, not 404**. The fetch rejects, so the guard line never executes. Error boundary shows a generic failure. Nothing names the missing composition | Wrap with [`resolveComposition`](#resolve-composition-helper). The guard was written for a resolve-with-falsy contract the SDK doesn't have |
+| **Bare `await sdk.fetchCompositionData(...)` with a guard on the returned object below it** | Every unmatched URL returns **500, not 404**. The fetch rejects, so the guard line never executes. Error boundary shows a generic failure. Nothing names the missing composition | Catch the error and call `isCompositionNotFound(err)` ([pattern](#resolve-composition-helper)). The guard was written for a resolve-with-falsy contract the SDK doesn't have |
 | Blanket `try { … } catch { notFound() }` around the fetch | Every CDA outage, expired delivery token, and network blip silently becomes a 404. The site reads as "empty" instead of "broken" and monitoring stays green | Ask `isCompositionNotFound(err)`: true is a 404. Rethrow the rest so real failures stay 500s |
 | Testing 404 handling only with a totally unmatched URL | Passes, while every bad slug under a `content_type_url_pattern` template still 500s if you hand-rolled a list of names. That path matches the pattern and fails later, at entry lookup, with a different code | Test both shapes. Use the predicate rather than a list, and both are covered |
 | **Server-rendered route paints unstyled, then snaps into place on hydration** | Design-panel styles are generated at render time, not in your stylesheet. Markup alone carries none of them | Emit `getSSRStyles(specOptions.spec)` with the markup. See § Studio-authored styles on a server-rendered route |

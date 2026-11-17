@@ -14,7 +14,7 @@ Do NOT use for: framework-specific route wiring for Pages Router, Remix and SSG 
 
 | Need | CSR | SSR |
 | --- | --- | --- |
-| Fetch | `useCompositionData({ url })` in the browser | `sdk.fetchCompositionData({ url, searchQuery })` on the server, after clearing the shared stack's preview hash ([`resolveComposition`](configure-csr-vs-ssr.md#resolve-composition-helper) does both) |
+| Fetch | `useCompositionData({ url })` in the browser | `sdk.fetchCompositionData({ url, searchQuery })` on the server, after clearing the shared stack's preview hash, inside a `try` / `catch` ([pattern](configure-csr-vs-ssr.md#resolve-composition-helper)) |
 | Query string | The hook reads `window.location` itself | Pass the full request query string as `searchQuery` |
 | Unknown URL (`isCompositionNotFound`) | Render the 404 page, status 200 + `noindex` | Real 404 ([`handle-404-pages`](handle-404-pages.md)) |
 | Studio-authored styles | Nothing to add | `getSSRStyles(specOptions.spec)` on the server |
@@ -342,7 +342,7 @@ Then open the page in Visual Editor. In the console of the **site's frame** (pic
 | `live_preview.ssr` set on the Delivery stack | It takes precedence over `init({ ssr })` | Remove it, or keep both the same |
 | CSR page calls `refetchSpec` on every edit of a connected template | It reloads the composition and its sections each time: four requests per edit instead of one | Call `refetchData` |
 | CSR freeform page calls only `refetchData` (2.0.1) | `refetchData` ignores a composition with no connected content type, so edits never appear | Fall back to `refetchSpec` when `connectedContentTypeUid` is empty |
-| SSR fetch without clearing the preview hash | The SDK sets a request's hash on the shared stack and never clears it, so later visitors get drafts | `stack.livePreviewQuery({ live_preview: "" })` before each fetch, or use `resolveComposition` |
+| SSR fetch without clearing the preview hash | The SDK sets a request's hash on the shared stack and never clears it, so later visitors get drafts | `stack.livePreviewQuery({ live_preview: "" })` before each fetch |
 | SSR `catch { notFound() }` with no check | A bad token or an outage becomes a 404 on every page | 404 only when `isCompositionNotFound(err)`; rethrow the rest |
 | CSR `init` without `stackSdk` | Live Preview can't write the preview hash onto the stack, so refetches return published content | Pass `stackSdk: stack.config` |
 | SSR route with an `onEntryChange` → `router.refresh()` bridge | With `ssr: true`, Live Preview never calls `onEntryChange` | Delete it. The editor reloads the page |
