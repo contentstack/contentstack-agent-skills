@@ -24,11 +24,13 @@ When you ask about authentication, token types, API keys, rate limits, SSO integ
 | Backend automation, CI/CD, migration scripts | Management token |
 | Interactive user sessions | Authtoken (only when appropriate) |
 | Third-party apps | OAuth with scoped access |
+| Service-to-service automation | Machine-to-machine (M2M) app with OAuth client credentials |
 
 Plus:
 
-- **Key limits**: management tokens are stack-level and limited per stack; authtokens are user-specific with their own limits. Watch rate-limit headers and 429s.
-- **SSO organizations**: SSO can restrict authtoken usage; for automation in SSO orgs, prefer management tokens or OAuth.
+- **Key limits**: a stack can have at most 10 valid management tokens at a time, and each can expire on a date or never. Authtokens are user-specific with their own limits. Watch the `x-ratelimit-limit` and `x-ratelimit-remaining` headers and 429s.
+- **Preview tokens**: a separate credential that only the Preview Service accepts, used together with the short-lived `live_preview` hash.
+- **SSO organizations**: SSO blocks password login, so scripts can't get authtokens that way. For automation in SSO orgs, use management tokens, OAuth or an M2M app.
 - **Security rules**. Never expose management tokens or authtokens client-side; use environment variables; rotate credentials; least privilege.
 - **Rate-limit handling**: exponential backoff with jitter for 429s; check rate-limit headers before retrying.
 
@@ -39,6 +41,10 @@ Plus:
 - "How do I handle rate limits in my script?"
 - "Can I use authtokens in an SSO-enabled organization?"
 - "How many management tokens can I have per stack?"
+
+## MCP tools
+
+No Contentstack MCP tool creates, rotates or deletes tokens; manage them in stack Settings → Tokens and M2M apps in Developer Hub. The skill explains how the MCP server itself authenticates (OAuth, or a management token for the `cma` groups) and can read an app's OAuth scopes with `get_oauth_scopes` and `get_app_oauth` (`developerhub`).
 
 ## Safety notes
 

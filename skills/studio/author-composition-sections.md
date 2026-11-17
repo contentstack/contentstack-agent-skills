@@ -70,45 +70,21 @@ Two outcomes from this:
 
 So you can have a section that renders perfectly on the deployed site (runtime path uses the override) yet shows empty repeaters in the editor (editor path's `linked_schemas` is empty). Both metadata paths must point to the same `selectedField` for editor + runtime to agree.
 
-### Recipe: section iterates one field on the page
+### Recipe: a section that renders a list
 
-When a section's `selectedField` is set to the iterated field (e.g. `selectedField: "products"` and the section's job is to render one card per product), the section's `dataSources.template` IS the products array. **A top-level Repeater inside the section must bind to scope-root, NOT to `{ path: { products: {} } }`**:
+Use the [canonical list recipe](author-composition-repeater-recipes.md#canonical-list-recipe): whole-entry scope (no `selected_field`), a list Box, a Repeater bound to `{ "<field>": {} }`, an item Box, then the Condition Blocks. It is the only list shape that renders AND gives Visual Editor its list and item tags.
 
-```jsonc
-{
-  "type": "repeater",
-  "uid": "R-section-products",
-  "metadata": { "mode": "preview" },
-  "props": {
-    "items": {
-      "binding": {
-        "type": "template",
-        "value": { "path": {} }      // ← scope-root, NOT { products: {} }
-      }
-    },
-    "children": { "type": "slot", "slot": "<R-slot>" }   // ← required, wires the slot below
-  },
-  "slots": {
-    "<R-slot>": [
-      // ConditionBlock + card here, per the multi-reference recipe;
-      // card bindings still use type:"repeater" with repeaterUID
-    ]
-  }
-}
-```
+**Inherited sections scoped to the list field.** A section with `selectedField: "products"` has the products array as its `dataSources.template`, so its top-level Repeater must bind to scope-root `{ "path": {} }` (`getBindingStringForCS` flattens it to `""`). A path of `{ products: {} }` there resolves to `template.products`, undefined. That section renders, but Visual Editor finds no list or item tags. When you touch it, re-scope it to the whole entry and bind the Repeater to `{ products: {} }`.
 
-`getBindingStringForCS` flattens `{path: {}}` to `""`, so the binding resolves to `dataSources.template` directly. With `selectedField: "products"`, that IS the products array. A path of `{products: {}}` would resolve to `dataSources.template.products`, undefined when the section's template IS the array, not an object containing one.
+Reference iterations still need `data_sources.resolvedReferences` on the composition: key `"template"`, value is the array of field paths on the parent entry (e.g. `"template": ["products"]`), in the per-API form from [`author-composition-entry`](author-composition-entry.md#wire-shapes) § Wire shapes. Set them on the parent (template) composition, not the section composition.
 
-Reference iterations still need `data_sources.resolvedReferences` on the composition: key `"template"`, value is the array of field paths on the parent entry (e.g. `"template": ["products"]`). The runtime resolves these along the `selectedField` path. You set them on the parent (template) composition, not the section composition.
-
-### Decision rule: single-field repeater section vs whole-entry section
+### Decision rule: list section vs whole-entry section
 
 | Section's job | `selectedField` | Repeater binding (if any) | When to use |
 |---|---|---|---|
-| One repeater over one field of the page (a card grid, a feature list) | Set to that field (`"products"`) | Scope-root `{ path: {} }` | Most reusable sections: Editions list, Features grid, Card grid |
+| A list over one field of the page (a card grid, a feature list) | **Leave unset**: whole entry | `template` path `{ "<field>": {} }` | Every list section. [Canonical list recipe](author-composition-repeater-recipes.md#canonical-list-recipe) |
 | A custom component reading several fields off the page entry (header reading brand + nav_links + signin_label. Hero reading the `hero` group) | **Leave unset**: section's `template` is the whole page entry | Original `template.<field>` paths work verbatim | Single-purpose sections with no iteration: Header, Hero, static 3D block |
-
-The choice is data-shape-driven: one field iterated calls for `selectedField` plus a scope-root. Many fields read calls for whole-entry scope and the original paths.
+| One item of a top-level Group or single reference | Set to that field | None | A section that reads one nested object, not a list |
 
 ### Verifying a section's scope headlessly
 
@@ -123,23 +99,26 @@ console.log(JSON.stringify(spec.data.section_scoped_data["<instance-uid>"], null
 
 `spec.data.section_scoped_data[<instance-uid>]` is the runtime resolution: `selectedField` + the actual scoped `template` array. If `template` shows the right array length and right entry sample, the section's scope is correct. If it's `undefined` or wrong-shaped, the bindings won't work.
 
-## `section-slot` node shape: the one legitimate empty-slots node
+## `section-slot` node shape: a leaf with no slot key
 
-The built-in `section-slot` type declares a **placeholder** inside a section's `ui`. The template that embeds this section then fills the slot via a `section-composition` node (see next recipe: Pattern B). Non-obvious shape:
+The built-in `section-slot` type declares a **placeholder** inside a section's `ui`. The template that embeds this section then fills the slot via a `section-composition` node (see next recipe: Pattern B). It is a leaf: write the full seven-key envelope with an **empty `slots` object**:
 
-```jsonc
+```json
 {
-  "type": "section-slot",
   "uid": "SS1",
+  "type": "section-slot",
+  "attrs": {},
+  "metadata": { "title": "Section Slot — Card", "visible": true, "locked": false },
   "props": {},
-  "slots": { "SS1": [] }        // ← key is the node's OWN uid; value is [] until filled
+  "slots": {},
+  "styles": {}
 }
 ```
 
 Two things that trip API authors:
 
-1. **`slots.<own-uid>: []` is required**: the section-slot's own uid appears as the slot key, with an empty array. This is one of only two legitimate exceptions to the preflight rule "no empty slot arrays". The other is the page-side `section-composition` node, where Studio writes `slots.<section-slot-uid>: []` for each slot the template hasn't filled yet. Omitting the entry (no `slots` at all, or `slots: {}`) leaves the template unable to target the slot when composing.
-2. **The slot is filled by the TEMPLATE, not the section.** In the section's authored tree the slot stays empty. The template's `section-composition` node holds the fill in its own `slots`, keyed by the section-slot uid ([Pattern B](author-composition-section-slot-fill.md)).
+1. **No `slots.<own-uid>` entry.** `"slots": { "SS1": [] }` is rejected by the Compositions API with `422 Empty slots crash the renderer.` The raw CMA accepts it, so the same shape can reach the renderer that way. The node's uid is already the key the template fills under, and the SDK renders `section-slot` from the template's fill, never from the node's own `slots`. There is no exception to the preflight rule "no empty slot arrays" ([`author-composition-encoding`](author-composition-encoding.md) § Preflight).
+2. **The slot is filled by the TEMPLATE, not the section.** In the section's authored tree the slot stays empty. The template's `section-composition` node holds the fill in its own `slots`, keyed by the section-slot uid ([Pattern B](author-composition-section-slot-fill.md)). A slot the template hasn't filled yet has no key there either.
 
 Section slots typically sit inside a Repeater + Condition Block on the wrapper section (Pattern B for reference / MB iteration) or directly under the section root (Pattern B for a simpler single-slot section).
 

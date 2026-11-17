@@ -35,7 +35,7 @@ Regional hosts: see Step 10 below (Studio API hosts mirror the CMA region prefix
 
 1. **Confirm prerequisites.** You have a resolved CMA credential, **OAuth Bearer by default**, session `authtoken` only as the last rung ([`authenticate-cma`](authenticate-cma.md)), AND `api_key` for the target stack. Both Studio API and CMA expect these two headers together. Know the region (regional Studio API hosts are listed in Step 10). NA defaults: CMA `api.contentstack.io`, Studio API `composable-studio-api.contentstack.com`. **Custom / private data center (hosts supplied by Contentstack): set every host explicitly.** There is no `region` shortcut. See [`install-studio`](install-studio.md) § Custom / private data center. Establish which data center you're on first via [`analyze-project-fit`](analyze-project-fit.md) § 2b: Determine the data center. Getting this wrong here provisions a CT, tokens and a Studio project **in the wrong data center**, with no error. The calls succeed against the default region.
 
-   > **MCP-first execution.** Discover tools and verify the target with a read call per [`install-contentstack-mcp`](install-contentstack-mcp.md). When supported tools are callable, the **CMA** steps here run as MCP tool calls with no pasted `authtoken`: step 8 CT-create (POST then PUT) becomes `create_a_content_type` plus `update_content_type`, step 4 environment-create becomes `create_an_environment`, and verify becomes `get_a_single_content_type`. The MCP does **not** cover the Studio API or tokens: steps **5 (enable Live Preview), 6 (delivery+preview token), 10 (`/v1/projects` register)**, and stack-create stay raw HTTP, authenticated with the same OAuth credential (`-H "$CS_AUTH"`), not a pasted session token. **Step 10 (`/v1/projects`) has no MCP tool, but use the OAuth token there (`Authorization: Bearer`). A session authtoken is the last rung only, per step 10's callout.** Org comes from the login. Read the stack `api_key` from the MCP registration ([`understand-contentstack-mcp`](understand-contentstack-mcp.md)) and confirm before asking. A missing readiness flag requires discovery; use HTTP only for unavailable operations or a recorded connection limitation.
+   > **MCP-first execution.** Discover tools and verify the target with a read call per [`install-contentstack-mcp`](install-contentstack-mcp.md). When supported tools are callable, the **CMA** steps here run as MCP tool calls with no pasted `authtoken`: step 8's create (the POST) becomes `create_a_content_type`, and step 4 environment-create becomes `create_an_environment`. **Everything after the create that names the new CT goes over HTTP in the same session**: step 8's PUT, step 9's verify, and the step 11 composition entries. The MCP fixes the list of content types (and environments) its tools accept when it starts, so it rejects the CT it just created until Claude Code restarts ([`install-contentstack-mcp`](install-contentstack-mcp.md#cts-created-after-start) Step 6b). The MCP does **not** cover the Studio API or tokens: steps **5 (enable Live Preview), 6 (delivery+preview token), 10 (`/v1/projects` register)**, and stack-create stay raw HTTP, authenticated with the same OAuth credential (`-H "$CS_AUTH"`), not a pasted session token. **Step 10 (`/v1/projects`) has no MCP tool, but use the OAuth token there (`Authorization: Bearer`). A session authtoken is the last rung only, per step 10's callout.** Org comes from the login. Read the stack `api_key` from the MCP registration ([`understand-contentstack-mcp`](understand-contentstack-mcp.md)) and confirm before asking. A missing readiness flag requires discovery; use HTTP only for unavailable operations or a recorded connection limitation.
 
 2. **FIRST: does a Studio project already exist? List, then ASK. Never create blind.**
 
@@ -55,7 +55,7 @@ Regional hosts: see Step 10 below (Studio API hosts mirror the CMA region prefix
    | **A project's `connectedStackApiKey` matches the target stack** | **Almost certainly the one they want.** Say so and default to reusing it: "Project `<name>` (`<uid>`) is already connected to this stack with `contentTypeUid: <ct>`. Reuse it, or create a second project against the same stack?" A second project on one stack is legal but rarely intended. It splits compositions across two projects |
    | **Projects exist, none on this stack** | Present the numbered list below and **ask**: reuse one (repointing it, see the warning at the end) or create new. Don't assume new just because the stack differs |
    | **No projects at all** | Proceed to create, and say that's what you're doing |
-   | **`GET` fails** (401/422) | **Stop.** An auth failure is not evidence that no project exists. Resolve auth per step 10's ladder, then re-check |
+   | **`GET` fails** (401) | **Stop.** An auth failure is not evidence that no project exists. Resolve auth per step 10's ladder, then re-check |
 
    ### Present the list as a numbered choice: never ask for a project id
 
@@ -131,54 +131,123 @@ Regional hosts: see Step 10 below (Studio API hosts mirror the CMA region prefix
 8. **Create the compositions CT: two calls, not one.** CMA validates reference targets at creation time, so **`linked_sections`** (a self-reference) must be added on a follow-up PUT. In the initial POST it returns `error_code 115: linked_sections.reference_to: content type does not exist`. The CT can't reference itself before it exists.
 
    ```
-   POST /v3/content_types    (body = every field in the table below EXCEPT linked_sections)
-   PUT  /v3/content_types/<uid>    (body = every field including linked_sections)
+   POST /v3/content_types           (body = the JSON below WITHOUT the linked_sections field)
+   PUT  /v3/content_types/<uid>     (body = the JSON below, complete)
    ```
 
-   Every field is **required by the editor or runtime**. Do not drop, rename, or change cardinality.
+   Every field is **required by the editor or runtime**. Do not drop, rename, or change cardinality. Replace `<compositions_ct_uid>` (twice: the CT `uid` and `linked_sections.reference_to`) with the step 7 uid, and send the rest unchanged:
 
-### Compositions CT: required fields
+### Compositions CT: the schema
 
-| uid | data_type | mandatory | multiple | Required by | Purpose |
-|---|---|---|---|---|---|
-| `title` | text | yes | no | CMS UX | Author-visible title. Unique recommended. |
-| `url` | text | no | no | Runtime | Composition URL pattern (e.g. `/products/{{entry.url}}`). Empty for freeform. |
-| `composable_uid` | text | yes | no | Runtime + editor | Contract key: runtime queries compositions by `composable_uid`, NOT entry uid. Must be unique. |
-| `ui_preview` | file | no | no | Editor | Thumbnail shown in Studio's composition list. |
-| `connected_content_type` | text | no | no | Editor + runtime | The page CT uid this composition is connected to (Connected Template). Empty for Freeform. |
-| `ui` | text (multiline) | no | no | Editor + runtime | `zlib:<base64>`-encoded composition node tree. Written by Studio canvas. Written by [`author-composition-via-api`](author-composition-via-api.md) for headless authoring. |
-| `data_sources` | text (multiline) | no | no | Runtime | JSON object holding `resolvedReferences` etc. for reference resolution at render. |
-| `static_value` | group | no | no | Editor | Static-value sub-bindings. See § static_value sub-schema below. Required as-is for the picker to enumerate static-value types. |
-| `schema_version` | text | no | no | Editor | Composition schema version stamp written by Studio, a semver-shaped string like `"1.0.0"` (also seen: `""`, `"1"`, `"2"`). |
-| `place_composition_as` | text | no | no | Editor | `"page"` for top-level template compositions (both Connected and Freeform). `"section"` for section compositions. `"template"` is legal but not what Studio writes for the top-level entry. |
-| `linked_schemas` | **group, multiple=true** | no | yes | Editor | Per-section template-binding override. One entry per content type the section accepts. **Must be `group` with `multiple: true`**. The editor expects an array. Sub-fields on the group: `content_type_uid` (text, **required**), `selected_field` (text, **optional**, set when the section restricts to one field), `display_name` (text, **optional**) and `cardinality` (text, **optional**, `single` or `collection`). Runtime stored shape: `[{ "content_type_uid": "blog_post", "_metadata": { "uid": "<system-generated>" } }, …]`. If this is a single `group` (multiple=false) or a flat text field, editor crashes during section-context build. |
-| `url_metadata` | group | no | no | Editor | `url_source` (text), `url_queries` (text). Drives the URL pattern editor. **Both sub-fields must exist.** If the group (or either sub-field) is missing, the CMA silently drops `url_metadata` on every composition write: 201 returned, field reads back absent, and every template composition falls back to `legacy_url` semantics with no error anywhere. See [`author-composition-via-api` § `url` + `url_metadata`, a matched pair](author-composition-entry.md#url-metadata-matched-pair). |
-| `linked_sections` | **reference, multiple=true, reference_to: <same CT uid>** | no | yes | Editor | Self-reference to other composition entries that are templates this composition links. **Must be a reference field**. The editor's CDA call uses `?include[]=linked_sections`, which only works on reference fields. If modeled as text/group, the editor's Template Did Not Load error appears. |
-
-### `static_value` sub-schema
-
-Add a `group` field named `static_value` (multiple=false) with **13 sub-groups (each multiple=true)**, one per scalar binding type the picker offers. Each sub-group has a uniform `{ key: text, value: text }` shape, EXCEPT `boolean` (`value: boolean`) and `choice` (`value: text` but **`multiple: true`**: exposed choice props write an array like `["center"]`. A single-value `choice.value` rejects the write with "should be a single value instead of multiple"):
-
+```json
+{
+  "content_type": {
+    "title": "Compositions",
+    "uid": "<compositions_ct_uid>",
+    "options": {"is_page": false, "singleton": false, "title": "title", "sub_title": []},
+    "schema": [
+      {"display_name": "Title", "uid": "title", "data_type": "text", "mandatory": true, "unique": true, "multiple": false, "field_metadata": {"_default": true}},
+      {"display_name": "URL", "uid": "url", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+      {"display_name": "Composable UID", "uid": "composable_uid", "data_type": "text", "mandatory": true, "unique": true, "multiple": false},
+      {"display_name": "UI Preview", "uid": "ui_preview", "data_type": "file", "mandatory": false, "unique": false, "multiple": false},
+      {"display_name": "Connected Content Type", "uid": "connected_content_type", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+      {"display_name": "UI", "uid": "ui", "data_type": "text", "mandatory": false, "unique": false, "multiple": false, "field_metadata": {"multiline": true}},
+      {"display_name": "Data Sources", "uid": "data_sources", "data_type": "text", "mandatory": false, "unique": false, "multiple": false, "field_metadata": {"multiline": true}},
+      {"display_name": "Static Value", "uid": "static_value", "data_type": "group", "mandatory": false, "unique": false, "multiple": false, "schema": [
+        {"display_name": "text", "uid": "text", "data_type": "group", "mandatory": false, "unique": false, "multiple": true, "schema": [
+          {"display_name": "Key", "uid": "key", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+          {"display_name": "Value", "uid": "value", "data_type": "text", "mandatory": false, "unique": false, "multiple": false, "field_metadata": {"multiline": true}}
+        ]},
+        {"display_name": "html_rte", "uid": "html_rte", "data_type": "group", "mandatory": false, "unique": false, "multiple": true, "schema": [
+          {"display_name": "Key", "uid": "key", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+          {"display_name": "Value", "uid": "value", "data_type": "text", "mandatory": false, "unique": false, "multiple": false, "field_metadata": {"multiline": true}}
+        ]},
+        {"display_name": "array", "uid": "array", "data_type": "group", "mandatory": false, "unique": false, "multiple": true, "schema": [
+          {"display_name": "Key", "uid": "key", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+          {"display_name": "Value", "uid": "value", "data_type": "text", "mandatory": false, "unique": false, "multiple": false, "field_metadata": {"multiline": true}}
+        ]},
+        {"display_name": "object", "uid": "object", "data_type": "group", "mandatory": false, "unique": false, "multiple": true, "schema": [
+          {"display_name": "Key", "uid": "key", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+          {"display_name": "Value", "uid": "value", "data_type": "text", "mandatory": false, "unique": false, "multiple": false, "field_metadata": {"multiline": true}}
+        ]},
+        {"display_name": "number", "uid": "number", "data_type": "group", "mandatory": false, "unique": false, "multiple": true, "schema": [
+          {"display_name": "Key", "uid": "key", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+          {"display_name": "Value", "uid": "value", "data_type": "text", "mandatory": false, "unique": false, "multiple": false, "field_metadata": {"multiline": true}}
+        ]},
+        {"display_name": "href", "uid": "href", "data_type": "group", "mandatory": false, "unique": false, "multiple": true, "schema": [
+          {"display_name": "Key", "uid": "key", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+          {"display_name": "Value", "uid": "value", "data_type": "text", "mandatory": false, "unique": false, "multiple": false, "field_metadata": {"multiline": true}}
+        ]},
+        {"display_name": "textarea", "uid": "textarea", "data_type": "group", "mandatory": false, "unique": false, "multiple": true, "schema": [
+          {"display_name": "Key", "uid": "key", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+          {"display_name": "Value", "uid": "value", "data_type": "text", "mandatory": false, "unique": false, "multiple": false, "field_metadata": {"multiline": true}}
+        ]},
+        {"display_name": "any", "uid": "any", "data_type": "group", "mandatory": false, "unique": false, "multiple": true, "schema": [
+          {"display_name": "Key", "uid": "key", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+          {"display_name": "Value", "uid": "value", "data_type": "text", "mandatory": false, "unique": false, "multiple": false, "field_metadata": {"multiline": true}}
+        ]},
+        {"display_name": "json_rte", "uid": "json_rte", "data_type": "group", "mandatory": false, "unique": false, "multiple": true, "schema": [
+          {"display_name": "Key", "uid": "key", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+          {"display_name": "Value", "uid": "value", "data_type": "text", "mandatory": false, "unique": false, "multiple": false, "field_metadata": {"multiline": true}}
+        ]},
+        {"display_name": "datestring", "uid": "datestring", "data_type": "group", "mandatory": false, "unique": false, "multiple": true, "schema": [
+          {"display_name": "Key", "uid": "key", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+          {"display_name": "Value", "uid": "value", "data_type": "text", "mandatory": false, "unique": false, "multiple": false, "field_metadata": {"multiline": true}}
+        ]},
+        {"display_name": "boolean", "uid": "boolean", "data_type": "group", "mandatory": false, "unique": false, "multiple": true, "schema": [
+          {"display_name": "Key", "uid": "key", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+          {"display_name": "Value", "uid": "value", "data_type": "boolean", "mandatory": false, "unique": false, "multiple": false}
+        ]},
+        {"display_name": "imageurl", "uid": "imageurl", "data_type": "group", "mandatory": false, "unique": false, "multiple": true, "schema": [
+          {"display_name": "Key", "uid": "key", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+          {"display_name": "Value", "uid": "value", "data_type": "text", "mandatory": false, "unique": false, "multiple": false, "field_metadata": {"multiline": true}}
+        ]},
+        {"display_name": "choice", "uid": "choice", "data_type": "group", "mandatory": false, "unique": false, "multiple": true, "schema": [
+          {"display_name": "Key", "uid": "key", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+          {"display_name": "Value", "uid": "value", "data_type": "text", "mandatory": false, "unique": false, "multiple": true, "field_metadata": {"multiline": true}}
+        ]}
+      ]},
+      {"display_name": "Schema Version", "uid": "schema_version", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+      {"display_name": "Place Composition As", "uid": "place_composition_as", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+      {"display_name": "Linked Schemas", "uid": "linked_schemas", "data_type": "group", "mandatory": false, "unique": false, "multiple": true, "schema": [
+        {"display_name": "Content Type UID", "uid": "content_type_uid", "data_type": "text", "mandatory": true, "unique": false, "multiple": false},
+        {"display_name": "Selected Field", "uid": "selected_field", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+        {"display_name": "Display Name", "uid": "display_name", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+        {"display_name": "Cardinality", "uid": "cardinality", "data_type": "text", "mandatory": false, "unique": false, "multiple": false}
+      ]},
+      {"display_name": "URL Metadata", "uid": "url_metadata", "data_type": "group", "mandatory": false, "unique": false, "multiple": false, "schema": [
+        {"display_name": "URL Source", "uid": "url_source", "data_type": "text", "mandatory": false, "unique": false, "multiple": false},
+        {"display_name": "URL Queries", "uid": "url_queries", "data_type": "text", "mandatory": false, "unique": false, "multiple": false}
+      ]},
+      {"display_name": "Linked Sections", "uid": "linked_sections", "data_type": "reference", "reference_to": ["<compositions_ct_uid>"], "field_metadata": {"ref_multiple": true, "ref_multiple_content_types": true}, "mandatory": false, "unique": false, "multiple": true}
+    ]
+  }
+}
 ```
-static_value (group)
-├─ text        (group[]) { key: text, value: text (multiline) }
-├─ html_rte    (group[]) { key: text, value: text (multiline) }
-├─ array       (group[]) { key: text, value: text (multiline) }
-├─ object      (group[]) { key: text, value: text (multiline) }
-├─ number      (group[]) { key: text, value: text (multiline) }
-├─ href        (group[]) { key: text, value: text (multiline) }
-├─ textarea    (group[]) { key: text, value: text (multiline) }
-├─ any         (group[]) { key: text, value: text (multiline) }
-├─ json_rte    (group[]) { key: text, value: text (multiline) }
-├─ datestring  (group[]) { key: text, value: text (multiline) }
-├─ boolean     (group[]) { key: text, value: boolean }
-├─ imageurl    (group[]) { key: text, value: text (multiline) }
-└─ choice      (group[]) { key: text, value: text (multiline, **multiple: true**) }
+
+What each field is for, and the rules that make it fatal to improvise:
+
+- `composable_uid` (mandatory, unique): the runtime queries compositions by it, not by entry uid.
+- `ui`, `data_sources` (multiline text): the `zlib:<base64>` tree and the JSON-encoded `resolvedReferences` list. Wire shapes: [`author-composition-entry`](author-composition-entry.md#wire-shapes) § Wire shapes.
+- `static_value`: a group of 13 `{ key, value }` sub-groups, one per binding type the picker offers. `value` is multiline text except `boolean` (boolean) and `choice` (text, **`multiple: true`**: exposed choice props write `["center"]`, and a single-value `choice.value` rejects the write with "should be a single value instead of multiple"). `number.value` is text too, so number literals go in as strings (`"49"`). Missing sub-groups produce missing options in the picker.
+- `linked_schemas`: **`group` with `multiple: true`**, sub-field `content_type_uid` (never `uid`, which the CMA reserves inside groups). A single group or a text field crashes the editor's section-context build.
+- `url_metadata`: both `url_source` and `url_queries` must exist, or the CMA silently drops `url_metadata` on every composition write and templates fall back to `legacy_url` ([`author-composition-entry`](author-composition-entry.md#url-metadata-matched-pair)).
+- `linked_sections`: **reference, `multiple: true`, `reference_to` this CT**. The editor loads it with `?include[]=linked_sections`, which only works on a reference field. Anything else gives Template Did Not Load.
+- `schema_version`, `place_composition_as`, `connected_content_type`, `url`, `ui_preview`: written by Studio and read by the editor/runtime. Values are documented in [`author-composition-entry`](author-composition-entry.md).
+
+**By MCP**: `create_a_content_type`, then the PUT over HTTP (the MCP rejects updates to a CT created after it started, see the callout in step 1). The tool's `content_type` argument takes the **whole** JSON above, outer `content_type` key included, so the call's arguments are double-wrapped:
+
+```json
+{
+  "content_type": {
+    "content_type": { "title": "Compositions", "uid": "<compositions_ct_uid>", "options": {"…": "…"}, "schema": ["… every field except linked_sections …"] }
+  }
+}
 ```
 
-The picker's "Static Value" branch enumerates these sub-groups by uid. Missing sub-groups produce missing options in the picker.
+Passing the inner object alone (`{ "content_type": { "title": …, "schema": … } }` as the arguments) sends the fields without the `content_type` wrapper the CMA expects. The tool's own description says so: "The fields should be wrapped by an content_type object". `update_content_type` takes the same double-wrapped argument, plus `content_type_uid`.
 
-9. **Verify the CT exists.** `GET /v3/content_types/<uid>` and confirm the field list matches the table above. Catch shape errors early. Fixing a wrong cardinality after entries exist requires deleting and re-creating the CT.
+9. **Verify the CT exists.** `GET /v3/content_types/<uid>` (HTTP when the CT was created in this MCP session) and confirm the field list matches the schema above. Catch shape errors early. Fixing a wrong cardinality after entries exist requires deleting and re-creating the CT.
 
 10. **Register the Studio project** (Studio API). Two calls.
 
@@ -230,7 +299,7 @@ The picker's "Static Value" branch enumerates these sub-groups by uid. Missing s
 - [ ] Live Preview enabled: `GET /v3/stacks/settings` returns `stack_settings.live_preview.enabled === true`.
 - [ ] Environment exists. Delivery token + preview token captured.
 - [ ] `GET /v1/projects` lists the project with `connectedStackApiKey === <stack api_key>` and the right `contentTypeUid`.
-- [ ] `GET /v3/content_types/<uid>` returns all 13 fields from the table with exact `data_type`, `mandatory`, `multiple`.
+- [ ] `GET /v3/content_types/<uid>` returns all 13 fields from the schema with exact `data_type`, `mandatory`, `multiple`.
 - [ ] `linked_schemas` is `group` with `multiple: true`. (Single-group is the most common provisioning bug, re-check.)
 - [ ] `linked_sections` is `reference` with `multiple: true` and `reference_to: [<this CT uid>]`.
 - [ ] `composable_uid` is mandatory + unique.
@@ -242,17 +311,17 @@ The picker's "Static Value" branch enumerates these sub-groups by uid. Missing s
 
 | Pitfall | Why it bites | Fix |
 |---|---|---|
-| Naming a group sub-field `uid` | The CMA rejects the whole `PUT` with `422 schema.N.schema.0.uid: "has a restricted value 'uid', which is not allowed"`. Easy to hit on `linked_schemas`, where the natural guess for the content-type key is `uid` | The sub-field is **`content_type_uid`**, never `uid`. See the `linked_schemas` row above. `uid` is reserved by the CMA inside groups |
+| Naming a group sub-field `uid` | The CMA rejects the whole `PUT` with `422 schema.N.schema.0.uid: "has a restricted value 'uid', which is not allowed"`. Easy to hit on `linked_schemas`, where the natural guess for the content-type key is `uid` | The sub-field is **`content_type_uid`**, never `uid`. See the schema above. `uid` is reserved by the CMA inside groups |
 | `linked_schemas` modelled as `group` with `multiple: false` | Editor expects an array. Section-context build crashes on `.map` of a single object | Re-create CT with `multiple: true`. Or PATCH the CT field if no entries exist yet |
 | `linked_sections` modelled as text/group instead of reference | Editor's `?include[]=linked_sections` returns nothing. Template Did Not Load on canvas open | Must be `reference` field with `reference_to: [<same CT uid>]`. See [`troubleshoot-canvas`](troubleshoot-canvas.md) Template-Did-Not-Load row |
 | `composable_uid` left non-unique | Runtime lookup picks an arbitrary entry. One composition renders for many URLs | Mark mandatory + unique at CT creation time |
-| Forgetting `static_value` sub-groups | Picker's Static Value root shows fewer (or zero) type options | Add the 13 sub-groups exactly as schema'd above |
+| Forgetting `static_value` sub-groups | Picker's Static Value root shows fewer (or zero) type options | Add the 13 sub-groups exactly as in the schema above |
 | Composition entry not published | CDA returns 404. Canvas blank | Publish to the environment after entry create |
 | Preview token missing / set to literal `"undefined"` | Canvas iframe gets HTTP 401 with no CORS headers, "Component Loading Error" | See [`troubleshoot-canvas`](troubleshoot-canvas.md) preview-token row |
 | JSON-RTE static values fail to embed correctly | JSON-RTE embeds carry `attrs.locale`, missing in API-authored payloads | Set `attrs.locale` on every embedded entry/asset in `static_value.json_rte[*].value` |
 | Wrong region host | CT creation 404s | Use the region-specific CMA and Studio API hosts (Step 10) |
 | Live Preview not enabled on stack | Canvas iframe hangs on "Loading composition…". Rest-preview CORS preflight fails | `POST /v3/stacks/settings` with `live_preview.enabled`, `default-env` and `default-url` (step 5). `PUT /v3/stacks` answers `200` and changes nothing |
-| Studio project configured with environment **name** instead of **uid** | Studio API accepts the PUT but environment binding silently misses. Compositions never resolve | Look up env uid via `GET /v3/environments`, pass `settings.configuration.environment = <uid>` |
+| Studio project configured with environment **name** instead of **uid** | Routes work. Studio finds no Base URL, so the canvas uses the Playground | Look up env uid via `GET /v3/environments`, pass `settings.configuration.environment = <uid>` |
 | Re-using a Studio project across stacks (name match, stale `connectedStackApiKey`) | Project surfaces last stack's compositions. Current stack invisible in canvas | On every provision, `GET` the project and compare its `connectedStackApiKey` with the current stack. If it differs, show the user the before/after and get approval, then PUT to re-bind |
 | Mixed CMA + Studio API hosts (e.g. NA Studio API with EU CMA) | 401/404s with no clear error | Pick a region and use BOTH region-matched hosts |
 | Including `linked_sections` in the initial `POST /v3/content_types` | `error_code 115: linked_sections.reference_to: content type does not exist`. CMA validates reference targets at create time. A CT can't self-reference before it exists | Two-step: POST without `linked_sections`, then PUT with the full schema (step 8) |

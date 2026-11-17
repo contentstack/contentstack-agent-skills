@@ -13,6 +13,8 @@ Use for **any** rich-text field bound to a component prop, whatever its storage 
 # Register an RTE renderer
 
 > **The name says `json-rte` for historical reasons. The API is not JSON-RTE-only.** `registerRTERenderer` is a single call covering **JSON RTE, HTML RTE and Markdown**. If you arrived here with an HTML RTE or a Markdown field, you are in the right place: everything below applies unchanged.
+>
+> **Limit: an `embeddedEntry` handler returns an HTML string, so an embedded entry is static markup.** The string is parsed and sanitized into the page: no React component, no state, no event handlers (an embedded product loses its add-to-basket button). If an embed must be interactive, render the rich text in a registered component of your own and draw the embeds with the app's React components. See § Interactive embeds.
 
 ## Context
 
@@ -24,9 +26,9 @@ Contentstack stores rich text in more than one shape, and Studio renders all of 
 | **HTML RTE** | an HTML string | embedded refs extracted from the markup |
 | **Markdown** | a Markdown string | converted, then rendered |
 
-The built-in **`RichText`** component is typed `any` and **auto-detects** which of these it received, so a JSON tree, an HTML string, Markdown, or a plain string all render without the author choosing a variant.
+The built-in **`rich-text`** component is typed `any` and **auto-detects** which of these it received, so a JSON tree, an HTML string, Markdown, or a plain string all render without the author choosing a variant.
 
-When Studio resolves a component prop bound to a rich-text field, it serializes the value to HTML and passes it to your component.
+**What a `json_rte` prop receives: the raw stored value, not HTML.** Studio passes a JSON RTE field as its JSON document (an object with `type` + `children`) and an HTML RTE or Markdown field as its string, unserialized (verified on `@contentstack/studio-registry` 2.0.1, which accepts either shape for `json_rte`). Serializing to HTML and resolving embeds happens at render time, inside the built-in `rich-text` or `useStudioRichText` (step 9). That render step is where `registerRTERenderer` applies.
 
 The default serializer already handles paragraphs, headings, lists, links, marks, images, and tables. Use **`registerRTERenderer`** (the unified, canonical API) when any of these apply:
 
@@ -119,7 +121,7 @@ Registration is a side-effect on the SDK singleton. It must happen **once, at ap
 
 7. **Match keys to node `type` exactly.** Keys in `customElementTypes` must equal the `type` string on the JSON RTE node emitted by Contentstack, byte-for-byte. `callout` will not match `"Callout"` or `"custom-callout"`. Use a standard tag name (`h2`, `a`, `ul`) to override the default rendering for that tag.
 
-8. **Declare the prop in your component schema as `json_rte`.** Studio creates a `JsonRTEProp` and binds it to the field like any other prop: your component code stays JSON-RTE-agnostic.
+8. **Declare the prop in your component schema as `json_rte`.** Studio creates a `JsonRTEProp` and binds it to the field like any other prop. The component receives the raw value (JSON object or string, see Context) and renders it through step 9.
 
 9. **Render it: check which path the installed SDK supports.** Two options, and the newer one removes most of this work:
 
@@ -128,7 +130,7 @@ Registration is a side-effect on the SDK singleton. It must happen **once, at ap
      && echo "hook available" || echo "hook ABSENT — use the manual path"
    ```
 
-   **`hook available` means one call.** `useStudioRichText` runs the same pipeline as the built-in `RichText`: it detects JSON RTE / HTML RTE / Markdown, resolves embedded entries and assets, and sanitizes before rendering. No `dangerouslySetInnerHTML`, no DOMPurify, no format branching.
+   **`hook available` means one call.** `useStudioRichText` runs the same pipeline as the built-in `rich-text`: it detects JSON RTE / HTML RTE / Markdown, resolves embedded entries and assets, and sanitizes before rendering. No `dangerouslySetInnerHTML`, no DOMPurify, no format branching.
 
    ```tsx
    import { useStudioRichText } from "@contentstack/studio-react";
@@ -154,7 +156,7 @@ Registration is a side-effect on the SDK singleton. It must happen **once, at ap
 
    **Sanitize on this path.** RTE content is author-supplied. Rendering it unsanitized is an XSS vector. The hook does this for you. The manual path does not.
 
-   On an SDK without the hook, `json_rte` also accepts **only** JSON RTE (an object). HTML RTE and Markdown are strings and cannot bind to it. Bind those to an `any` prop, or use the built-in `RichText`, until the SDK is upgraded.
+   On an SDK without the hook, `json_rte` also accepts **only** JSON RTE (an object). HTML RTE and Markdown are strings and cannot bind to it. Bind those to an `any` prop, or use the built-in `rich-text`, until the SDK is upgraded.
 
 10. **(Optional) Inspect current config**: three internal readers used by hooks:
     - `getJSONRTE()` returns `IJsonToHtmlOptions` (without `embeddedEntry`/`embeddedAsset`)
@@ -176,7 +178,7 @@ If none of the three is provided, ask the user whether they actually need this s
 This skill succeeds only when ALL of the following are true:
 
 - [ ] `registerRTERenderer({...})` is called once, in the bootstrap module, before any `<StudioComposition />` or `<StudioComponent />` mounts.
-- [ ] If embedded entries are in scope: the `embeddedEntry` handler branches on `contentTypeUid` and/or `displayType` and returns an HTML string per case.
+- [ ] If embedded entries are in scope: the `embeddedEntry` handler branches on `contentTypeUid` and/or `displayType` and returns an HTML string per case. Any embed that must be interactive is drawn with React by a registered rich-text component (§ Interactive embeds), not by the handler.
 - [ ] If embedded assets need custom markup: the `embeddedAsset` handler returns an HTML string. Otherwise the default is acceptable.
 - [ ] Every declared custom element type has a handler returning an HTML string (not React).
 - [ ] Handler keys match the raw `type` values in the entry JSON exactly.
@@ -186,19 +188,19 @@ This skill succeeds only when ALL of the following are true:
 
 ## Which component for which field {#rte-field-to-component}
 
-Rich text is never a `Heading`/`Paragraph` job. Map the CT field to the right component, then register what that component needs:
+Rich text is never a `header`/`text` job. Map the CT field to the right component, then register what that component needs:
 
 | Contentstack field | Component | Prop type | Must register |
 |---|---|---|---|
-| **JSON RTE** | `RichText` | `json_rte` | `registerRTERenderer`: always, if it embeds entries/assets or custom nodes |
-| **HTML RTE** (multiline + rich text editor) | `RichText` | `any` | same call: embedded refs are extracted from the markup |
-| **Markdown** (multiline + markdown) | `RichText` | `any` | same call |
-| Rich text that must **collapse / "read more"** | `CollapsibleText` | same as above | same call: it accepts the full RTE matrix |
-| Single-line / multiline **plain** text | built-in `Text` / `Header` | `plaintext` | nothing |
+| **JSON RTE** | `rich-text` | `json_rte` | `registerRTERenderer`: always, if it embeds entries/assets or custom nodes |
+| **HTML RTE** (multiline + rich text editor) | `rich-text` | `any` | same call: embedded refs are extracted from the markup |
+| **Markdown** (multiline + markdown) | `rich-text` | `any` | same call |
+| Rich text that must **collapse / "read more"** | `collapsible-text` | same as above | same call: it accepts the full RTE matrix |
+| Single-line / multiline **plain** text | built-in `text` / `Header` | `plaintext` | nothing |
 
-**The line between them:** if an author can apply any formatting (bold, a link, a list, an embed) it is rich text and needs `RichText`. Only genuinely unformatted strings belong on `Text`/`Header`, which render `String(text)` and show markup as literal characters.
+**The line between them:** if an author can apply any formatting (bold, a link, a list, an embed) it is rich text and needs `rich-text`. Only genuinely unformatted strings belong on `text`/`header`, which render `String(text)` and show markup as literal characters.
 
-`CollapsibleText` is not a different content model: it is `RichText` plus expand/collapse. Choose it whenever the design truncates long copy behind "read more", an accordion, or a "show details" toggle.
+`collapsible-text` is not a different content model: it is `rich-text` plus expand/collapse. Choose it whenever the design truncates long copy behind "read more", an accordion, or a "show details" toggle.
 
 ## Embedded entries and embedded assets: the reason this API exists
 
@@ -225,6 +227,66 @@ Returning block markup for an `inline` embed breaks the paragraph it sits in, th
 
 Both handlers return **HTML strings**, not React: a returned JSX object stringifies to `[object Object]`.
 
+## Interactive embeds: render them with React in a registered component
+
+`registerRTERenderer` cannot return React, and nothing in `@contentstack/studio-react` 2.0.1 renders an embedded entry as a React component. When an embed must be interactive (add to basket, a carousel, a form), register your own rich-text component and split the work: the SDK renders each ordinary block, and your app's React component renders each **block-level** embedded entry of the types you list.
+
+```tsx
+"use client";
+import { useMemo, type ReactNode } from "react";
+import { useStudioRichText, type Cslptag, type StudioAttributes } from "@contentstack/studio-react";
+import { ProductCard } from "@/components/ProductCard";    // the app's own interactive component
+
+type RteNode = { type?: string; attrs?: Record<string, any>; children?: RteNode[] };
+
+// content type uid → React component for a BLOCK embed of that type
+const EMBEDS: Record<string, (p: { entryUid: string }) => ReactNode> = {
+  product: ({ entryUid }) => <ProductCard uid={entryUid} />,
+};
+
+// One top-level block through the SDK pipeline (marks, links, lists, inline embeds, sanitizing).
+function RteBlock({ node }: { node: RteNode }) {
+  const doc = useMemo(() => ({ type: "doc", attrs: {}, children: [node] }), [node]); // stable identity
+  return <>{useStudioRichText(doc)}</>;
+}
+function RteWhole({ value }: { value: string }) {
+  return <>{useStudioRichText(value)}</>;
+}
+
+export function RichBody({ body, $body, studioAttributes }: { body?: RteNode | string; $body?: Cslptag } & StudioAttributes) {
+  return (
+    <div className="prose" {...studioAttributes} {...$body}>
+      {typeof body === "string" ? (
+        <RteWhole value={body} />                           // HTML RTE / Markdown: HTML path only
+      ) : (
+        body?.children?.map((node, i) => {
+          const isEntry = node.type === "reference" && node.attrs?.type === "entry";
+          const Embed = isEntry ? EMBEDS[node.attrs?.["content-type-uid"]] : undefined;
+          return Embed
+            ? <Embed key={i} entryUid={node.attrs?.["entry-uid"]} />
+            : <RteBlock key={i} node={node} />;
+        })
+      )}
+    </div>
+  );
+}
+```
+
+```ts
+registerLazyComponent(
+  { type: "acme-rich-body", displayName: "Rich body", wrap: false,
+    props: { body: { type: "json_rte", displayName: "Body" } } },
+  () => import("./components/RichBody").then((m) => m.RichBody),
+);
+```
+
+How it behaves:
+
+- **Only JSON RTE, only block embeds.** A block embed is a top-level `reference` node, so the component can swap it for React. An inline or link embed sits inside a paragraph and still goes through `embeddedEntry` (HTML). An HTML RTE or Markdown field arrives as a string and has no node tree to split, so all its embeds stay HTML.
+- **The embed component loads its own data.** It gets the entry uid (and you have the content type uid) from the node's `attrs`, then fetches the way the app already does for that component. Studio does not fetch the embedded entry for it.
+- **Memoize each block** as above. The SDK hook re-runs its embedded-entry fetch whenever the value's identity changes, so a fresh object on every render fetches on every render.
+- Keep `registerRTERenderer` for the remaining HTML embeds (inline, link, other types) and assets.
+
 ## Embedded items: let the fetch you already did do the work
 
 Embedded **entries** are stored in the RTE as references, so their content must be fetched. Embedded **assets** are not: their metadata travels inline in the markup and never costs a request.
@@ -233,7 +295,7 @@ Two ways the entries get resolved, and the cheaper one is easy to miss:
 
 | Route | What happens | Cost |
 |---|---|---|
-| Pass the **`entry`** prop to `RichText` | Resolves `entry._embedded_items[<field>]` via the `$text` CSLP tag | **no extra request** |
+| Pass the **`entry`** prop to `rich-text` | Resolves `entry._embedded_items[<field>]` via the `$text` CSLP tag | **no extra request** |
 | Pass only the RTE value | Refs are extracted, grouped by content type, and fetched in parallel | one query per content type |
 
 So if the caller already fetched with **`.includeEmbeddedItems()`**, pass `entry` through: the embedded items are in the payload and re-fetching them is pure waste. Reach for the fetching route only when the RTE value arrives without its parent entry.
@@ -253,20 +315,21 @@ So if the caller already fetched with **`.includeEmbeddedItems()`**, pass `entry
 
 ## Deprecated built-ins: do not reach for these
 
-`Number`, `JSONRTE` and `Section` are deprecated and no longer appear in `getBasicComponents` / `BASIC_COMPONENTS`. For rich text use **`RichText`** (or `CollapsibleText`, which accepts the same RTE matrix). The built-in `Text` and `Header` now type their text prop as `plaintext` rather than `string`. `Text` renders `String(text)` and no longer parses HTML, so markup passed to it shows as literal characters: that is what `RichText` is for.
+`Number`, `JSONRTE` and `Section` are deprecated and no longer appear in `getBasicComponents` / `BASIC_COMPONENTS`. For rich text use **`rich-text`** (or `collapsible-text`, which accepts the same RTE matrix). The built-in `text` and `Header` now type their text prop as `plaintext` rather than `string`. `text` renders `String(text)` and no longer parses HTML, so markup passed to it shows as literal characters: that is what `rich-text` is for.
 
 ## Common pitfalls
 
 | Pitfall | Why it bites | Fix |
 | --- | --- | --- |
 | Assuming this is JSON-RTE-only because of the name | `registerRTERenderer` covers JSON RTE, HTML RTE **and** Markdown in one call. Treating HTML RTE as unsupported leads to hand-rolled parsing | One registration serves every rich-text field, whatever its storage format |
-| Putting rich text through the built-in `Text` | `Text` renders `String(text)` and no longer parses HTML, so tags appear as literal `<p>` characters | Use the `RichText` component (typed `any`, auto-detects the payload) |
+| Putting rich text through the built-in `text` | `text` renders `String(text)` and no longer parses HTML, so tags appear as literal `<p>` characters | Use the `rich-text` component (typed `any`, auto-detects the payload) |
 | Re-fetching embedded entries the caller already loaded | Without the `entry` prop the refs are fetched again, one query per content type, on every render path | Pass `entry` so `_embedded_items` is used. Pair with `.includeEmbeddedItems()` at fetch time |
 | Custom `embeddedAsset` handler that interpolates the URL directly | Drops the default's scheme guard: `javascript:` / `vbscript:` / non-image `data:` URLs become an XSS vector | Keep the scheme check, or extend `defaultAssetRender` rather than replacing it |
-| Using the deprecated `Number` / `JSONRTE` / `Section` basics | Removed from `BASIC_COMPONENTS`. The `@deprecated` marker sits on the declarations so IDEs warn | Use `RichText` for rich text. `Number`/`Section` have no replacement in the basics palette |
+| Using the deprecated `Number` / `JSONRTE` / `Section` basics | Removed from `BASIC_COMPONENTS`. The `@deprecated` marker sits on the declarations so IDEs warn | Use `rich-text` for rich text. `Number`/`Section` have no replacement in the basics palette |
 | Using `registerJSONRTE` for new code | Deprecated. `registerRTERenderer` is the unified canonical API | Use `registerRTERenderer`. Existing `registerJSONRTE` calls still work, migrate when you next touch the file. |
 | Embedded entry renders blank or as a placeholder | No `embeddedEntry` handler is registered (default renders nothing for entry embeds) | Register `embeddedEntry: ({ entry, contentTypeUid, displayType }) => html` |
-| `embeddedEntry` returns a React element / JSX | Serializer is HTML-string based. React objects stringify to `[object Object]` | Return a plain HTML string from the handler |
+| `embeddedEntry` returns a React element / JSX | Serializer is HTML-string based. React objects stringify to `[object Object]` | Return a plain HTML string from the handler. For React (state, click handlers), use § Interactive embeds |
+| Expecting buttons or handlers inside an embedded entry to work | The handler's HTML is parsed and sanitized: no React, no event handlers, no state | Render that content type's embeds with a React component in a registered rich-text component (§ Interactive embeds) |
 | Calling `registerRTERenderer` more than once | Each call REPLACES the full config. Later calls drop earlier `customElementTypes` / `embeddedEntry` | Build a single merged config and call once at bootstrap. Or use `registerJSONRTE` for serializer-only updates (it preserves existing `embeddedEntry`/`embeddedAsset`), but the right answer is "register everything in one call." |
 | Registering too late | After props resolve, re-registering does not retroactively re-render | Always register at bootstrap, before any composition mount |
 | Wrong key name in `customElementTypes` | Keys must match the raw `type` in entry JSON, not the editor's display label | Verify against the actual entry JSON |

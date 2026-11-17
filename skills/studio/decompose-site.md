@@ -44,10 +44,12 @@ This skill fixes all four by decomposing site-wide, not page-wide. It emits **on
 
 Every fragment on every page is walked through the [four-question decision framework](design-component-library.md). The framework is an open validator (works on any input, no assumed registry). The multi-page context adds a deduplication dimension the single-template `decompose-design` doesn't have:
 
-- **Q1. Classify: Atom, Layout, or Compound?** Applied per distinct shape across ALL templates. A `Card` shape identified on 6 pages is classified once as a layout. Compounds (marketing sections, page hero blocks) always decompose recursively until every leaf is an atom or a layout.
-- **Q2. Does the shared registry already have it?** Two layers: (a) does the customer's existing project registry cover it? (b) has it already been proposed for the shared registry by an EARLIER template in this pass? Aggressively dedup: 6 pages proposing "Card" produce one Card entry, not six.
-- **Q3. Which props?** For each proposed prop on a proposed new primitive: does the value vary across the SITE (not just across one template) AND represent functional/content intent? Site-wide invariants (e.g. Section spacing is always `comfortable` across all 30 templates) are hardcoded, not exposed as a prop.
-- **Q4. Which are Exposed?** For each schema prop: author-understandable + DS-portable? Additionally: does any template on the site actually need to override this prop? If zero templates need override, keep static globally. Site-wide "exposed for one template only" is a valid reason.
+The four questions are defined once in [`design-component-library`](design-component-library.md) § The four-question decision framework. Site-wide, each gains a deduplication dimension the single-template `decompose-design` doesn't have:
+
+- **Q1** — applied per distinct shape across ALL templates. A `Card` shape identified on 6 pages is classified once as a layout.
+- **Q2** — two layers: (a) does the customer's existing project registry cover it? (b) has an EARLIER template in this pass already proposed it for the shared registry? Six pages proposing "Card" produce one Card entry, not six.
+- **Q3** — the value must vary across the SITE, not just across one template. Site-wide invariants (Section spacing always `comfortable` across all 30 templates) are hardcoded, not exposed.
+- **Q4** — additionally: does any template on the site actually need to override this prop? If none do, keep it static globally. "Exposed for one template only" is a valid reason.
 
 **The shared component registry every skill invocation produces has one Q1 to Q4 verdict PER PROPOSED PRIMITIVE**, not per template use. The build sheets reference the registry by name. Each template's build order just says "drop Section S3 (registered per registry)" and stops.
 

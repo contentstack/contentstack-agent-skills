@@ -1,90 +1,98 @@
 ---
 name: cms-environments-publishing
-description: "Advise developers on configuring environments, publishing content, using delivery and preview tokens, leveraging the Sync API, and understanding CDN and publish queue behavior in Contentstack. Use when developers ask about environment setup, publishing behavior, delivery or preview tokens, the Sync API, scheduling, or CDN and caching configuration in Contentstack."
+description: "Advise developers on configuring environments, publishing content, using delivery and preview tokens, leveraging the Sync API, and understanding CDN and publish queue behavior in Contentstack. Use when developers ask about environment setup, publishing behavior, delivery or preview tokens, the Sync API, scheduling, or CDN and caching configuration in Contentstack. For Launch hosting environments, use launch-platform."
 allowed-tools: Read Grep Glob
 ---
 
 # Contentstack Environments & Publishing
 
-## Description
+Advise on how content moves from draft to live: environments, publishing and scheduling, the token for each job, the Sync API, the publish queue and CDN behavior.
 
-Advise developers on configuring environments, publishing content, using delivery and preview tokens, leveraging the Sync API, and understanding CDN and publish queue behavior in Contentstack.
+## When to use
 
-## When to Use
+- Designing environments for a deployment pipeline.
+- Content that doesn't appear on the live site after publishing.
+- Choosing between delivery, preview and management tokens.
+- Scheduling publishes and reading the publish queue.
+- Setting up the Sync API, regional CDA hosts and rate limits.
 
-Use when developers ask about environment setup, publishing behavior, delivery or preview tokens, the Sync API, scheduling, or CDN and caching configuration in Contentstack.
+Use another skill for:
 
-## User Problem
+- Launch hosting environments, builds and deploys → `launch-platform`
+- Token types, scopes and auth in depth → `cms-tokens-authentication`
+- Publishing many entries together on a schedule → `cms-releases`
+- Approval stages and publish rules → `cms-workflows`
+- Rebuilding a site when content publishes → `cms-webhooks`
+- Entry queries and bulk publish details → `cms-entries`
+- Branch and alias deployment → `cms-branches-aliases`
 
-Developers need to understand how content moves from draft to live, how environments and tokens work together, and how to keep frontends in sync.
+## Before you answer
 
-## Success Criteria
-
-Explains the publishing pipeline clearly.
-Identifies the correct token type for the scenario.
-Recommends the Sync API when appropriate.
-Avoids suggesting any unsafe client-side secret handling.
-
-## Expected Inputs
-
-- Deployment pipeline or environment requirements
-- Frontend framework or static site generator
-- Token or authentication questions
-- Scheduling or publish queue concerns
-
-## Expected Outputs
-
-- Environment configuration guidance
-- Token usage recommendations
-- Publishing workflow explanation
-- Sync API setup guidance
-- CDN and caching explanations
-
-## Example User Requests
-
-- How many environments should I set up?
-- What is the difference between a delivery token and a preview token?
-- My content is not showing on the live site after publishing.
-- How does the Sync API work?
-- Can I schedule content to publish at a future time?
-
-## Workflow Summary
-
-Understand the deployment pipeline.
-Recommend the environment structure.
-Explain token types and their use cases.
-Guide publishing, scheduling, and reference publishing.
-Recommend the Sync API for static sites or local caches.
+Find out the deployment pipeline and environments, the frontend framework or static site generator, the token or auth question, and any scheduling or publish queue concern.
 
 ## Instructions
 
-[{"heading":"Environment design","content":"Treat environments as deployment targets such as development, staging, and production. Keep them aligned with the real deployment pipeline. Default max is 5 per stack. Environments are global modules and are shared across branches."},{"heading":"Publishing fundamentals","content":"Explain that content is a draft until explicitly published to an environment. Publishing can target one or more environments and locales. For nested reference publishing, use api_version: 3.2 so the full reference tree is resolved and published automatically. Always publish entries with their references."},{"heading":"Token types","content":"Use the correct token in every answer: Delivery Token for published content via the CDA, environment-scoped and safe for client-side use; Preview Token for unpublished draft content in live preview; Management Token for stack-level read/write access, server-side only, never exposed client-side."},{"heading":"SDK initialization","content":"When relevant, mention Stack API key plus delivery token plus environment name, and optionally branch or alias ID. Note that CDA base URLs are region-specific, such as cdn.contentstack.io for AWS NA, eu-cdn.contentstack.com for AWS EU, and au-cdn.contentstack.com for AWS AU."},{"heading":"Sync API","content":"Recommend the Sync API for static sites, offline apps, or local content caches. Explain that the first request returns all published content plus a sync_token, and later requests return only changes such as created, updated, deleted, published, and unpublished items. Prefer it over polling when near-real-time updates are needed without excessive API usage."},{"heading":"Publish queue","content":"Explain that the publish queue tracks publish and unpublish operations and their status. Mention that each branch has its own queue and that scheduled publishes can be cancelled before execution."},{"heading":"Rate limits","content":"Mention the platform limits when relevant: 10 requests/second individual and 1 request/second bulk per organization. Recommend exponential backoff with jitter for scripts, and note that the CLI bulk publish plugin handles rate limiting automatically."}],
+1. Understand the deployment pipeline.
+2. Recommend the environment structure.
+3. Explain the token types and which one applies.
+4. Guide publishing, scheduling and reference publishing.
+5. Recommend the Sync API for static sites or local caches.
+6. When content is missing after a publish, troubleshoot step by step.
 
-## Output Format
+### Environment design
 
-Be concise and practical.
-Always specify which token type applies.
-Do not recommend client-side use of management tokens.
-Prefer step-by-step troubleshooting when content is missing after publish.
+Treat environments as deployment targets such as development, staging and production. Keep them aligned with the real deployment pipeline. Environments are global modules, shared across branches.
 
-## Tooling Notes
+### Publishing fundamentals
 
-Read-only advisory skill.
-Do not publish, unpublish, or modify environments.
-If Claude tool restrictions are applied, use Read Grep Glob only.
+Content is a draft until explicitly published to an environment. Publishing can target one or more environments and locales. For nested references, use the bulk publish API with the `api_version: 3.2` header, which publishes referenced entries up to five levels deep together with their parents. Always publish entries with their references.
+
+### Token types
+
+Use the correct token in every answer: Delivery Token for published content via the CDA, environment-scoped and safe for client-side use; Preview Token for unpublished draft content in Live Preview; Management Token for stack-level read/write access, server-side only, never exposed client-side.
+
+### SDK initialization
+
+When relevant, mention stack API key plus delivery token plus environment name, and optionally branch or alias ID. CDA base URLs are region-specific: `cdn.contentstack.io` (AWS NA), `eu-cdn.contentstack.com` (AWS EU), `au-cdn.contentstack.com` (AWS AU), `azure-na-cdn.contentstack.com` (Azure NA), `azure-eu-cdn.contentstack.com` (Azure EU), `gcp-na-cdn.contentstack.com` (GCP NA) and `gcp-eu-cdn.contentstack.com` (GCP EU).
+
+### Sync API
+
+Recommend the Sync API for static sites, offline apps, or local content caches. The first request returns all published content plus a `sync_token`, and later requests return only changes such as created, updated, deleted, published, and unpublished items. Prefer it over polling when near-real-time updates are needed without excessive API usage.
+
+### Publish queue
+
+The publish queue tracks publish and unpublish operations and their status. Each branch has its own queue, and scheduled publishes can be cancelled before execution.
+
+### Rate limits
+
+The CMA allows 10 requests per second per organization, and bulk operations 1 request per second. CDA reads are mostly served from the CDN cache and don't count against the origin limit. Responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining` headers. Recommend exponential backoff with jitter for scripts, and note that the CLI bulk publish plugin handles rate limiting automatically.
+
+## MCP tools
+
+When the Contentstack MCP server is connected, these tools act on the stack (local server group in brackets):
+
+- Inspect: `get_all_environments`, `get_an_environment`, `get_publish_queue` (`cma`); `get_publish_queue_activity`, `get_publish_rules` (`cma-extended`); `get_all_entries_cdn`, `get_a_single_entry_cdn` (`cda`, to confirm what an environment serves)
+- Change: `create_an_environment`, `update_an_environment`, `publish_an_entry` (can schedule), `publish_an_asset`, `publish_variants_of_an_entry` (`cma`)
+- Delete or withdraw: `delete_an_environment`, `unpublish_an_entry`, `unpublish_an_asset` (`cma`)
+
+There are no tools for tokens, the Sync API or cancelling a scheduled publish; use the UI or the CMA. For "published but not live", check `get_publish_queue` for the job's status, then `get_a_single_entry_cdn` with the environment's delivery token.
+
+## Output
+
+Be concise and practical. Always say which token type applies, never recommend client-side use of management tokens, and troubleshoot step by step when content is missing after a publish.
 
 ## Security
 
 ### Defaults
 
-Delivery tokens are safe for client-side code.
-Management tokens must never be exposed client-side.
-Use environment variables for all token examples.
-Never hardcode tokens in frontend code.
+- Advisory by default. Use the MCP tools above only when the user asks for the change.
+- Delivery tokens are safe for client-side code.
+- Management tokens must never be exposed client-side; route CMA calls through a server-side proxy in browser apps.
+- Use environment variables for all token examples, and never hardcode tokens in frontend code.
 
 ### Destructive Actions
 
-Do not perform publishing, unpublishing, environment changes, or other write actions. Provide guidance only.
+Before publishing, unpublishing, or creating, updating or deleting an environment, name the stack, branch, environments, locales and items, explain the impact (publishing to production changes the live site; deleting an environment affects every branch, since environments are global), and wait for confirmation.
 
 ### Secrets
 
@@ -93,14 +101,3 @@ Never expose management tokens, API keys, or other secrets. Use environment vari
 ### Environment Variables
 
 Use environment variables for all token and API key examples. Prefer server-side injection for management credentials and client-safe delivery token usage only where appropriate.
-
-## Product Context
-
-- - Product: CMS
-- - Description: Contentstack headless CMS: content types, entries, assets, environments, publishing, workflows, webhooks, and the Content Management API (CMA).
-- - Product safety rules: - Never expose management tokens or API keys.
-- Always use environment variables for credentials.
-- Route all CMA calls through server-side proxies in browser apps.
-- Never hardcode stack API keys in client-side code.
-- - Default tools: ["CMA API", "Content Types", "Entries", "Assets", "Workflows", "Webhooks", "Environments", "Releases", "Publish Queue"]
-- - Default connectors: ["CMA Proxy", "Webhooks"]

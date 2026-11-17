@@ -24,17 +24,20 @@ Agent skills close that gap. They give the assistant Contentstack-specific knowl
 
 ## What's in the bundle
 
-The skills span seven Contentstack product areas:
+The skills span ten Contentstack product areas:
 
 | Product | Skills |
 | --- | --- |
-| **CMS** | Assets · Branches & Aliases · Data Modeling · Entries · Environments & Publishing · Localization · Releases · Roles & Permissions · Taxonomy · Tokens & Authentication · Variants & Personalization · Webhooks · Workflows |
+| **CMS** | Assets · Branches & Aliases · Data Modeling · Entries · GraphQL Content Delivery · JSON Rich Text Editor · Environments & Publishing · Localization · Releases · Roles & Permissions · Taxonomy · Tokens & Authentication · Variants & Personalization · Webhooks · Workflows |
 | **Assets** | Asset Management |
-| **Developer Experience** | Delivery SDK · Contentstack Kickstart Next · Migrate JS→TS SDK · Live Preview & Visual Editor Support · Migration Companion |
+| **Developer Experience** | Contentstack CLI · Contentstack MCP · Delivery SDK · Contentstack Kickstart Next · Migrate JS→TS SDK · Live Preview & Visual Editor Support · Migration Companion |
 | **Studio** | Contentstack Studio |
-| **Launch** | Sync env vars from `.env.example` · Trigger & Monitor Deployments |
+| **Launch** | Launch Platform · Sync env vars from `.env.example` · Trigger & Monitor Deployments |
 | **Brand Kit** | Brand Kit Assistant |
-| **Developer Hub** | Developer Hub App Architect |
+| **Developer Hub** | Developer Hub App Architect · Marketplace Apps |
+| **Personalize** | Personalize |
+| **Lytics** | Lytics |
+| **Automate** | Automations |
 
 See the full [skills reference](../skills/index.md) for a description of each.
 

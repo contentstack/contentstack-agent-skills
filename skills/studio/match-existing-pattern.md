@@ -145,7 +145,10 @@ Matching the shape is not enough. The bindings have to match too. Read them off 
 ### Step 6: Record the choice, then enforce it
 
 Re-asking on every build is noise, and it lets two answers coexist in one project. Write the decision to
-`.studio/pattern.json` in the consuming repo the first time it is made, and read it before Step 1:
+`.studio/pattern.json` in the consuming repo as soon as the pattern is settled, and read it before Step 1. Settled
+means one pattern found (`"chosen_by": "scan"`) or the user picked one (`"chosen_by": "user"`). Write it even when
+nothing is being built yet ("what pattern do we use?") and even when only one Template exists: the record is what
+makes the next build follow it without a fresh scan.
 
 ```json
 {

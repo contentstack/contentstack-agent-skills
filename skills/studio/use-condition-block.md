@@ -52,7 +52,7 @@ If `repeaterSource` is a Reference and the user gives only one UID, still create
 
 This skill succeeds only when ALL of the following are true. If any fails, do not claim success: surface the failure and stop.
 
-- [ ] In Layers the tree reads `Repeater > [Condition Block × N]`: each Condition Block is a direct child of the Repeater, or of the one Box that is the Repeater's only child (for Visual Editor's item tags: [`make-visual-editor-editable`](make-visual-editor-editable.md) § 2), never wrapping it.
+- [ ] In Layers the tree reads `Repeater > [Condition Block × N]`: each Condition Block is a direct child of the Repeater, or of the one Box that is the Repeater's only child (for Visual Editor's item tags: [`make-visual-editor-editable`](make-visual-editor-editable.md) § 2), never wrapping it. See the [canonical list recipe](author-composition-repeater-recipes.md#canonical-list-recipe).
 - [ ] There is exactly one Condition Block per UID in `branches`. UIDs not in `branches` do not have a Condition Block.
 - [ ] Each Condition Block's `condition.type` metadata is set to `modular_block` (Modular Block source) or `reference` (Reference source), matched to a specific block / content-type UID, never to a shared field name like `title`.
 - [ ] Inside each Condition Block, the type-specific component's props are bound via `repeater.<field>` paths. The Data Picker shows the typed fields of that Condition Block's schema, not a generic union.

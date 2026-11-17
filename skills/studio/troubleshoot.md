@@ -32,7 +32,7 @@ Match the user's complaint against the most specific row. **Load only the matchi
 
 Two paths:
 
-1. **Ask the user one clarifying question**: "Is the failure on the canvas inside Studio, on the live site, or during a build / SSR step?" That maps to canvas / URL resolution / SSR respectively. If the answer is "the value renders but is wrong", route to data binding.
+1. **Ask the user one clarifying question**: "Is the failure on the canvas inside Studio, on the live site, or during a build / SSR step?" That maps to canvas / URL resolution / SSR respectively. If the answer is "the value renders but is wrong", route to data binding. **Then end the turn.** No likely causes, no fixes, no "next steps" until they answer: a guessed cause anchors the user on one surface before you know which one failed, and the specialist's own checks are what find the cause.
 
 2. **Default to canvas-test pre-flight.** If the user is unsure where the failure is, [`troubleshoot-canvas`](troubleshoot-canvas.md) leads with a section-test pre-flight that rules out 80% of misdirections before reading any symptom row. Run that, then route based on what the pre-flight finds.
 
@@ -48,3 +48,4 @@ Skill succeeds when:
 - [ ] The user's symptom was matched to exactly ONE specialist row (no "load all five").
 - [ ] The specialist was invoked / linked.
 - [ ] If the symptom didn't match, a clarifying question was asked OR the canvas-test pre-flight was run.
+- [ ] A turn that asks the clarifying question lists no causes and proposes no fixes.

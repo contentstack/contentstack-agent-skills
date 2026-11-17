@@ -20,10 +20,10 @@ The trap is registering either (a) one giant Hero with 20 props, or (b) ten diff
 
 This skill walks the four-question framework below. **The framework is an open validator**. It works on any input (React component, Figma frame, verbal description) regardless of what's already registered:
 
-- **Q1. Classify: Atom, Layout, or Compound?** Look at the input in isolation. A component that carries a single content unit is an Atom. One that arranges children via slots is a Layout. One that does both content AND arrangement is a Compound (refuse and decompose recursively). This is a validator question. It tells you what shape the component actually is.
+- **Q1. Classify: Atom, Layout, or Compound?** Look at the input in isolation. A component that carries a single content unit is an Atom. One that arranges children via slots is a Layout. One that does both content AND arrangement is a Compound (refuse and decompose recursively).
 - **Q2. Does the library already have it?** Only after Q1 confirms atom or layout, check reuse. On a fresh project the answer is trivially "no" for the first primitives. In an existing library, check the registry. With legacy monoliths, check the atom/layout registry, not the monolith list.
-- **Q3. Which props?** For each proposed prop, does it vary per-instance AND represent functional/content intent (not visual polish)?
-- **Q4. Which are Exposed?** For each schema prop, is it author-understandable AND DS-portable?
+- **Q3. Which props?** For each proposed prop, does it vary per-instance AND represent functional/content intent (not visual polish)? Refuse props that fail either half.
+- **Q4. Which are Exposed?** For each schema prop, is it author-understandable AND DS-portable? Never expose atom props.
 
 **Halt if any answer is ambiguous.** Never guess. Ask the user to disambiguate before proceeding.
 
@@ -50,7 +50,7 @@ Walk the user through a five-step decomposition of their design system into a pr
 
 Ask (only if not stated):
 - Which UI library are you on? (Tailwind + shadcn/ui, Chakra, MUI, custom Radix, custom tokens)
-- Where are your semantic tokens defined? (CSS variables, Tailwind config, theme file)
+- Where are your semantic tokens defined? (CSS variables, Tailwind v3 config, a Tailwind v4 `@theme` block, theme file)
 - Does the DS already expose semantic variant names (primary / secondary / default) or raw color tokens?
 
 Do NOT invent tokens. Every semantic option in a primitive's schema must map to an existing DS token. If a token doesn't exist for a proposed option, flag it and offer to defer that primitive until the DS adds the token.
@@ -154,6 +154,57 @@ props: {
 One content prop, three design props, closed options on each. A `string` design prop (`color: '#6c5ce7'`, `gap: '24px'`) re-opens exactly the drift the library exists to prevent.
 
 **Give every prop a `defaultValue`.** It is what lets a composition omit design props entirely and still render. The authored section then carries only its content bindings, and the primitive supplies the rest.
+
+### Utility-CSS projects (Tailwind): write the menu in source
+
+On a Tailwind (or any on-demand utility CSS) project, the `choice` menu is also what keeps the styling alive. Tailwind generates only the classes it finds in source files, so a class an author types in Studio (the Design panel's class field, a free `string` prop) is never generated and renders unstyled, with no error. Map each option to a **complete class string written out in the component**, never a class built from the value (`` `gap-${gap}` `` is invisible to Tailwind's scanner):
+
+```tsx
+const GAP = { tight: "gap-2", normal: "gap-4", loose: "gap-8" } as const;   // full class strings, in source
+const ALIGN = { start: "items-start", center: "items-center", end: "items-end" } as const;
+
+export function Stack({ gap = "normal", align = "start", className = "", children, studioAttributes }: StackProps) {
+  return (
+    <div className={`flex flex-col ${GAP[gap]} ${ALIGN[align]} ${className}`} {...studioAttributes}>
+      {children}
+    </div>
+  );
+}
+```
+
+```ts
+registerComponent({
+  type: "acme-stack",
+  component: Stack,
+  wrap: false,
+  props: {
+    gap:      { type: "choice", options: ["tight", "normal", "loose"], defaultValue: "normal" },
+    align:    { type: "choice", options: ["start", "center", "end"],   defaultValue: "start" },
+    children: { type: "slot" },
+  },
+});
+```
+
+The option names come from the DS (`tight` / `normal` / `loose`), the classes from the `@theme` scale ([`import-design-tokens`](import-design-tokens.md) reads the same `@theme` block). Leave the Design panel's class field out of `styleSections` for these components.
+
+### Design props (`design: true`): per-breakpoint values without a class list
+
+When a design value must change per breakpoint (padding that tightens on mobile), mark the prop `design: true` instead. The SDK generates the CSS itself, so Tailwind's scan doesn't matter:
+
+```ts
+paddingBlock: {
+  type: "choice",
+  design: true,                                   // key must be a camelCase CSS property
+  options: [
+    { label: "None",    value: "0" },
+    { label: "Compact", value: "var(--spacing-8)" },
+    { label: "Roomy",   value: "var(--spacing-16)" },
+  ],
+  defaultValue: "var(--spacing-8)",
+},
+```
+
+Rules from `@contentstack/studio-registry` 2.0.1: only `choice` (options as `{ label, value: <CSS value> }`) and `string` props take the flag. The prop key must be a camelCase CSS property (`paddingBlock`, `gap`, `maxWidth`) and not a reserved key or a style-group name. Authors set the value per breakpoint in the Settings tab. The component receives a **generated class name** under that prop, not the CSS value, and must put it on an element (`className={paddingBlock}`). A `var(--…)` value only works if the variable exists in the page's CSS (see the Tailwind v4 note in `import-design-tokens`). Reach for `design: true` for responsive spacing and sizing. Keep plain `choice` menus for semantic options (`variant`, `emphasis`, `tag`).
 
 Confirm the DS has:
 - Padding tokens for `spacing: compact/comfortable/spacious` at both Section and Card levels.
@@ -260,6 +311,7 @@ If a proposed library would produce sections averaging 2 to 3 nodes, or would bi
 | Exposing `size` on Heading | Layout drift: every H1 picks its own size | `level` drives size via DS tokens. `size` never appears |
 | `color: hex` on any atom | Color drift across the library | `emphasis: default/muted/inverse` maps to DS tokens |
 | Padding in pixels on Section | Spacing scale fragments | `spacing: compact/comfortable/spacious` maps to Tailwind padding tokens |
+| Building Tailwind classes from a prop value (`` `gap-${gap}` ``) or letting authors type classes | Tailwind never sees the class in source, so it is not generated and the element renders unstyled, silently | A lookup of full class strings in the component (§ Utility-CSS projects), or a `design: true` prop |
 | Registering `Hero` as an atom | Monolithic Section: new variant needs a code change | Register the 4 atoms + 4 layouts. Compose Heros on canvas |
 | A `Rating` atom before you need it | Library bloat, unused primitives | Grow additively. Add only when a section actually needs it |
 | Semantic option without a DS token | Silent visual failure at render | Add the token before enabling the option in the schema |

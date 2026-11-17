@@ -28,6 +28,8 @@ Visual Editor's list controls read two tags: the **list tag** `<…>.<field>` on
 | The Repeater's child is a Condition Block holding a Section, or a Section Slot | The item tag never reaches an element: a Section or Section Slot renders no element of its own, so every item tag is dropped | Make a **Box** the Repeater's only child and put the Condition Blocks inside it: Repeater → Box → Condition Blocks → Sections |
 | A Section scoped to the list field (`selected_field: "blocks"`) with its Repeater bound to the Section root | The list renders, but the tags are looked up on the bare array, which has none: no list tag and no item tags | Scope the Section to the whole entry and bind the Repeater to `<field>` |
 
+All three fixes together are the [canonical list recipe](author-composition-repeater-recipes.md#canonical-list-recipe): whole-entry scope, Repeater bound to the field, a Box as its only child, then the Condition Blocks. By API, the Compositions API validator warns on that Box that the items won't render. The warning is expected on this shape: keep the Box.
+
 **Worked example (measured):** a page-builder template built in Studio's UI (Repeater over a modular-blocks field → Condition Block → Section per block type) rendered the list tag `page_sections` and the fields inside each block (`page_sections.0.cta_block.label`), but **no** `page_sections.0` / `.1` / `.2`. With a Box between the Repeater and the Condition Blocks, all three item tags appeared and nothing else changed.
 
 Check, on the rendered HTML of an entry with at least one item:

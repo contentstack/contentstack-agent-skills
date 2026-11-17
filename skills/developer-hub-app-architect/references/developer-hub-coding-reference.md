@@ -17,9 +17,14 @@ Complete guide for building custom apps and extensions for Contentstack Develope
 
 ### Types of Apps
 
-1. **Marketplace Apps**: Public apps available to all Contentstack users
-2. **Private Apps**: Organization-specific apps for internal use
-3. **Machine-to-Machine Apps**: Apps that interact with Contentstack APIs without user interface
+1. **Standard apps**: support UI locations, webhooks, OAuth and hosting. Visibility is private, public (listed in the Marketplace after review) or public unlisted (installable by direct link).
+2. **Machine-to-machine (M2M) apps**: OAuth client-credentials only, organization-targeted, no UI locations or webhooks, never installable or publishable. Use them for service-to-service automation.
+
+Standard apps target either a **stack** (installed into one stack; can subscribe to app and stack events) or an **organization** (installed at org level; app events only; can use org-level App Config and Global Full Page).
+
+### App lifecycle webhooks
+
+Apps can subscribe to installation events (`install`, `update`, `uninstall`, `upgrade`) to provision or clean up external resources. Stack-target apps can also receive stack events such as entry and global field changes.
 
 ---
 
@@ -51,6 +56,10 @@ UI locations are specific places in Contentstack's interface where your app can 
 | **Full Page**      | `/full-page`         | Standalone pages     | Standalone full-page app                                 |
 | **Field Modifier** | `/field-modifier`    | Modify field values  | Modifies field values programmatically                   |
 | **RTE Location**   | `/json-rte.js`       | Rich text extensions | Rich text editor extensions                              |
+| **Content Type Sidebar** | `/content-type-sidebar` | Schema tools | Sidebar in the content type builder (stack apps only)  |
+| **Global Full Page** | `/global-full-page` | Org-level pages      | Full-page app at organization level (organization apps only) |
+
+The route paths are the boilerplate's conventions; the actual paths are whatever you set in the manifest. Field Modifier is plan-gated and its SDK object is `FieldModifierLocation` (named `EntryFieldLocation` before App SDK 2.0). The SDK objects for the two newer locations are `ContentTypeSidebarWidget` and `GlobalFullPageLocation`.
 
 ### App SDK
 
@@ -577,6 +586,10 @@ Configure URL rewrites in Developer Hub Advanced Settings:
 
 This allows you to use relative paths in your code while Contentstack proxies to the actual API.
 
+### Per-installation secrets
+
+Variables (`{{var.NAME}}`) hold developer-level defaults. For values each installation supplies, such as a customer's own API key, save them in `serverConfiguration` through `appSdk.location.AppConfigWidget.installation.setInstallationData()` and reference them in rewrites as `{{map.KEY}}`. The proxy substitutes them server-side, so they never reach the browser.
+
 ### Complete Example
 
 ```typescript
@@ -687,6 +700,8 @@ npm run dev
 
 Runs on `http://localhost:3000`
 
+The boilerplate is React + TypeScript + Vite with one lazy-loaded route per UI location. It ships plain CSS; add `@contentstack/venus-components` (Contentstack's UI component library) if you want the app to look native in the Contentstack UI.
+
 ### 2. Configure in Developer Hub
 
 1. **Create App**:
@@ -697,6 +712,7 @@ Runs on `http://localhost:3000`
 
 2. **Set Base URL**:
 
+   - In the Hosting tab, choose Launch (Contentstack-managed) or custom hosting
    - Set base URL to `http://localhost:3000` (for development)
    - Or use tunneling service (ngrok, Cloudflare Tunnel) for HTTPS
 

@@ -10,7 +10,7 @@ Use when the customer HAS code and a component is too coarse to reuse: a page-le
 
 > **Mandatory auth preflight: settle the credential before the first API call.** Resolve it OAuth-first per [`authenticate-cma`](authenticate-cma.md): `CS_OAUTH_ACCESS_TOKEN`, else the Contentstack MCP's stored session (**ask the user before reading or refreshing it**: refreshing rotates the refresh token; see that skill for where it lives). **Don't ask for a session `authtoken` up front**: it is the last rung, considered only after a freshly refreshed OAuth token has been observed to fail, and only after explaining the risk. If nothing resolves, or a refresh fails with `400 invalid_refresh_token`, hand them `! CONTENTSTACK_REGION=<code> npx @contentstack/mcp --auth` (it needs a TTY and a browser, so it cannot be run for them) and wait. `403 error_code 316` is a valid credential aimed at another org: fix the org or the `api_key`, do **not** re-authenticate.
 
-> **Reuse preflight: mandatory when the project already has compositions.** Before naming a single new atomic, component or Section, run [`match-existing-pattern`](match-existing-pattern.md) § Step 1b: it groups existing Sections by the schema they bind and ranks the component palette by real usage. Decomposition is where reuse has to bite. Once this step names `Heading` instead of the project's `alpha-atom-heading`, the duplicate survives into the plan and into the build. Mark every row reuse, extend, or new, and never new without having looked.
+> **Reuse preflight: mandatory when the project already has compositions.** Before naming a single new atomic, component or Section, run [`match-existing-pattern`](match-existing-pattern.md) § Step 1b: it groups existing Sections by the schema they bind and ranks the component palette by real usage. Decomposition is where reuse has to bite. Once this step names the built-in `header` instead of the project's `alpha-atom-heading`, the duplicate survives into the plan and into the build. Mark every row reuse, extend, or new, and never new without having looked.
 
 # Decompose existing JSX into atomics and Sections
 
@@ -27,34 +27,36 @@ Use when the customer HAS code and a component is too coarse to reuse: a page-le
 
 An existing React component is **not** a reason to skip decomposition. It's the input to it: **a component becomes a Section by being broken up**, and its parts become the reusable pieces.
 
-Taxonomy (Layer-1 atomic / Layer-2 container / Layer-3 Section) is defined once in [`decompose-design`](decompose-design.md) and applied to visual input by [`decompose-design`](decompose-design.md). This skill applies the same taxonomy to **code**. Don't re-derive the layers here. Read them there.
+Taxonomy (Layer-1 atomic / Layer-2 container / Layer-3 Section) is defined once in [`decompose-design`](decompose-design.md), which applies it to visual input. This skill applies the same taxonomy to **code**. What gets decomposed at all is decided by the [Section rule](SKILL.md#section-rule): a component that is interactive or computes its values stays whole inside its Section, everything else is broken up here. Don't re-derive the layers here. Read them there.
 
 ## Task
 
 1. **Read the render tree, not the prop list.** Open `componentPath` and walk what it returns. Props tell you what the current caller passes. The render tree tells you what the component actually contains. That's where the reusable pieces are hiding. Note for each element: tag/component, what content it renders, and where that content comes from (a prop, a literal, a `.map()`, a fetch).
 
-2. **Classify every leaf as a Layer-1 atomic, one piece of content each.**
+2. **Classify every leaf as a Layer-1 atomic, one piece of content each.** Map it to the project's library atom first ([`design-component-library`](design-component-library.md)). The built-in column is the fallback when the library has none, written as the SDK `type` (palette name in brackets); the full list is in [`plan-studio-architecture`](plan-studio-architecture.md#built-in-names) § Step 2b.
 
-   | In the JSX | Atomic | Prop type |
-   |---|---|---|
-   | `<h1>`, `<h2>`, heading, title, label | `Heading` / `Text` | `string` |
-   | `<p>` of **plain** copy, no formatting possible | `Text` / `Paragraph` | `string` |
-   | `<img>`, background image | `Image` | `imageurl` |
-   | `<a>`, button with a destination | `Link` / `Button` | `href` (+ `string` label) |
-   | **Formatted copy**: `dangerouslySetInnerHTML`, a markdown renderer, `ReactMarkdown`, `<div>` holding `<strong>`/`<ul>`/`<a>` from data, anything an author can style | **`RichText`** | `json_rte` (JSON RTE) or `any` (HTML RTE / Markdown) |
-   | Copy that **truncates**, "read more", accordion body, `<details>`, show/hide | **`CollapsibleText`** | as above |
-   | Formatted copy that can **embed a card or media** mid-flow | `RichText` **+ `registerRTERenderer`** with `embeddedEntry` / `embeddedAsset` | as above |
-   | A date, price, count | `Text` | `datestring` / `number` |
-   | An interactive control (form field, toggle, carousel arrow) | **stays inside a registered component**: built-ins can't express behavior | - |
+   | In the JSX | Library atom | Built-in fallback | Prop type |
+   |---|---|---|---|
+   | `<h1>`, `<h2>`, heading, title | `heading` | `header` (Header): `<h1>`…`<h6>` | `string` |
+   | `<p>` of **plain** copy, label, no formatting possible | `body-string` | `text` (Paragraph): `<p>` | `string` |
+   | `<img>`, background image | `media` | `image` (Image): `<img>` | `imageurl` |
+   | `<a>`, button with a destination | `cta-button` | `link` (Link) / `button` (Button) | `href` (+ `string` label) |
+   | **Formatted copy**: `dangerouslySetInnerHTML`, a markdown renderer, `ReactMarkdown`, `<div>` holding `<strong>`/`<ul>`/`<a>` from data, anything an author can style | `body-json-rte` / `body-html-rte` | **`rich-text`** (Rich Text): `<div>` | `json_rte` (JSON RTE) or `any` (HTML RTE / Markdown) |
+   | Copy that **truncates**, "read more", accordion body, `<details>`, show/hide | - | **`collapsible-text`** (Collapsible Text) | as above |
+   | Formatted copy that can **embed a card or media** mid-flow | rich-text atom | `rich-text` **+ `registerRTERenderer`** with `embeddedEntry` / `embeddedAsset` | as above |
+   | A date, price, count | `body-string` | `text` (Paragraph) | `datestring` / `number` |
+   | An interactive control (form field, toggle, carousel arrow) | **stays inside a registered component**: atoms and built-ins can't express behavior | - | - |
+
+   **Never use `plain-text` (palette name "Text") for a leaf.** It renders the bare string with no element, so it cannot take a class or carry an edit tag: authors can't style it or click it. And never write `Heading`, `Paragraph` or `RichText` as a `type`: no component is registered under those names.
 
    **On an existing codebase, flag the upgrade: don't perform it.** Code that renders prose through a plain `<p>` is often just what was quickest to write. Two cases, very different costs:
 
-   - The CT field is **already rich text** and the code renders it plainly, so switching to `RichText` is **free**: no schema change, and it fixes markup currently showing as literal characters.
+   - The CT field is **already rich text** and the code renders it plainly, so switching to `rich-text` (or the library's rich-text atom) is **free**: no schema change, and it fixes markup currently showing as literal characters.
    - The field is **plain text** holding prose, so suggest `json_rte`, state that it is a schema change on live entries ([`migrate-ct-schema`](migrate-ct-schema.md)), and proceed with plain text if the user declines.
 
    Say it as a recommendation with the cost attached, then respect the answer. Never migrate a field as a side effect of decomposing a component.
 
-   **Deciding plain vs rich:** ask whether an author could ever want **bold, a link, a list, or an embed** in that copy. If yes it is rich text. `Text`/`Paragraph` render `String(text)` and would show the markup as literal `<p>` characters. Body copy, descriptions and long-form prose are rich text far more often than they look. Headings and labels almost never are. Mapping: [`register-json-rte` § Which component for which field](register-json-rte.md#rte-field-to-component).
+   **Deciding plain vs rich:** ask whether an author could ever want **bold, a link, a list, or an embed** in that copy. If yes it is rich text. `header` and `text` render the string as-is and would show the markup as literal `<p>` characters. Body copy, descriptions and long-form prose are rich text far more often than they look. Headings and labels almost never are. Mapping: [`register-json-rte` § Which component for which field](register-json-rte.md#rte-field-to-component).
 
    **A hardcoded literal is still an atomic.** `<h1>Join our rewards</h1>` becomes a `string` atomic bound to a CT field. That's precisely how the author gains the ability to edit it. Leaving literals in code is the single biggest source of "why can't I change this text".
 
@@ -74,7 +76,7 @@ Taxonomy (Layer-1 atomic / Layer-2 container / Layer-3 Section) is defined once 
 
    **A partially-handled block list is a bug worth surfacing.** Code like `if (block.hasOwnProperty("marquee")) return <Marquee …/>` renders **nothing** for every other block type, silently. Enumerate the CT's block types and give each a Condition Block, or state explicitly that the others are unsupported.
 
-5. **Draw Layer-3 Section boundaries: one per recognizable page part.** A Section is a hero, a form band, a feature grid, a CTA strip. **One Section for a whole page is a defect, not a shortcut.** If your boundary list has one entry and the page has visibly distinct regions, go back to step 1.
+5. **Draw Layer-3 Section boundaries: one per page region**, per the [Section rule](SKILL.md#section-rule). A Section is a hero, a form band, a feature grid, a CTA strip. If your boundary list has one entry and the page has visibly distinct regions, go back to step 1.
 
    Boundary test, in order:
    - Could a person point at it and name it? If yes, it is its own Section.
@@ -87,10 +89,10 @@ Taxonomy (Layer-1 atomic / Layer-2 container / Layer-3 Section) is defined once 
 
    ```
    Hero band  (Section, scoped to entry.hero group)
-     Image      image       → entry.hero.image        (imageurl)
-     Heading    headline    → entry.hero.headline     (string)
-     Text       body        → entry.hero.body         (string)
-     Link       cta         → entry.hero.cta.href     (href)
+     media        image       → entry.hero.image.url    (imageurl)
+     heading      headline    → entry.hero.headline     (string)
+     body-string  body        → entry.hero.body         (string)
+     cta-button   cta         → entry.hero.cta.href     (href)
    ```
 
    **A single prop taking the whole object is the failure mode**, not a shortcut. `content: { type: "any" }` fed the `hero` group renders blank. The binder recursively unwraps single-key objects for every type except `object`/`array`. Bind field-by-field. Use `object`/`array` only when the component genuinely consumes a whole group or list.
@@ -105,13 +107,13 @@ Taxonomy (Layer-1 atomic / Layer-2 container / Layer-3 Section) is defined once 
 
    Sections (build in this order):
      1. <Hero band>        scope: entry.hero        reusable on: any page with a hero
-        atomics: Image, Heading, Text, Link
+        atomics: media, heading, body-string, cta-button
      2. <Offers list>      scope: entry.offers      Repeater + child Section per offer
-        atomics (child): Image, Heading, Text
+        atomics (child): media, heading, body-string
      3. <Signup form>      stays one registered component — interactive
 
    Reused, not rebuilt:
-     <Heading / Text / Image already registered — no work>
+     <heading / body-string / media already registered — no work>
 
    New CT fields needed:
      <entry.hero.headline (string), entry.hero.image (file), …>
@@ -211,7 +213,7 @@ The full contract, the `wrap` alternative and the `cslp: { appendTags: true }` p
 
 | Pitfall | Why it bites | Fix |
 | --- | --- | --- |
-| Registering the page component whole because "it's used on one route" | Reuse count is a prioritization signal, not a qualification gate. A one-off page component is the **strongest** decomposition candidate. It's where the monolith is | Decompose first, then register the parts. See `discover-sections` § scoring |
+| Registering the page component whole because "it's used on one route" | Reuse count is a prioritization signal, not a qualification gate. A one-off page component is the **strongest** decomposition candidate. It's where the monolith is | Decompose first, then register the parts ([Section rule](SKILL.md#section-rule)). See `discover-sections` § scoring |
 | Reading props instead of the render tree | Props describe today's caller. The reusable pieces are in what the component renders | Walk the JSX return value |
 | Leaving hardcoded copy in code | Authors then can't change it and file it as a bug. "Why can't I edit this heading" is almost always a literal that was never made an atomic | Every literal string/image becomes an atomic bound to a CT field |
 | `.map()` kept as a hardcoded list | Content can't grow, adding a fourth offer needs a developer | Repeater + child Section (+ Condition Block for blocks/references) |
@@ -223,9 +225,8 @@ The full contract, the `wrap` alternative and the `cslp: { appendTags: true }` p
 
 ## See also
 
-- [`decompose-design`](decompose-design.md): the Layer-1/2/3 taxonomy this applies
-- [`decompose-design`](decompose-design.md): the Layer-1/2/3 taxonomy this applies
-- [`decompose-design`](decompose-design.md): same taxonomy, visual input instead of code
+- [`decompose-design`](decompose-design.md): the Layer-1/2/3 taxonomy this applies, on visual input instead of code
+- [`design-component-library`](design-component-library.md): the primitive library the atomics map to
 - [`discover-sections`](discover-sections.md): which components recur across routes. Run this after decomposition
 - [`design-section-from-jsx`](design-section-from-jsx.md): derive a Section's linked schema once boundaries are drawn
 - [`register-component`](register-component.md): register each atomic and container. Prop types and the `any` trap

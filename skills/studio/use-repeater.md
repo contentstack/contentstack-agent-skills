@@ -20,7 +20,7 @@ A Repeater is a Smart Container that renders its child subtree once per item of 
 
 **The scope rule, in user terms:** clicking inside a Repeater switches the Data Picker roots. Outside the Repeater = the Section's linked-schema fields. **Inside the Repeater = the iteration item's fields, labeled "Repeater Data".** Bind from whichever root the picker shows. The location determines the shape, not your choice.
 
-When the iteration items are heterogeneous (Modular Block lists, or References [single-CT and multi-CT]), the immediate child of the Repeater must be a Condition Block. Studio surfaces an inline hint when you bind a child directly and offers to wrap it for you. For Visual Editor's add / move / delete controls, then put those Condition Blocks inside one Box that is the Repeater's only child: [`make-visual-editor-editable`](make-visual-editor-editable.md) § 2.
+When the iteration items are heterogeneous (Modular Block lists, or References [single-CT and multi-CT]), the Repeater's only child is an item Box, and the Condition Blocks sit inside that Box. Studio's inline hint offers to wrap the bound child directly in a Condition Block; that puts it in the wrong place, so move it inside the item Box. Follow the [canonical list recipe](author-composition-repeater-recipes.md#canonical-list-recipe).
 
 ## What goes into a repeating Slot: a Section, not a raw component
 
@@ -39,7 +39,7 @@ When the Repeater contains a Section Slot (the common "list of cards" pattern), 
    - For a Pinned Query: pick under **Pinned Queries**.
    - The picked node must be a list/array. The picker disables scalar leaves for this slot.
 
-5. **Wrap iteration in a Condition Block when required.** If `itemKind` is `modular-block` or `reference` (single-CT or multi-CT), the immediate child of the Repeater must be a Condition Block. The cleanest path: drop the `iterationComponent` directly inside the Repeater first. When you bind any prop on it, Studio shows an inline hint that this source needs a Condition Block. Accept the wrap prompt and Studio inserts the Condition Block around the component, scoping it to the active item type. For `group` and `array` of scalars, skip this step.
+5. **Wrap iteration in a Condition Block when required.** If `itemKind` is `modular-block` or `reference` (single-CT or multi-CT), put one item Box inside the Repeater as its only child, then a Condition Block inside that Box around the `iterationComponent`, scoped to the active item type ([canonical list recipe](author-composition-repeater-recipes.md#canonical-list-recipe)). If you accept Studio's wrap prompt instead, it inserts the Condition Block directly under the Repeater; move it inside the item Box. For `group` and `array` of scalars, skip this step.
 
 6. **Drop the iteration content inside the Repeater.**
    - **Preferred: drop a Section.** If the iteration content is non-trivial (a card with title + image + price + rating, etc.), build it as its own Section bound to the iterated item's CT and drop that Section into the Repeater (or into the Condition Block if step 5 applied, or into a Section Slot inside the Repeater. See the "What goes into a repeating Slot" pattern in Context above). The Section is pre-bound, nothing to wire per drop.

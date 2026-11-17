@@ -19,10 +19,10 @@ When you need to automate Launch deployments for a known project and environment
 
 1. Validate the project and environment identifiers.
 2. Confirm the target is allowed. **Require explicit approval for production**.
-3. Trigger: `POST /projects/{project_uid}/environments/{environment_uid}/deployments`.
-4. Poll status every 10 seconds until a terminal state.
-5. Fail fast. Exit non-zero on `failed` or `cancelled`; stop polling.
-6. On failure, `GET .../deployments/{deployment_uid}` for the log, then summarize the likely cause and next steps.
+3. Trigger: `POST /projects/{project_uid}/environments/{environment_uid}/deployments`, optionally with a `commitHash` or `uploadUid`.
+4. Poll `GET .../deployments/{deployment_uid}` every 10 seconds. `LIVE` is success; `QUEUED`, `DEPLOYING` and `DEPLOYED` are still in progress.
+5. Fail fast. Exit non-zero on `FAILED`, `CANCELLED` or `SKIPPED`; stop polling.
+6. On failure, `GET .../deployments/{deployment_uid}/logs/deployment-logs` for the build log (the deployment endpoint itself returns metadata only), then summarize the likely cause and next steps.
 
 ## Inputs
 
@@ -39,9 +39,13 @@ When you need to automate Launch deployments for a known project and environment
 - "Poll a Launch deployment every 10 seconds and exit non-zero on failure."
 - "If the deployment fails, check the logs and explain what went wrong."
 
+## MCP tools
+
+If the `launch` group of the Contentstack MCP server is connected, the skill uses `create_deployment` to deploy the latest commit of the environment's branch, `get_deployment` to poll, and `get_deployment_logs` or `get_server_logs` to diagnose. Deploying a specific commit or upload, and rollback, still go through the API.
+
 ## Safety notes
 
-Treats deployment triggers as external side effects. Requires explicit confirmation before production deployments and never auto-deploys to production without review. Doesn't auto-retry failed deployments unless asked and the target is non-production. Never prints API tokens, deployment tokens, or environment secrets; redacts sensitive values from logs and summaries. Uses a non-zero exit code for failed or cancelled deployments.
+Treats deployment triggers, through the API or MCP tools, as external side effects. Requires explicit confirmation of the project and environment before every deployment, with an extra check for production, and never auto-deploys to production without review. Doesn't auto-retry failed deployments unless asked and the target is non-production. Never prints API tokens, deployment tokens, or environment secrets; redacts sensitive values from logs and summaries. Uses a non-zero exit code for failed, cancelled or skipped deployments. Rollback (`POST .../deployments/rollback`) is a production change and needs confirmation.
 
 ## Related
 

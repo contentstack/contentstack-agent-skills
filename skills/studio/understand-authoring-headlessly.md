@@ -28,7 +28,7 @@ API authoring is NOT a replacement for the UI. The Data Picker handles every sha
 The compositions CT has 13 fields (full schema in [`provision-studio-project`](provision-studio-project.md)). The two that carry the composition itself:
 
 - **`ui`**: `zlib:<base64>`-encoded composition node tree. The whole layout (page, sections, components, repeaters, condition blocks, section slots) lives here as one inflated JSON tree.
-- **`data_sources`**: JSON object holding `resolvedReferences` (which fields to populate via CDA `?include[]=`), the static-value map, and other resolution metadata.
+- **`data_sources`**: JSON object holding `resolvedReferences` (which fields to populate via CDA `?include[]=`) and other resolution metadata. Static values live in the separate `static_value` field. Exact shapes per API: [`author-composition-entry`](author-composition-entry.md#wire-shapes).
 
 Other fields (`composable_uid`, `url`, `linked_schemas`, `linked_sections`, `url_metadata`, etc.) are CT-level routing/metadata. The actual composition is in `ui` + `data_sources`.
 

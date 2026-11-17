@@ -41,6 +41,8 @@ Each description's "Use when…" clause lists the requests that should load it. 
 | Designing or refactoring content models | [Data Modeling Best Practices](../skills/cms-data-modeling-best-practices.md) |
 | Setting up or debugging Live Preview, Visual Editor (Visual Builder) or Timeline | [Live Preview & Visual Editor Support](../skills/cms-live-preview-visual-editor-support-assistant.md) |
 | Fetching entries, CDA queries, pagination, bulk ops | [Entries](../skills/cms-entries.md) |
+| GraphQL queries, schema, references and limits | [GraphQL Content Delivery](../skills/cms-graphql.md) |
+| Rendering JSON Rich Text Editor content, embedded entries, HTML conversion | [JSON Rich Text Editor](../skills/cms-json-rte.md) |
 | Uploading, transforming, delivering assets in a stack | [Assets](../skills/cms-assets.md) |
 | Assets DAM: spaces, workspaces, duplicate sets, saved views, visual markups | [Asset Management](../skills/asset-management.md) |
 | Classifying content, category hierarchies | [Taxonomy](../skills/cms-taxonomy.md) |
@@ -54,10 +56,17 @@ Each description's "Use when…" clause lists the requests that should load it. 
 | Webhooks, event channels, payloads, signatures | [Webhooks](../skills/cms-webhooks.md) |
 | Matching a Launch env to `.env.example` | [Sync Launch env vars](../skills/launch-sync-environment-variables-from-env-example.md) |
 | Triggering and monitoring Launch deployments | [Trigger & Monitor Deployments](../skills/launch-trigger-and-monitor-launch-deployments.md) |
-| Personalization, A/B testing, audience segmentation, variants | [Variants & Personalization](../skills/cms-variants-personalization.md) |
+| Entry variants and variant groups in the CMS | [Variants & Personalization](../skills/cms-variants-personalization.md) |
 | Building a Developer Hub or Marketplace app | [Developer Hub App Architect](../skills/developer-hub-app-architect.md) |
+| Choosing or configuring a first-party Marketplace app (DAM, commerce, search, translation) | [Marketplace Apps](../skills/marketplace-apps.md) |
+| Hosting on Launch: builds, functions, `launch.json`, caching, domains | [Launch Platform](../skills/launch-platform.md) |
+| Personalize experiences, audiences, events, Edge SDK | [Personalize](../skills/personalize.md) |
+| Lytics tag, identity, audiences, consent | [Lytics](../skills/lytics.md) |
+| Automate rules, triggers, connectors, executions | [Automations](../skills/automations.md) |
+| The `csdx` CLI: export, import, seed, bulk publish, migrations | [Contentstack CLI](../skills/dx-cli.md) |
+| Connecting an AI agent to Contentstack over MCP | [Contentstack MCP](../skills/dx-mcp-server.md) |
 
-The exact wording lives in each skill's frontmatter. See the [skills reference](../skills/index.md).
+The exact wording lives in each skill's frontmatter. See the [skills reference](../skills/index.md). The [routing evals](../contributing/routing-evals.md) check that sample prompts load the skill this table promises.
 
 ## Skills that only run on request
 

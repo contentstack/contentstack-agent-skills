@@ -21,6 +21,8 @@ Run discovery on whole-project setup and API-provisioning flows, including when 
 3. If no tools are callable, inspect the current host's supported MCP configuration mechanism before registering the server. Resolve the final stack and region first. Use the host's documented restart/reconnect behavior; do not invent commands or edit another IDE's configuration.
 4. After login or restart, repeat discovery and the read probe. Record supported operations and any remaining HTTP fallback reasons, without credentials.
 
+The same gate applies to the **hosted Contentstack connector** on claude.ai: if its tools are callable here and the read probe passes on the target stack, it satisfies the gate for those operations. What it is and what is still unconfirmed about it: [`understand-contentstack-mcp`](understand-contentstack-mcp.md) § The hosted connector on claude.ai.
+
 The `claude mcp` commands below are Claude Code examples only. In other hosts, use their own configuration interface. CLI login commands shown with leading `!` use Claude's shell shortcut; omit `!` in an ordinary terminal.
 
 ## MCP-first credential boundary
@@ -172,12 +174,20 @@ Then hand them the Step 3 command again. A `refresh_token` is stored alongside t
 
 ### Step 4: Register the MCP server
 
+**Resolve the stack first, then register once.** The stack key is part of the registration, and changing it later means remove, re-add and restart. Run the Step 5 loop before this step whenever you can: it needs only the OAuth login from Step 3, not the MCP server. Register keyless only when the stack really is undecided.
+
 **claude-code CLI:**
 ```bash
-claude mcp add contentstack -e GROUPS=cma,cma-extended -e CONTENTSTACK_REGION=<resolved-region> -- npx -y @contentstack/mcp
+claude mcp add contentstack --scope local \
+  -e GROUPS=cma,cma-extended -e CONTENTSTACK_REGION=<resolved-region> -e CONTENTSTACK_API_KEY=<blt...> \
+  -- npx -y @contentstack/mcp
 ```
 
-`<resolved-region>` is the Step 0 region (`NA` for prod NA, etc.). **Pin it explicitly, see the callout below.** Omitting it lets a stray ambient value crash the server.
+`<resolved-region>` is the Step 0 region (`NA` for prod NA, etc.). **Pin it explicitly, see the callout below.** Omitting it lets a stray ambient value crash the server. Drop `-e CONTENTSTACK_API_KEY` only for a keyless registration.
+
+**Scope decides where the tools exist.** `--scope local` (the default) records the server for the folder you ran the command in. Its tools load only in a `claude` session started from that same folder. Run `claude mcp add` from the project root, and restart from there too. `--scope user` makes it available in every folder (with one stack key for all of them). `--scope project` writes `.mcp.json` into the repo for the team; the stack key is not a secret, and each person still runs their own `--auth`.
+
+**Then restart Claude Code fully**: exit the session and launch `claude` again from the same folder. MCP tool schemas load at session start, so the current session never sees the new server.
 
 **Claude Desktop / Cursor / VS Code (JSON config):**
 ```json
@@ -195,7 +205,7 @@ Config locations: Claude Desktop (macOS) `~/Library/Application Support/Claude/c
 
 > `GROUPS=cma,cma-extended` enables the write tools the provisioning skills need. Add `cda` only if a skill needs published-content reads. Do NOT set a `CONTENTSTACK_MANAGEMENT_TOKEN` when using OAuth. The stored session is the credential.
 
-> **Pin `CONTENTSTACK_REGION` in the add config: the MCP inherits your shell environment.** The stdio server inherits the ambient env. If you're in a repo whose `.env` (or your shell) sets `CONTENTSTACK_REGION` to a non-standard value (a custom data-center name), the server reads THAT instead of your OAuth region and **throws `Unknown region "<x>"` at startup**, so `claude mcp list` shows `✘ Failed to connect — Connection closed` even though your OAuth session is valid and you never passed a bad region. This is the single most common "the MCP won't connect" cause on a machine that also runs an app against a custom / private data center. `-e CONTENTSTACK_REGION=<resolved-region>` (CLI) or the `env` block (JSON) overrides the stray value. Diagnose via the connection log: `~/Library/Caches/claude-cli-nodejs/<project-path>/mcp-logs-contentstack/`. The newest `.jsonl` prints the exact `Server stderr: Error: Unknown region …`. Pin `CONTENTSTACK_API_KEY` the same way for the same reason once the target stack is resolved (Step 5).
+> **Pin `CONTENTSTACK_REGION` in the add config: the MCP inherits your shell environment.** The stdio server inherits the ambient env. The most common source is **the app's own `CONTENTSTACK_REGION`**: Contentstack apps and starters commonly name their own region setting exactly that, in the repo's `.env` / `.env.local` or your shell, and the server picks it up when launched from that folder. A standard value such as `us` or `eu` normalizes and works by luck. A custom data-center name, or any value outside the region list, does not: the server reads THAT instead of your OAuth region and **throws `Unknown region "<x>"` at startup**, so `claude mcp list` shows `✘ Failed to connect — Connection closed` even though your OAuth session is valid and you never passed a bad region. This is the single most common "the MCP won't connect" cause on a machine that also runs an app against a custom / private data center. `-e CONTENTSTACK_REGION=<resolved-region>` (CLI) or the `env` block (JSON) overrides the stray value. Diagnose via the connection log: `~/Library/Caches/claude-cli-nodejs/<project-path>/mcp-logs-contentstack/`. The newest `.jsonl` prints the exact `Server stderr: Error: Unknown region …`. Pin `CONTENTSTACK_API_KEY` the same way for the same reason once the target stack is resolved (Step 5): an app's own `CONTENTSTACK_API_KEY` can point the server at a different stack.
 
 ### Step 5: Choose the target stack (a loop of new-or-existing, then permission, then recover)
 
@@ -211,11 +221,11 @@ The MCP operates on ONE stack (`CONTENTSTACK_API_KEY`), which **MUST belong to t
     - **Choose existing stack**: the user pastes `api_key`, then **go to "Set the key" (loop exit).**
     - **Choose different org**: **re-run Step 3, the browser re-opens.** Before logging in, the user switches their **active org** (Contentstack top-left switcher) to one where they can create (there's no in-flow org-picker, the login captures the active org). New org captured, so **loop back to Q1** (re-ask new-vs-existing for the new org). Repeat until exit.
 
-**Set the key** (loop exit): the server was registered keyless in Step 4, and **`claude mcp add` errors if the name already exists**, so **remove, then re-add** with the key (CLI), or edit the `env` block directly (JSON config), then restart and go to Step 6:
+**Set the key** (loop exit): if you ran this loop before Step 4, go back and register once with the key. Only if the server was already registered keyless: **`claude mcp add` errors if the name already exists**, so **remove, then re-add** with the key (CLI, same `--scope` and same folder as before), or edit the `env` block directly (JSON config), then restart and go to Step 6:
 
 ```bash
-claude mcp remove contentstack
-claude mcp add contentstack -e GROUPS=cma,cma-extended -e CONTENTSTACK_REGION=<resolved-region> -e CONTENTSTACK_API_KEY=<blt...> -- npx -y @contentstack/mcp
+claude mcp remove contentstack --scope local
+claude mcp add contentstack --scope local -e GROUPS=cma,cma-extended -e CONTENTSTACK_REGION=<resolved-region> -e CONTENTSTACK_API_KEY=<blt...> -- npx -y @contentstack/mcp
 ```
 
 For multi-stack work in one session, repeat this remove-then-re-add when switching stacks.
@@ -229,6 +239,25 @@ After a **session restart** (so the MCP's tools load into the agent's toolset), 
 **Fail mode: `MCP error -32603: … Cannot read properties of undefined (reading 'data')`.** The server crashed on an undefined CMA response (no clean 401/403). Most often a **stale OAuth token, so re-auth (Step 3) for a fresh one** (the actual fix in testing). Otherwise the stack is in the wrong org/region, or is on a custom / private data center. See the `-32603` and wrong-org rows in Common pitfalls for the full triage.
 
 Note `claude mcp list` showing `✔ Connected` only means the server process started. It does NOT confirm CMA calls work. The tool call is the real test.
+
+<a id="cts-created-after-start"></a>
+
+### Step 6b: Content types created after start-up need HTTP (or a restart)
+
+The server reads the stack's content types **once, at start-up**, and writes them into its tool schemas as the allowed values (an `enum`) of every `content_type_uid` argument (`@contentstack/mcp` 0.9.0, tool enrichment; environments and locales get the same treatment). Its update, read and publish tools then accept only those content types: a content type created in this session (by its own `create_a_content_type`, by `curl`, or in the UI) is rejected until Claude Code restarts. A new environment is likewise missing from the `environment` enums.
+
+So, after creating a content type in a running session:
+
+| Step on the new content type | Path until the next restart |
+|---|---|
+| Create it | MCP `create_a_content_type` works |
+| Follow-up schema change (the compositions CT's `linked_sections` PUT, [`provision-studio-project`](provision-studio-project.md) step 8) | HTTP `PUT /v3/content_types/<uid>` with `$CS_AUTH` |
+| Verify it (`GET /v3/content_types/<uid>`) | HTTP |
+| Create, update or publish its entries (composition entries, seed entries) | HTTP |
+
+Either plan it: create every new content type first, then restart Claude Code once (same folder) and run the rest through the MCP. Or keep everything that touches the new type on HTTP for the rest of the session. Record which, so a later step doesn't retry the MCP tool.
+
+The source also has an off switch, `CONTENTSTACK_MCP_ENRICH_TOOLS=false` in the registration's `env`, which skips the enums. It has not been tried end to end with the Studio flow: if you use it, verify an update on a freshly created content type before relying on it.
 
 ### Step 7: Write the session flag
 
@@ -250,6 +279,7 @@ Print:
 Runs as tool calls now (no curl, no pasted authtoken):
   • provision-studio-stack       — global fields, CTs, entries, asset dedupe + publish
   • provision-studio-project     — compositions CT create + environment create
+                                   (until a restart, the CT's PUT/verify/entries go over HTTP: Step 6b)
   • author-composition-via-api   — entry create/update + publish
 
 STILL raw HTTP (not in MCP scope) — same OAuth credential, sent as `Authorization: Bearer`:
@@ -274,7 +304,9 @@ STILL raw HTTP (not in MCP scope) — same OAuth credential, sent as `Authorizat
 - [ ] If accepted: `claude mcp list` shows `contentstack`. `--auth` completed (browser OAuth, region selected, org auto-captured).
 - [ ] Stack key resolved (existing pasted, or new stack created) AND it belongs to the OAuth'd org.
 - [ ] Smoke test (`get_all_content_types` / `get_all_environments`) returns real data, NOT just `✔ Connected`. On the `-32603 …'data'` crash, re-auth for a fresh token and retry.
+- [ ] Registered once, with the stack key, from the project folder, and Claude Code restarted from that same folder.
 - [ ] Session note written: `CONTENTSTACK_MCP_READY=true`, region, org, stack API key.
+- [ ] Any content type created this session is handled over HTTP (or after a restart) for update, read and publish (Step 6b).
 - [ ] User told which provisioning steps run as tools vs stay raw HTTP.
 
 ## Common pitfalls
@@ -298,6 +330,9 @@ STILL raw HTTP (not in MCP scope) — same OAuth credential, sent as `Authorizat
 | `GROUPS` too narrow (`cma` only) | Some skills need CMA-extended (workflows/versions) | Register with `GROUPS=cma,cma-extended` |
 | `--auth` dies instantly: `Error: User force closed the prompt with 0 null` | Run in a shell with **no TTY**. The arrow-key menus can't read input | Hand the user `! CONTENTSTACK_REGION=<resolved-region> npx @contentstack/mcp --auth` to run in their own terminal (Step 3) |
 | MCP installed but not restarted | Tools don't appear. Skills silently fall back to curl | Restart the `claude` session / IDE after `claude mcp add`. MCP tool schemas load at session start |
+| Restarted `claude` from a different folder | `--scope local` (the default) binds the server to the folder `claude mcp add` ran in: the tools are missing, `claude mcp list` there shows nothing | Restart from the same folder, or re-add with `--scope user` |
+| Updating, reading or publishing a content type created after the server started | The tools only accept content types that existed at start-up, so the call is rejected | HTTP for that content type until a restart (Step 6b) |
+| Registering keyless, then remove + re-add with the key | An extra restart, and a window where tools run against no stack | Resolve the stack (Step 5) before Step 4 and add once with `CONTENTSTACK_API_KEY` |
 | Assuming CMA works because `claude mcp list` shows `✔ Connected` | "Connected" only means the server process started, not that CMA calls succeed | Confirm with an actual read tool (Step 6), not the connection status |
 | Session flag lost to context compaction | Downstream skill re-prompts for authtoken mid-flow | Re-run the Step 6 smoke test when a provisioning skill starts rather than trusting the flag indefinitely |
 

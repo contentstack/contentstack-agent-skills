@@ -27,26 +27,48 @@ Sibling to the multi-reference recipe in [`author-composition-repeater-recipes`]
 
 ## Wrapper section: Repeater + CB + section-slot
 
-```jsonc
-// ui tree of the wrapper section
+```json
 {
-  "type": "repeater", "uid": "R1",
-  "metadata": { "mode": "preview" },
+  "uid": "R1",
+  "type": "repeater",
+  "attrs": {},
+  "metadata": { "title": "Repeater — Authors", "mode": "preview" },
   "props": {
     "items": { "binding": { "type": "template", "value": { "path": {} } } },
-    "children": { "type": "slot", "slot": "<R1-slot>" }      // required, see repeater-recipes step 2
+    "children": { "type": "slot", "slot": "R1-slot" }
   },
-  "slots": { "<R1-slot>": [
-    { "type": "condition-block", "uid": "CB1",
-      "metadata": { "condition": { "type": "reference", "operator": "eq", "value": "author",
-        "conditionBinding": {…} } },   // required, see repeater-recipes step 4
-      "props": { "children": { "type": "slot", "slot": "<CB1-slot>" } },
-      "slots": { "<CB1-slot>": [
-        { "type": "section-slot", "uid": "SS1",
-          "slots": { "SS1": [] } }
-      ] } }
-  ] } }
+  "slots": {
+    "R1-slot": [
+      {
+        "uid": "CB1",
+        "type": "condition-block",
+        "attrs": {},
+        "metadata": {
+          "title": "Condition — author",
+          "condition": {
+            "type": "reference", "operator": "eq", "value": "author",
+            "conditionBinding": { "type": "repeater",
+              "value": { "repeaterUID": "R1", "path": { "_content_type_uid": {} } } }
+          }
+        },
+        "props": { "children": { "type": "slot", "slot": "CB1-slot" } },
+        "slots": {
+          "CB1-slot": [
+            { "uid": "SS1", "type": "section-slot", "attrs": {}, "metadata": { "title": "Section Slot — Author" },
+              "props": {}, "slots": {}, "styles": {} }
+          ]
+        },
+        "styles": {}
+      }
+    ]
+  },
+  "styles": {}
+}
 ```
+
+The wrapper section's `ui` tree, from its Repeater down. `props.children` on the Repeater and the Condition Block is required ([`author-composition-repeater-recipes`](author-composition-repeater-recipes.md) steps 2 and 4), and so is `conditionBinding`. The `section-slot` node is a leaf with `"slots": {}`, never `{ "SS1": [] }` ([`author-composition-sections`](author-composition-sections.md) § `section-slot` node shape).
+
+For Visual Editor item tags, a Box between the Repeater and the Condition Block is the general rule ([`make-visual-editor-editable`](make-visual-editor-editable.md) § 2). It has not been verified together with this pattern's `selected_field` scoping, so check the item tags after adding it.
 
 Wrapper section entry also declares `linked_schemas: [{ content_type_uid: "<parent-CT>", selected_field: "<ref-or-mb-field>" }]` (group-multiple field, see [`author-composition-sections`](author-composition-sections.md) § The `linked_schemas`-as-reference trap).
 
@@ -54,16 +76,22 @@ Wrapper section entry also declares `linked_schemas: [{ content_type_uid: "<pare
 
 One fill section per allowed CT (references) or block (MB). No root Repeater. Its top-level node is the leaf component. `linked_schemas.selected_field` names the reference target CT (or block schema path) so the SDK scopes each iteration's item into the section's `dataSources.template`.
 
-```jsonc
-// ui tree of the fill section (e.g. author-card)
+```json
 {
-  "type": "author-card", "uid": "AC1",
+  "uid": "AC1",
+  "type": "author-card",
+  "attrs": {},
+  "metadata": { "title": "Author card" },
   "props": {
     "name":  { "binding": { "type": "template", "value": { "path": { "name": {} } } } },
     "photo": { "binding": { "type": "template", "value": { "path": { "photo": { "url": {} } } } } }
-  }
+  },
+  "slots": {},
+  "styles": {}
 }
 ```
+
+The fill section's leaf node (here an `author-card`), shown without the root `page` node that holds it.
 
 Note the fill section's bindings use `type: "template"` (NOT `type: "repeater"`). The wrapper's SDK scoping already unwraps the iteration item into the fill section's `template` scope.
 
@@ -71,21 +99,25 @@ Note the fill section's bindings use `type: "template"` (NOT `type: "repeater"`)
 
 The template's `section-composition` node embedding the wrapper holds each fill as a real `section-composition` node in its `slots`, keyed by the section-slot uid. Studio writes this shape when an author fills a slot:
 
-```jsonc
+```json
 {
-  "type": "section-composition",
   "uid": "INST-1",
+  "type": "section-composition",
+  "attrs": {},
   "metadata": { "compositionUID": "<wrapper section's entry uid, blt…>" },
+  "props": {},
   "slots": {
     "SS1": [
-      { "type": "section-composition", "uid": "FILL-1",
+      { "uid": "FILL-1", "type": "section-composition", "attrs": {},
         "metadata": { "compositionUID": "<author-fill section's entry uid, blt…>" },
-        "props": {}, "slots": {}, "attrs": {}, "styles": {} }
+        "props": {}, "slots": {}, "styles": {} }
     ]
-    // one key per CB branch's section-slot uid, each holding its own fill
-  }
+  },
+  "styles": {}
 }
 ```
+
+One key per CB branch's section-slot uid, each holding its own fill. A slot with no fill gets no key, not an empty array.
 
 Also populate the template's `linked_sections` with references to BOTH the wrapper section entry AND every distinct fill section entry.
 
@@ -95,7 +127,7 @@ Also populate the template's `linked_sections` with references to BOTH the wrapp
 Wrapper section  linked_schemas: [{ ct: "blog_post", selected_field: "primary_author" }]
   ui: Repeater(items:{path:{}}, mode:"preview")
         └── ConditionBlock(condition:{type:"reference", value:"author", conditionBinding})
-              └── section-slot uid:"SS1" slots:{"SS1":[]}
+              └── section-slot uid:"SS1" slots:{}
 
 Author fill section  linked_schemas: [{ ct: "blog_post", selected_field: "primary_author" }]
   ui: author-card
