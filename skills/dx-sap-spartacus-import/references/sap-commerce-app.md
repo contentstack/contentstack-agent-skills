@@ -4,7 +4,7 @@ The optional `sap-app` stage runs between gate 2 and the seed. It sets up the **
 
 The stage runs when carousels are seeded into `sap_products`: by default when `SAP_APP_API_BASE_URL`, `SAP_APP_BASE_SITE` and `SAP_APP_BACKOFFICE_URL` are all exported, or always with `--carousel-field sap_products`. With `--carousel-field products`, or without that configuration, it's skipped and carousels keep the `products` list.
 
-The storefront must run a connector release that reads `sap_products` (it falls back to `products`). Connector 0.1.0 reads only `products` and would render these carousels empty. On a re-run into a stack seeded earlier with `products`, both fields stay filled, so an older connector keeps showing the earlier `products` list.
+The storefront must run a connector release that reads `sap_products` (it falls back to `products` when `sap_products` is absent). Connector 0.1.0 reads only `products` and would render these carousels empty; gate 2 warns when the installed connector is like that.
 
 ## Which SAP server and base site
 
@@ -64,7 +64,7 @@ python3 "<SKILL_DIR>/scripts/marketplace-app/sap_app.py" --status               
 python3 "<SKILL_DIR>/scripts/marketplace-app/sap_app.py" --out <run-dir>/sap-app.json    # install/configure once + discover
 python3 "<SKILL_DIR>/scripts/marketplace-app/sap_app.py" --out <run-dir>/sap-app.json --skip-install   # already set up: discover only
 python3 "<SKILL_DIR>/scripts/marketplace-app/sap_app.py" --out <run-dir>/sap-app.json --reinstall      # repair a broken install
-python3 "<SKILL_DIR>/scripts/marketplace-app/use_products.py" --plan <run-dir>/connector-plan.json --env <env>   # fallback to products
+python3 "<SKILL_DIR>/scripts/marketplace-app/use_products.py" --plan <run-dir>/connector-plan.json --env <env> --starter-pack <starter-pack>   # fallback to products
 ```
 
 ## Verify, retry, then ask
@@ -94,7 +94,7 @@ The pipeline can't tell on its own whether the picker works: the app only talks 
 
 Explain the fallback in a sentence or two: the storefront shows the same products either way, because the connector reads `sap_products` first and falls back to `products`. With `products`, editors type or paste SAP product codes into a list instead of searching and picking them, and the entry shows codes rather than names.
 
-**If the user picks `products`**, run `use_products.py --plan <run-dir>/connector-plan.json --env <env>`. It re-imports the carousel content type without `sap_products`, writes each carousel's SKUs into `products` (same order, every locale the entry exists in) and publishes them. Later runs for that stack: `--carousel-field products`. The app stays installed; the user can uninstall it from Marketplace.
+**If the user picks `products`**, run `use_products.py --plan <run-dir>/connector-plan.json --env <env> --starter-pack <starter-pack>`. It re-imports the carousel content type without `sap_products`, writes each carousel's SKUs into `products` (same order, every locale the entry exists in) and publishes them. Later runs for that stack: `--carousel-field products`. The app stays installed; the user can uninstall it from Marketplace.
 
 ## Limits
 

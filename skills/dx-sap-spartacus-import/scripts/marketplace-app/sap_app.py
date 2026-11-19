@@ -25,8 +25,11 @@ APP_NAME = os.environ.get("SAP_APP_NAME", "SAP Commerce Cloud")
 
 
 def node(cmd, *extra):
-    p = subprocess.run(["node", os.path.join(HERE, "sap_app.cjs"), cmd, "--api-key", low.KEY, *extra],
-                       capture_output=True, text=True)
+    # The stack API key goes to node through the environment (CS_API_KEY), not argv,
+    # so it never shows in the process list.
+    env = dict(os.environ, CS_API_KEY=low.KEY)
+    p = subprocess.run(["node", os.path.join(HERE, "sap_app.cjs"), cmd, *extra],
+                       capture_output=True, text=True, env=env)
     if p.returncode:
         low.die((p.stderr or p.stdout).strip())
     return json.loads(p.stdout)

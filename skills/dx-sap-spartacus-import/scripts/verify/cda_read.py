@@ -40,8 +40,14 @@ def main():
     ap.add_argument("--content-type", default="landing_page")
     ap.add_argument("--url", default="/")
     a = ap.parse_args()
-    if not (KEY and DELIVERY):
-        sys.exit("set CS_API_KEY and CS_DELIVERY_TOKEN")
+    if not KEY:
+        sys.exit("set CS_API_KEY")
+    if not DELIVERY:
+        # A fresh stack has no delivery token until the run has created the environment.
+        print(f"[cda_read] skipped: CS_DELIVERY_TOKEN isn't set. Create a delivery token for '{ENV}' "
+              f"(Settings > Tokens), export it as CS_DELIVERY_TOKEN, then re-run this check: "
+              f"python3 {os.path.abspath(__file__)} --content-type {a.content_type} --url {a.url}")
+        sys.exit(5)
 
     params = [("environment", ENV), ("query", json.dumps({"url": a.url}))]
     for f in SLOT_FIELDS:

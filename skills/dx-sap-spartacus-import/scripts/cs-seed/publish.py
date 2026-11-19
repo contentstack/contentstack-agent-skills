@@ -47,7 +47,7 @@ def list_all(path, key):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--env", required=True)
-    ap.add_argument("--locale", default="en-us")
+    ap.add_argument("--locale", default=os.environ.get("CS_MASTER_LOCALE", "en-us"))
     ap.add_argument("--preview-locales", default="",
                     help="comma list of extra locales that need a Live Preview URL, e.g. de-de,ja-jp")
     ap.add_argument("--preview-url", default=os.environ.get("CS_PREVIEW_URL", "http://localhost:4200"),
@@ -68,6 +68,7 @@ def main():
                         {"asset": {"environments": envs, "locales": loc}})
         ok += st in (200, 201); err += st not in (200, 201)
     print(f"  assets: {ok} ok, {err} err")
+    totals = {"assets": ok, "entries": 0, "errors": err}
 
     cts = [c["uid"] for c in list_all("/content_types", "content_types")]
     # order: components, then global_slots, then pages
@@ -87,6 +88,12 @@ def main():
             if st not in (200, 201) and err <= 3:
                 print(f"    {ct}/{e['uid']}: {st} {json.dumps(r)[:120]}")
         print(f"[publish {ct}] {ok} ok, {err} err")
+        totals["entries"] += ok; totals["errors"] += err
+    # one summary line last, so a caller that shows only the tail still sees the totals
+    print(f"[publish] {totals['assets']} assets and {totals['entries']} entries published to "
+          f"'{a.env}' ({a.locale}), {totals['errors']} errors")
+    if totals["errors"]:
+        sys.exit(3)
 
 
 if __name__ == "__main__":

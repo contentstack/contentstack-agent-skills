@@ -28,7 +28,7 @@ Use another skill for:
 Confirm, without asking for secret values:
 
 1. The current directory is the Spartacus project root and `node_modules/@contentstack/contentstack-spartacus-connector/import-export/starter-pack/content_types` exists. If not, the connector isn't installed: run `ng add @contentstack/contentstack-spartacus-connector` first, or point `CONNECTOR_STARTER_PACK` at a connector checkout.
-2. The SAP baseSite uid (for example `electronics-spa`) and the OCC v2 base URL (`https://HOST/occ/v2`). List baseSites with `curl -s "$OCC_BASE_URL/basesites"`.
+2. The SAP baseSite uid (for example `electronics-spa`) and the OCC v2 base URL (`https://HOST/occ/v2`). List baseSites with `curl -s "$OCC_BASE_URL/basesites"` (add `-k` only when the user set `OCC_INSECURE_TLS=1` for a self-signed dev server).
 3. The target stack is **new or dedicated to this import**. The publish step publishes every entry and asset in the stack.
 4. `python3 --version` is 3.9 or later. The Python scripts use only the standard library.
 5. How the run writes: with `CS_MANAGEMENT_TOKEN`, or, without one, as the user's own `csdx auth:login --oauth` session. The SAP Commerce Cloud app step always needs that csdx session (a management token can't install apps), plus Node.js and `@contentstack/cli` on `PATH`.
@@ -37,23 +37,25 @@ Confirm, without asking for secret values:
 ## Instructions
 
 1. Resolve `<SKILL_DIR>`: the folder this `SKILL.md` was loaded from. Run every script by absolute path, `python3 "<SKILL_DIR>/scripts/orchestrate.py"`, from the Spartacus project root.
-2. Ask the user to export the variables under Environment Variables in their own shell. Never ask them to paste values into chat.
-3. **Dry run** (writes nothing):
+2. Ask the user to export the variables under Environment Variables in their own shell. Never ask them to paste values into chat. Required: `CS_API_KEY` and `OCC_BASE_URL`. Optional: `OCC_INSECURE_TLS`, `CS_MANAGEMENT_TOKEN` (else the csdx login), the `SAP_APP_*` picker settings, and `CS_DELIVERY_TOKEN` (only for the final delivery check; a fresh stack gets one after the run).
+3. **Dry run** (writes nothing, about 2 minutes). Pass the same `--locales` and `--run-dir` you'll use for the write, so the gate reports show the full plan:
    ```bash
-   python3 "<SKILL_DIR>/scripts/orchestrate.py" --site electronics-spa
+   python3 "<SKILL_DIR>/scripts/orchestrate.py" --site electronics-spa \
+     --locales de=de-de,ja=ja-jp,zh=zh-cn --run-dir <run-dir>
    ```
    It extracts the site, builds the plan and prints both gate reports. Summarize them for the user: pages, component entries, assets, which slots stay with SAP, any unknown component types, where carousel SKUs go (`products` or `sap_products`), and whether writes run as the management token or the csdx login.
 4. **Gate 1, model approval.** If the report lists unknown typeCodes, stop. Each one is either authored (add it to `component_map` in `scripts/registry/connector.registry.json` with its connector content type and field mapping) or functional (add it to `occ_only_types.types`). Re-run the dry run. Pass `--approve-model` only after the user agrees.
-5. **Gate 2, pre-publish.** Show the counts and the target stack and environment. The run stops here if the plan writes a content type or field the installed starter pack lacks. The fix is a newer connector (`npm i @contentstack/contentstack-spartacus-connector@latest`), not editing the stack by hand.
-6. With the user's explicit yes, run the write:
+5. **Gate 2, pre-publish.** Show the counts and the target stack and environment: gate 2 prints the stack's name and whether it's empty, the content types (the connector's full starter pack, which replaces existing types with the same uids), and components, navigation entries and pages separately. The run stops here if the plan writes a content type or field the installed starter pack lacks. The fix is a newer connector (`npm i @contentstack/contentstack-spartacus-connector@latest`), not editing the stack by hand.
+6. With the user's explicit yes, run the write. It takes a while (a demo site with three languages: about 45 minutes, roughly 10 per language), so run it in the background with its output in a log, check the log until it ends, and never start a second write while one is running:
    ```bash
    python3 "<SKILL_DIR>/scripts/orchestrate.py" --site electronics-spa \
-     --approve-model --approve-publish --env development
+     --approve-model --approve-publish --env development \
+     --locales de=de-de,ja=ja-jp,zh=zh-cn --run-dir <run-dir> > <run-dir>/write.log 2>&1
    ```
    This sets up the SAP Commerce Cloud app when carousels use the picker, imports the starter-pack content types, uploads images, upserts entries, creates the environment if needed, publishes, and runs the verify steps.
-7. **Carousel products.** With `SAP_APP_API_BASE_URL`, `SAP_APP_BASE_SITE` and `SAP_APP_BACKOFFICE_URL` exported, carousels go into `sap_products`, the SAP Commerce Cloud app's product picker; otherwise into the plain `products` SKU list. Force either with `--carousel-field products|sap_products`. It works the same for B2C and B2B sites. Gate 2 runs a preflight on the picker's SAP server (trusted certificate, base site present, product search returns products without a login, carousel codes found); if it fails, the write stops with exit code 4 before the app is installed. Quote the `FAIL` line to the user with its fix. After a picker run, follow "Verify, retry, then ask" in [references/sap-commerce-app.md](references/sap-commerce-app.md): check the picker, repair at most twice, then let the user choose between fixing it and falling back to `products`.
+7. **Carousel products.** With `SAP_APP_API_BASE_URL`, `SAP_APP_BASE_SITE` and `SAP_APP_BACKOFFICE_URL` exported, carousels go into `sap_products`, the SAP Commerce Cloud app's product picker; otherwise into the plain `products` SKU list. Force either with `--carousel-field products|sap_products`. It works the same for B2C and B2B sites. Gate 2 runs a preflight on the picker's SAP server (trusted certificate, base site present, product search returns products without a login, carousel codes found); if it fails, the write stops with exit code 4 before the app is installed. Quote the `FAIL` line to the user with its fix. The storefront needs the connector release that reads `sap_products` (it falls back to `products` only when `sap_products` is absent); gate 2 warns when the installed connector reads only `products`, because the carousels would then render empty. Tell the user, and offer `--carousel-field products` if they need working carousels before updating the connector. You may have no browser for the picker check: then ask the user to do it (open a carousel entry, check the SAP Products field lists products, click Add Product(s)). After a picker run, follow "Verify, retry, then ask" in [references/sap-commerce-app.md](references/sap-commerce-app.md): check the picker, repair at most twice, then let the user choose between fixing it and falling back to `products`.
 8. For more languages, add `--locales de=de-de,ja=ja-jp,zh=zh-cn` (SAP isocode = Contentstack locale). Locales are created when missing, with the master locale as fallback.
-9. Report the result from `manifest.json` in the run directory, then point the user at the app config: `cmsPageContentType: 'landing_page'`, a `localeMapping` that matches the locales imported, and `occFallback: true`.
+9. Report the result from `manifest.json` in the run directory. `warn` on seed, publish or a locale means some items failed (their ERR lines are in the output); re-running is safe. A `check` on the delivery read with "no CS_DELIVERY_TOKEN yet" is expected on a fresh stack: tell the user to create a delivery token for the environment and re-run `verify/cda_read.py`, as the manifest note says. Then point the user at the app config: `cmsPageContentType: 'landing_page'`, a `localeMapping` that matches the locales imported, and `occFallback: true`.
 
 ### How the pipeline works
 

@@ -96,6 +96,28 @@ def load_pack(dir_):
     return pack
 
 
+def connector_reads_sap_products(starter_pack):
+    """(version, reads) for the connector the starter pack came from. reads is True/False, or
+    None when its bundle can't be found (e.g. a starter pack outside node_modules)."""
+    root = os.path.abspath(os.path.join(starter_pack, "..", "..", ".."))
+    version = None
+    try:
+        version = json.load(open(os.path.join(root, "package.json"))).get("version")
+    except Exception:
+        pass
+    found_bundle = False
+    for d in ("fesm2022", "fesm2020", "fesm2015", "bundles", "dist"):
+        folder = os.path.join(root, d)
+        if not os.path.isdir(folder):
+            continue
+        for f in os.listdir(folder):
+            if f.endswith((".mjs", ".js")):
+                found_bundle = True
+                if "sap_products" in open(os.path.join(folder, f), errors="ignore").read():
+                    return version, True
+    return version, (False if found_bundle else None)
+
+
 def pack_mismatches(plan, pack):
     """Every content type and field the plan writes must exist in the starter pack, or the
     seed fails half-way. sap_uid is allowed: the seeder adds it when the pack lacks it."""
@@ -231,16 +253,28 @@ def main():
     n_pages = len(plan["entries"]["pages"])
     print()
     banner("GATE 2 · PRE-PUBLISH", "gate")
-    print(f"  will UPSERT to stack + publish to '{a.env}':")
-    print(f"    content types : {len(plan['content_types_needed'])}")
+    if os.environ.get("CS_API_KEY"):
+        _, out_si = run("cs-seed/stack_info.py", [])
+        print("  " + (out_si.strip().splitlines() or ["target stack: unknown"])[-1])
+    else:
+        print("  target stack: not set yet (export CS_API_KEY before the write)")
+    pack = load_pack(a.starter_pack)
+    try:
+        report = json.load(open(os.path.join(run_dir, "connector-report.json")))
+        n_nav = sum((report.get("nav_entries") or {}).values())
+    except Exception:
+        n_nav = 0
+    print(f"  will UPSERT to that stack + publish to '{a.env}':")
+    print(f"    content types : {len(pack)} (the connector's full starter pack; this site's entries "
+          f"use {len(plan['content_types_needed'])}). Existing types with these uids are replaced.")
     print(f"    assets        : {len(plan['assets'])}")
-    print(f"    component entries: {n_comp}   pages: {n_pages}   global_slots: "
-          f"{'1' if plan['entries'].get('global_slots') else '0'}")
+    print(f"    entries       : {n_comp - n_nav} components, {n_nav} navigation, {n_pages} pages, "
+          f"{'1' if plan['entries'].get('global_slots') else '0'} global_slots")
     print(f"    pages: {[p['_key']['value'] for p in plan['entries']['pages']]}")
     if locale_map:
         print(f"    + localize into: {list(locale_map.values())} "
               f"(fully-localized OCC extract per language, incl. per-locale images)")
-    mismatches = pack_mismatches(plan, load_pack(a.starter_pack))
+    mismatches = pack_mismatches(plan, pack)
     if mismatches:
         print(f"  {C['err']}starter pack mismatch ({len(mismatches)}){C['z']} — the plan writes types/fields the pack lacks:")
         for m in mismatches[:25]:
@@ -251,6 +285,13 @@ def main():
         sys.exit(3)
     print(f"  {C['ok']}starter pack check: every planned type and field exists{C['z']}")
     print(f"    carousel SKUs -> {carousel_field}")
+    if carousel_field == "sap_products":
+        ver, reads = connector_reads_sap_products(a.starter_pack)
+        if reads is False:
+            print(f"    {C['warn']}the installed connector ({ver or 'unknown version'}) reads only `products`:{C['z']} "
+                  f"carousels seeded into sap_products render empty on the storefront until you update to "
+                  f"the connector release that reads sap_products (or use --carousel-field products).")
+            record("connector", "warn", f"{ver} reads only products")
     auth = os.environ.get("CS_AUTH", "auto").lower()
     uses_token = auth == "token" or (auth == "auto" and os.environ.get("CS_MANAGEMENT_TOKEN"))
     print(f"    writes as: {'management token' if uses_token else 'your csdx login (csdx auth:login --oauth)'}")
@@ -259,9 +300,8 @@ def main():
             print("    SAP Commerce Cloud app: already set up (--skip-app-install) — only find its Product field")
         else:
             print(f"    SAP Commerce Cloud app: install if missing + config "
-                  f"'{os.environ.get('SAP_APP_CONFIG_NAME', 'hti')}' -> "
-                  f"{os.environ.get('SAP_APP_API_BASE_URL', '<SAP_APP_API_BASE_URL unset>')}"
-                  f"{os.environ.get('SAP_APP_API_ROUTE', '/occ/v2/')}"
+                  f"'{os.environ.get('SAP_APP_CONFIG_NAME', 'hti')}': server SAP_APP_API_BASE_URL"
+                  f"{os.environ.get('SAP_APP_API_ROUTE', '/occ/v2/')}, base site "
                   f"{os.environ.get('SAP_APP_BASE_SITE', '<SAP_APP_BASE_SITE unset>')}"
                   f", keys code+name (uses your csdx login)")
             missing = [k for k in SAP_APP_ENV if not os.environ.get(k)]
@@ -277,7 +317,9 @@ def main():
                             ["--plan", os.path.join(run_dir, "connector-plan.json")])
         print("    SAP picker preflight:")
         print("\n".join("  " + line for line in out_pf.rstrip().splitlines()))
-        record("picker-preflight", "pass" if not rc_pf else "fail", out_pf[-300:])
+        record("picker-preflight", "pass" if not rc_pf else "fail",
+               " | ".join(l.strip() for l in out_pf.splitlines()
+                          if l.strip().startswith(("ok", "warn", "FAIL")))[:300])
         preflight_failed = bool(rc_pf)
     if not a.approve_publish:
         record("gate2", "dry-run")
@@ -329,15 +371,19 @@ def main():
     rc, out = run("cs-seed/cma_seed_connector.py", seed_args)
     tail = "\n   ".join(out.strip().splitlines()[-6:])
     print("   " + tail)
-    record("seed", "ok" if not rc else "error", out[-300:])
-    if rc:
+    # exit 3 = some items failed (their ERR lines are in the output); the rest was written
+    record("seed", "ok" if not rc else "warn" if rc == 3 else "error", out[-300:])
+    if rc and rc != 3:
         sys.exit("seed failed")
+    if rc == 3:
+        print(f"   {C['warn']}some items failed (ERR lines above); re-running is safe{C['z']}")
 
     # 7. PUBLISH
     step("6/8 publish")
-    rc, out = run("cs-seed/publish.py", ["--env", a.env, "--locale", "en-us"])
+    master = os.environ.get("CS_MASTER_LOCALE", "en-us")
+    rc, out = run("cs-seed/publish.py", ["--env", a.env, "--locale", master])
     print("   " + "\n   ".join(out.strip().splitlines()[-4:]))
-    record("publish", "ok" if not rc else "error")
+    record("publish", "ok" if not rc else "warn" if rc == 3 else "error", out.strip().splitlines()[-1] if out.strip() else "")
 
     # 8. VERIFY
     step("7/8 verify — round-trip")
@@ -350,7 +396,10 @@ def main():
     venv = os.environ.copy(); venv["CS_ENVIRONMENT"] = a.env
     rc, out = run("verify/cda_read.py", ["--content-type", "landing_page", "--url", "/"], env=venv)
     print("   " + "\n   ".join(out.strip().splitlines()[-2:]))
-    record("verify-cda", "pass" if rc == 0 else "check")
+    # exit 5 = no delivery token yet (expected on a fresh stack): re-run cda_read.py after creating one
+    record("verify-cda", "pass" if rc == 0 else "check",
+           "no CS_DELIVERY_TOKEN yet: create one for the environment, then re-run verify/cda_read.py"
+           if rc == 5 else out.strip().splitlines()[-1] if out.strip() else "")
 
     # 9. LOCALIZE (optional) — full localized OCC extract per language, then localize+publish.
     for sap_iso, cs_loc in locale_map.items():
@@ -383,9 +432,16 @@ def main():
            f"{' · locales with errors (re-run is safe): ' + ', '.join(loc_failed) if loc_failed else ''}",
            "ok" if rt_ok and not loc_failed else "warn")
     print(f"  manifest: {run_dir}/manifest.json")
+    stages = manifest["stages"]
+    for name in ("seed", "publish"):
+        if stages.get(name, {}).get("status") == "warn":
+            print(f"  {C['warn']}{name}: some items failed{C['z']} — see the ERR lines above; re-running is safe")
+    if stages.get("verify-cda", {}).get("status") == "check":
+        print(f"  delivery check: {stages['verify-cda'].get('note') or 'see the output above'}")
     if carousel_field == "sap_products":
         print(f"\n  {C['gate']}NEXT · verify the SAP product picker in the browser{C['z']} — "
-              f"references/sap-commerce-app.md › 'Verify, retry, then ask'.\n"
+              f"references/sap-commerce-app.md › 'Verify, retry, then ask'. Without a browser, ask the "
+              f"user to open a carousel entry and check that the SAP Products field lists products.\n"
               f"  Repair (max 2): python3 {os.path.join(SKILLS, 'marketplace-app', 'sap_app.py')} "
               f"--reinstall --out {sap_app_path}\n"
               f"  Fallback (user's choice): python3 {os.path.join(SKILLS, 'marketplace-app', 'use_products.py')} "
