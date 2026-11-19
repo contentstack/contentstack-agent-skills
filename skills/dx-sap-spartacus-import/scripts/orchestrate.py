@@ -97,25 +97,38 @@ def load_pack(dir_):
 
 
 def connector_reads_sap_products(starter_pack):
-    """(version, reads) for the connector the starter pack came from. reads is True/False, or
-    None when its bundle can't be found (e.g. a starter pack outside node_modules)."""
+    """(version, reads) for the connector the starter pack came from. reads is True when its
+    code reads the picker field `sap_products`, False when it doesn't (npm 0.1.0 reads only
+    `products`), None when no code was found next to the starter pack.
+
+    The version can't decide it: a build from the connector repo's main branch also says
+    0.1.0. So look at the code: the installed package's bundle (node_modules, a `file:` tgz or
+    an npm link), else a repo checkout's build (dist/) or its source (src/, specs excluded)."""
     root = os.path.abspath(os.path.join(starter_pack, "..", "..", ".."))
     version = None
     try:
         version = json.load(open(os.path.join(root, "package.json"))).get("version")
     except Exception:
         pass
-    found_bundle = False
-    for d in ("fesm2022", "fesm2020", "fesm2015", "bundles", "dist"):
+    found_code = False
+    for d in ("fesm2022", "fesm2020", "fesm2015", "bundles", os.path.join("dist", "fesm2022"), "dist"):
         folder = os.path.join(root, d)
         if not os.path.isdir(folder):
             continue
         for f in os.listdir(folder):
             if f.endswith((".mjs", ".js")):
-                found_bundle = True
+                found_code = True
                 if "sap_products" in open(os.path.join(folder, f), errors="ignore").read():
                     return version, True
-    return version, (False if found_bundle else None)
+    src = os.path.join(root, "src")
+    if not found_code and os.path.isdir(src):
+        for dirpath, _, files in os.walk(src):
+            for f in files:
+                if f.endswith(".ts") and not f.endswith(".spec.ts"):
+                    found_code = True
+                    if "sap_products" in open(os.path.join(dirpath, f), errors="ignore").read():
+                        return version, True
+    return version, (False if found_code else None)
 
 
 def pack_mismatches(plan, pack):
@@ -156,8 +169,8 @@ def main():
     ap.add_argument("--locales", default="", help="optional i18n: sapIso=csLocale,... e.g. de=de-de,ja=ja-jp,zh=zh-cn")
     ap.add_argument("--carousel-field", choices=["auto", "products", "sap_products"], default="auto",
                     help="where carousel SKUs go; auto = sap_products when SAP_APP_API_BASE_URL, "
-                         "SAP_APP_BASE_SITE and SAP_APP_BACKOFFICE_URL are set (any site, B2C or B2B), "
-                         "products otherwise")
+                         "SAP_APP_BASE_SITE and SAP_APP_BACKOFFICE_URL are set (any site, B2C or B2B) AND "
+                         "the installed connector reads sap_products; products otherwise")
     ap.add_argument("--skip-app-install", action="store_true",
                     help="SAP app already installed + configured: only discover its field extension")
     ap.add_argument("--reinstall-app", action="store_true",
@@ -173,8 +186,21 @@ def main():
                  "`ng add @contentstack/contentstack-spartacus-connector`, or set CONNECTOR_STARTER_PACK.")
     locale_map = dict(p.split("=", 1) for p in a.locales.split(",") if "=" in p) if a.locales else {}
     carousel_field = a.carousel_field
+    picker_configured = all(os.environ.get(k) for k in SAP_APP_ENV)
+    conn_ver, conn_reads = connector_reads_sap_products(a.starter_pack)
+    carousel_reason = ""
     if carousel_field == "auto":
-        carousel_field = "sap_products" if all(os.environ.get(k) for k in SAP_APP_ENV) else "products"
+        if picker_configured and conn_reads:
+            carousel_field = "sap_products"
+            carousel_reason = "SAP_APP_* set and the connector reads sap_products"
+        else:
+            carousel_field = "products"
+            if not picker_configured:
+                carousel_reason = "SAP_APP_* not set"
+            elif conn_reads is False:
+                carousel_reason = f"the installed connector ({conn_ver or 'unknown version'}) reads only `products`"
+            else:
+                carousel_reason = "couldn't find the connector's code to check whether it reads sap_products"
 
     run_dir = a.run_dir or os.path.join(tempfile.gettempdir(), f"sap-spartacus-import-{a.site}")
     os.makedirs(run_dir, exist_ok=True)
@@ -189,7 +215,7 @@ def main():
 
     banner(f"CONTENT-MODELING AGENT · {a.site} · profile connector-reference-fields")
     print(f"  run dir: {run_dir}   env: {a.env}   starter pack: {a.starter_pack}")
-    print(f"  carousel SKUs -> {carousel_field}")
+    print(f"  carousel SKUs -> {carousel_field}{' (' + carousel_reason + ')' if carousel_reason else ''}")
     print(f"  occ: {a.base}   region: {os.environ.get('CS_REGION_BASE', 'https://api.contentstack.io')}")
     print(f"  approvals: model={'YES' if a.approve_model else 'no'} "
           f"publish={'YES' if a.approve_publish else 'no'}"
@@ -285,13 +311,18 @@ def main():
         sys.exit(3)
     print(f"  {C['ok']}starter pack check: every planned type and field exists{C['z']}")
     print(f"    carousel SKUs -> {carousel_field}")
-    if carousel_field == "sap_products":
-        ver, reads = connector_reads_sap_products(a.starter_pack)
-        if reads is False:
-            print(f"    {C['warn']}the installed connector ({ver or 'unknown version'}) reads only `products`:{C['z']} "
-                  f"carousels seeded into sap_products render empty on the storefront until you update to "
-                  f"the connector release that reads sap_products (or use --carousel-field products).")
-            record("connector", "warn", f"{ver} reads only products")
+    if carousel_field == "sap_products" and conn_reads is False:
+        # only when forced with --carousel-field sap_products
+        print(f"    {C['warn']}the installed connector ({conn_ver or 'unknown version'}) reads only `products`:{C['z']} "
+              f"carousels seeded into sap_products render empty on the storefront until you update to "
+              f"the connector release that reads sap_products (or use --carousel-field products).")
+        record("connector", "warn", f"{conn_ver} reads only products; picker forced")
+    elif carousel_field == "products" and picker_configured and a.carousel_field == "auto":
+        print(f"    {C['warn']}SAP product picker not set up:{C['z']} {carousel_reason}. The carousels get the plain "
+              f"`products` list, which this connector renders. Update to a connector that reads sap_products "
+              f"(the release, or a build of the connector repo's main branch) and re-run to use the picker, "
+              f"or force it with --carousel-field sap_products.")
+        record("connector", "warn", carousel_reason)
     auth = os.environ.get("CS_AUTH", "auto").lower()
     uses_token = auth == "token" or (auth == "auto" and os.environ.get("CS_MANAGEMENT_TOKEN"))
     print(f"    writes as: {'management token' if uses_token else 'your csdx login (csdx auth:login --oauth)'}")

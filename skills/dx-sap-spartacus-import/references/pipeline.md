@@ -35,7 +35,7 @@ extract ─▶ nav-resolve ─▶ model ─▶ [gate 1] ─▶ [gate 2 + pack ch
 | `--env` | `development` | Target environment for publishing. |
 | `--approve-model` | off | Pass gate 1. |
 | `--approve-publish` | off | Pass gate 2 and write. |
-| `--carousel-field` | `auto` | `sap_products` when the `SAP_APP_*` configuration is exported, else `products`. |
+| `--carousel-field` | `auto` | `sap_products` when the `SAP_APP_*` configuration is exported and the installed connector reads `sap_products` (checked in its code), else `products`. |
 | `--skip-app-install` | off | The SAP app is already set up: only discover its field extension. |
 | `--reinstall-app` | off | Uninstall, reinstall and configure the SAP app once (repairs a broken install). |
 | `--locales` | none | `sapIso=csLocale` pairs, for example `de=de-de,ja=ja-jp,zh=zh-cn`. |
@@ -66,5 +66,6 @@ extract ─▶ nav-resolve ─▶ model ─▶ [gate 1] ─▶ [gate 2 + pack ch
 - **SAP picker preflight fails** (exit `4`): the server in `SAP_APP_API_BASE_URL` can't serve the picker. The line marked `FAIL` names the cause: an untrusted certificate, a missing base site, an empty search index, product search behind a login, or a catalog without the carousel codes. See "Before install: preflight" in [sap-commerce-app.md](sap-commerce-app.md).
 - **A locale ends as `warn`**: an entry update in that locale failed twice (the Management API can answer a transient 422). Re-run with the same `--locales`; it updates in place.
 - **SAP Products field errors or HTTP 414**: see "Verify, retry, then ask" in [sap-commerce-app.md](sap-commerce-app.md).
-- **Empty carousels on the storefront**: the connector is older than the `sap_products` release (gate 2 warns about this). Update it, or re-run with `--carousel-field products`.
+- **"SAP product picker not set up" at gate 2**: the `SAP_APP_*` settings are exported, but the installed connector reads only `products` (npm 0.1.0). Update to a connector that reads `sap_products` (the release, or a build of the connector repo's main branch) and re-run.
+- **Empty carousels on the storefront**: the picker was forced (`--carousel-field sap_products`) onto a connector that reads only `products` (gate 2 warns about this). Update the connector, or re-run with `--carousel-field products`.
 - **Blank storefront after import**: check the app's `cmsPageContentType` is `landing_page`, the `localeMapping` covers the imported locales, and the environment name matches `CS_ENVIRONMENT`.

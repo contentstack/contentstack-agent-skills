@@ -2,9 +2,11 @@
 
 The optional `sap-app` stage runs between gate 2 and the seed. It sets up the **SAP Commerce Cloud** marketplace app on the target stack, so carousel products come from the app's product picker (`sap_products`) instead of a hand-typed SKU list (`products`). Editors then add, remove and reorder products visually, and Live Preview's Edit on a carousel opens the picker.
 
-The stage runs when carousels are seeded into `sap_products`: by default when `SAP_APP_API_BASE_URL`, `SAP_APP_BASE_SITE` and `SAP_APP_BACKOFFICE_URL` are all exported, or always with `--carousel-field sap_products`. With `--carousel-field products`, or without that configuration, it's skipped and carousels keep the `products` list.
+The stage runs when carousels are seeded into `sap_products`: by default when `SAP_APP_API_BASE_URL`, `SAP_APP_BASE_SITE` and `SAP_APP_BACKOFFICE_URL` are all exported **and** the installed connector reads `sap_products`, or always with `--carousel-field sap_products`. Otherwise it's skipped and carousels keep the `products` list.
 
-The storefront must run a connector release that reads `sap_products` (it falls back to `products` when `sap_products` is absent). Connector 0.1.0 reads only `products` and would render these carousels empty; gate 2 warns when the installed connector is like that.
+The orchestrator decides from the connector's code, not its version: it looks for `sap_products` in the installed package's bundle (node_modules, a `file:` tarball or an npm link), else in a connector checkout's `dist/` build or `src/` (with `CONNECTOR_STARTER_PACK` pointing into the checkout). The npm package 0.1.0 reads only `products`; a build of the connector repo's main branch reads `sap_products`, though it also says 0.1.0.
+
+The storefront must run a connector that reads `sap_products` (it falls back to `products` when `sap_products` is absent). Connector 0.1.0 reads only `products`, so by default the picker isn't set up with it; if you force `--carousel-field sap_products`, gate 2 warns that its carousels would render empty.
 
 ## Which SAP server and base site
 
