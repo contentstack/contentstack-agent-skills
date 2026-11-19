@@ -19,7 +19,9 @@ is idempotent — re-running updates in place — and resumable via the run dire
 GATES (fail-closed): the pipeline STOPS at each gate unless the matching approval flag is
 passed, so nothing is created or published without an explicit human go.
   Gate 1  model approval   -> pass --approve-model    (only blocks if unknown typeCodes found)
-  Gate 2  pre-publish      -> pass --approve-publish   (always blocks before any write)
+  Gate 2  pre-publish      -> pass --approve-publish   (always blocks before any write; with the
+                              SAP picker on, also stops with exit 4 if the picker's SAP server
+                              fails the preflight in marketplace-app/sap_preflight.py)
 
 Default (no approval flags) = a full DRY RUN: extract→model + both gate reports, no writes.
 
@@ -131,7 +133,9 @@ def main():
     ap.add_argument("--approve-publish", action="store_true", help="pass Gate 2 (enables writes)")
     ap.add_argument("--locales", default="", help="optional i18n: sapIso=csLocale,... e.g. de=de-de,ja=ja-jp,zh=zh-cn")
     ap.add_argument("--carousel-field", choices=["auto", "products", "sap_products"], default="auto",
-                    help="where carousel SKUs go; auto = sap_products for electronics-spa, products otherwise")
+                    help="where carousel SKUs go; auto = sap_products when SAP_APP_API_BASE_URL, "
+                         "SAP_APP_BASE_SITE and SAP_APP_BACKOFFICE_URL are set (any site, B2C or B2B), "
+                         "products otherwise")
     ap.add_argument("--skip-app-install", action="store_true",
                     help="SAP app already installed + configured: only discover its field extension")
     ap.add_argument("--reinstall-app", action="store_true",
@@ -263,11 +267,31 @@ def main():
             missing = [k for k in SAP_APP_ENV if not os.environ.get(k)]
             if missing:
                 print(f"    {C['warn']}missing env for the SAP app: {missing}{C['z']}")
+    # The picker's SAP server must serve this site to an anonymous caller over trusted TLS,
+    # with a built search index and the carousels' product codes (B2C and B2B sites alike).
+    # Checked here so the dry run shows it, and so a failing server stops the run before
+    # the app is installed or anything is written.
+    preflight_failed = False
+    if carousel_field == "sap_products" and all(os.environ.get(k) for k in SAP_APP_ENV[:2]):
+        rc_pf, out_pf = run("marketplace-app/sap_preflight.py",
+                            ["--plan", os.path.join(run_dir, "connector-plan.json")])
+        print("    SAP picker preflight:")
+        print("\n".join("  " + line for line in out_pf.rstrip().splitlines()))
+        record("picker-preflight", "pass" if not rc_pf else "fail", out_pf[-300:])
+        preflight_failed = bool(rc_pf)
     if not a.approve_publish:
         record("gate2", "dry-run")
+        if preflight_failed:
+            print(f"\n  {C['err']}The SAP picker preflight failed{C['z']} — a write would stop before "
+                  f"the app is installed. Fix the SAP server, or use --carousel-field products.")
         print(f"\n  {C['warn']}DRY RUN complete{C['z']} — nothing written. "
               f"Re-run with --approve-publish (and CS_* env) to seed + publish.")
         sys.exit(0)
+    if preflight_failed:
+        record("gate2", "blocked", "SAP picker preflight failed")
+        print(f"  {C['err']}stopped: the SAP picker preflight failed{C['z']} — nothing installed or written. "
+              f"Fix the SAP server, or re-run with --carousel-field products.")
+        sys.exit(4)
     if not os.environ.get("CS_API_KEY"):
         record("gate2", "error", "no creds")
         sys.exit(f"{C['err']}--approve-publish set but CS_API_KEY missing.{C['z']}")
@@ -348,14 +372,15 @@ def main():
         rc, out = run("cs-seed/localize.py",
                       ["--locale", cs_loc, "--plan", os.path.join(lmodel, "connector-plan.json"), "--env", a.env])
         print("   " + "\n   ".join(out.strip().splitlines()[-4:]))
-        record(f"localize:{cs_loc}", "ok" if not rc else "error", out[-200:])
+        # localize.py exits 3 when some entries or assets failed after a retry (re-running is safe)
+        record(f"localize:{cs_loc}", "ok" if not rc else "warn" if rc == 3 else "error", out[-200:])
 
     print()
     loc_ok = [l for l in locale_map.values() if manifest["stages"].get(f"localize:{l}", {}).get("status") == "ok"]
     loc_failed = [l for l in locale_map.values() if l not in loc_ok]
     banner(f"DONE · {a.site} · round-trip {'PASS' if rt_ok else 'CHECK'}"
            f"{' · +' + str(len(loc_ok)) + ' locales' if loc_ok else ''}"
-           f"{' · FAILED locales: ' + ', '.join(loc_failed) if loc_failed else ''}",
+           f"{' · locales with errors (re-run is safe): ' + ', '.join(loc_failed) if loc_failed else ''}",
            "ok" if rt_ok and not loc_failed else "warn")
     print(f"  manifest: {run_dir}/manifest.json")
     if carousel_field == "sap_products":

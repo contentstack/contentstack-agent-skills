@@ -4,7 +4,32 @@ The optional `sap-app` stage runs between gate 2 and the seed. It sets up the **
 
 The stage runs when carousels are seeded into `sap_products`: by default when `SAP_APP_API_BASE_URL`, `SAP_APP_BASE_SITE` and `SAP_APP_BACKOFFICE_URL` are all exported, or always with `--carousel-field sap_products`. With `--carousel-field products`, or without that configuration, it's skipped and carousels keep the `products` list.
 
-The storefront must run a connector release that reads `sap_products` (it falls back to `products`). Connector 0.1.0 reads only `products` and would render these carousels empty.
+The storefront must run a connector release that reads `sap_products` (it falls back to `products`). Connector 0.1.0 reads only `products` and would render these carousels empty. On a re-run into a stack seeded earlier with `products`, both fields stay filled, so an older connector keeps showing the earlier `products` list.
+
+## Which SAP server and base site
+
+The picker doesn't call SAP from the browser: the app's own backend calls the server in `SAP_APP_API_BASE_URL`. Point it at a server that carries the **same catalog as the storefront's OCC**: the picker saves product codes, and the storefront looks those codes up on its own server.
+
+| Storefront site | `SAP_APP_BASE_SITE` | Notes |
+| --- | --- | --- |
+| `electronics-spa` (B2C) | `electronics` or `electronics-spa` | The electronics sample catalog. |
+| `powertools-spa` (B2B) | `powertools-spa` | Created by `spartacussampledata` once the Powertools sample data (`powertoolsstore`) is imported. Product search must work without a login. |
+| Your own site | that site's uid | Any site that passes the preflight below. |
+
+Each stack gets its own app configuration, so an electronics stack and a powertools stack can point at the same SAP server with different base sites.
+
+## Before install: preflight
+
+At gate 2, with carousels going into `sap_products`, the orchestrator runs `scripts/marketplace-app/sap_preflight.py` against that server, with TLS verified (`OCC_INSECURE_TLS` doesn't apply: the app's backend verifies). The dry run prints the result; a write stops with exit code `4` before the app is installed or anything is written if a check fails.
+
+| Check | Fails when | Fix |
+| --- | --- | --- |
+| tls | The certificate isn't publicly trusted. SAP's default development certificate (`CN=hybris`) is the usual cause. | Give the server a trusted certificate, for example Let's Encrypt behind a reverse proxy. |
+| site | `SAP_APP_BASE_SITE` isn't one of the server's base sites. | Import the store's sample data and `spartacussampledata` on that server, or fix the uid. |
+| search | Product search returns 0 products, or answers 401/403. | Run a full Solr index for the site (for example `full-powertoolsIndex-cronJob`), or allow anonymous product search on the B2B site. |
+| codes | None of the carousels' product codes exist there. Some missing is only a warning; those codes are left out of the picker value. | Point the app at a server with the storefront's catalog. |
+
+Run it on its own with the `SAP_APP_*` variables exported: `python3 "<SKILL_DIR>/scripts/marketplace-app/sap_preflight.py" --plan <run-dir>/connector-plan.json`.
 
 ## What it does
 
@@ -48,7 +73,7 @@ The pipeline can't tell on its own whether the picker works: the app only talks 
 
 **Check (one attempt):**
 
-1. Open a seeded carousel entry: `https://app.contentstack.com/#!/stack/<api_key>/content-type/product_carousel_component/en-us/entries` (use the region's app host outside North America).
+1. Open a seeded carousel entry: `https://app.contentstack.com/#!/stack/<api_key>/content-type/product_carousel_component/en-us/entries` (use the region's app host outside North America). The demo sites have two: "Our Bestselling Products" and "What's New" (electronics), "Our Bestselling Products" and "WHAT'S NEW" (powertools).
 2. Wait about 20 seconds. **Pass** if the SAP Products field shows "N Products" with names. **Fail** if it shows "Something went wrong while fetching data".
 3. Click **Add Product(s)**. **Pass** if the picker lists products. To read the app server's status code, run this in the picker tab with a product code from the carousel:
    ```js

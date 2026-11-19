@@ -32,6 +32,7 @@ Confirm, without asking for secret values:
 3. The target stack is **new or dedicated to this import**. The publish step publishes every entry and asset in the stack.
 4. `python3 --version` is 3.9 or later. The Python scripts use only the standard library.
 5. How the run writes: with `CS_MANAGEMENT_TOKEN`, or, without one, as the user's own `csdx auth:login --oauth` session. The SAP Commerce Cloud app step always needs that csdx session (a management token can't install apps), plus Node.js and `@contentstack/cli` on `PATH`.
+6. For the product picker: the SAP server the app will search (`SAP_APP_API_BASE_URL`, with a publicly trusted certificate), its base site (`SAP_APP_BASE_SITE`: `electronics` for the electronics demo, `powertools-spa` for the B2B powertools demo) and its Backoffice URL. It must carry the same catalog as the storefront's OCC. See [references/sap-commerce-app.md](references/sap-commerce-app.md).
 
 ## Instructions
 
@@ -50,13 +51,13 @@ Confirm, without asking for secret values:
      --approve-model --approve-publish --env development
    ```
    This sets up the SAP Commerce Cloud app when carousels use the picker, imports the starter-pack content types, uploads images, upserts entries, creates the environment if needed, publishes, and runs the verify steps.
-7. **Carousel products.** With `SAP_APP_API_BASE_URL`, `SAP_APP_BASE_SITE` and `SAP_APP_BACKOFFICE_URL` exported, carousels go into `sap_products`, the SAP Commerce Cloud app's product picker; otherwise into the plain `products` SKU list. Force either with `--carousel-field products|sap_products`. After a picker run, follow "Verify, retry, then ask" in [references/sap-commerce-app.md](references/sap-commerce-app.md): check the picker, repair at most twice, then let the user choose between fixing it and falling back to `products`.
+7. **Carousel products.** With `SAP_APP_API_BASE_URL`, `SAP_APP_BASE_SITE` and `SAP_APP_BACKOFFICE_URL` exported, carousels go into `sap_products`, the SAP Commerce Cloud app's product picker; otherwise into the plain `products` SKU list. Force either with `--carousel-field products|sap_products`. It works the same for B2C and B2B sites. Gate 2 runs a preflight on the picker's SAP server (trusted certificate, base site present, product search returns products without a login, carousel codes found); if it fails, the write stops with exit code 4 before the app is installed. Quote the `FAIL` line to the user with its fix. After a picker run, follow "Verify, retry, then ask" in [references/sap-commerce-app.md](references/sap-commerce-app.md): check the picker, repair at most twice, then let the user choose between fixing it and falling back to `products`.
 8. For more languages, add `--locales de=de-de,ja=ja-jp,zh=zh-cn` (SAP isocode = Contentstack locale). Locales are created when missing, with the master locale as fallback.
 9. Report the result from `manifest.json` in the run directory, then point the user at the app config: `cmsPageContentType: 'landing_page'`, a `localeMapping` that matches the locales imported, and `occFallback: true`.
 
 ### How the pipeline works
 
-`extract → nav-resolve → model → gate 1 → gate 2 → sap-app → seed → publish → verify → localize`. Stage details, run-directory files and flags are in [references/pipeline.md](references/pipeline.md). The mapping rules (which SAP templates, slots and typeCodes become which content types) are in [references/mapping-profile.md](references/mapping-profile.md). The SAP Commerce Cloud app stage, its auth and its recovery steps are in [references/sap-commerce-app.md](references/sap-commerce-app.md).
+`extract → nav-resolve → model → gate 1 → gate 2 (+ SAP picker preflight) → sap-app → seed → publish → verify → localize`. Stage details, run-directory files and flags are in [references/pipeline.md](references/pipeline.md). The mapping rules (which SAP templates, slots and typeCodes become which content types) are in [references/mapping-profile.md](references/mapping-profile.md). The SAP Commerce Cloud app stage, its auth and its recovery steps are in [references/sap-commerce-app.md](references/sap-commerce-app.md).
 
 ### Rules
 
@@ -109,7 +110,7 @@ Never print, echo, log or store the management token, delivery token, API key or
 - `CS_MASTER_LOCALE`: defaults to `en-us`.
 - `CS_PREVIEW_URL`: storefront URL set on the environment for every locale, so Live Preview loads (default `http://localhost:4200`).
 - `CONNECTOR_STARTER_PACK`: override the starter-pack path.
-- `SAP_APP_API_BASE_URL` (host, no scheme), `SAP_APP_BASE_SITE`, `SAP_APP_BACKOFFICE_URL`: the SAP server the app's picker searches. Setting all three turns on the picker.
+- `SAP_APP_API_BASE_URL` (host, no scheme), `SAP_APP_BASE_SITE` (for example `electronics` or `powertools-spa`), `SAP_APP_BACKOFFICE_URL`: the SAP server the app's picker searches. Setting all three turns on the picker.
 - `SAP_APP_API_ROUTE` (default `/occ/v2/`), `SAP_APP_CONFIG_NAME` (default `hti`), and optionally `SAP_APP_UID`, `CS_ORG_UID`.
 
 ## References
@@ -125,6 +126,9 @@ Never print, echo, log or store the management token, delivery token, API key or
 
 User: Import our SAP electronics storefront into my new stack.
 Assistant: Runs the dry run, then reports: "6 pages (/, /faq, /contact, /sale, shared /product and /category layouts), 34 components, 79 navigation entries, 37 images. SearchBox, MiniCart, SiteContext and SiteLinks stay with SAP. No unknown component types. Gate 2 will write to stack 'SAP demo' and publish everything in it to 'development'. Shall I run it?" and waits.
+
+User: Set up the SAP product picker on our powertools demo stack too.
+Assistant: Asks for the SAP server and Backoffice URL the app should search (base site `powertools-spa`), runs the dry run with the `SAP_APP_*` variables exported, and reports the preflight: "powertools-spa exists, search returns 252 products, 14 of 14 carousel codes found." Then it asks before the write, which installs and configures the app once, fills both carousels' `sap_products`, and checks the picker in the browser.
 
 User: Just publish it, skip the dry run.
 Assistant: Explains that the write step only runs after the gate reports have been reviewed, runs the dry run (it writes nothing and takes about a minute), and asks for the go-ahead with the counts in front of the user.

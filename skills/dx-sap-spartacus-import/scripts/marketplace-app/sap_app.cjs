@@ -21,7 +21,7 @@
  *   SAP_APP_CONFIG_NAME      default "hti"
  *   SAP_APP_API_BASE_URL     SAP OCC host, no scheme      (required for ensure)
  *   SAP_APP_API_ROUTE        default "/occ/v2/"
- *   SAP_APP_BASE_SITE        e.g. "electronics"          (required for ensure)
+ *   SAP_APP_BASE_SITE        e.g. "electronics", "powertools-spa" (required for ensure)
  *   SAP_APP_BACKOFFICE_URL   backoffice host or URL      (required for ensure)
  *   CS_ORG_UID               optional; otherwise read from the stack
  *
