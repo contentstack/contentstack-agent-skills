@@ -1,10 +1,37 @@
 # SAP Commerce Cloud app: carousel product picker
 
-The optional `sap-app` stage runs between gate 2 and the seed. It sets up the **SAP Commerce Cloud** marketplace app on the target stack, so carousel products come from the app's product picker (`sap_products`) instead of a hand-typed SKU list (`products`). Editors then add, remove and reorder products visually, and Live Preview's Edit on a carousel opens the picker.
+The `sap-app` stage runs between gate 2 and the seed, by default. It sets up the **SAP Commerce Cloud** marketplace app on the target stack, so carousel products come from the app's product picker (`sap_products`) instead of a hand-typed SKU list (`products`). Editors then add, remove and reorder products visually, and Live Preview's Edit on a carousel opens the picker.
 
-The stage runs when carousels are seeded into `sap_products`: by default when `SAP_APP_API_BASE_URL`, `SAP_APP_BASE_SITE` and `SAP_APP_BACKOFFICE_URL` are all exported, or always with `--carousel-field sap_products`. With `--carousel-field products`, or without that configuration, it's skipped and carousels keep the `products` list.
+The picker is the default: the stage runs and carousels are seeded into `sap_products` unless the picker can't be set up. Then the carousels fall back to the plain `products` list and gate 2 says why: the `SAP_APP_API_BASE_URL`, `SAP_APP_BASE_SITE` and `SAP_APP_BACKOFFICE_URL` settings aren't all exported, the installed connector reads only `products`, or the preflight below fails. `--carousel-field sap_products` forces the picker (a failed preflight then stops the run); `--carousel-field products` skips it.
 
-The storefront must run a connector release that reads `sap_products` (it falls back to `products`). Connector 0.1.0 reads only `products` and would render these carousels empty.
+The orchestrator decides from the connector's code, not its version: it looks for `sap_products` in the installed package's bundle (node_modules, a `file:` tarball or an npm link), else in a connector checkout's `dist/` build or `src/` (with `CONNECTOR_STARTER_PACK` pointing into the checkout). The npm package 0.1.0 reads only `products`; a build of the connector repo's main branch reads `sap_products`, though it also says 0.1.0.
+
+The storefront must run a connector that reads `sap_products` (it falls back to `products` when `sap_products` is absent). Connector 0.1.0 reads only `products`, so the picker isn't set up with it (the carousels fall back to `products`); if you force `--carousel-field sap_products`, gate 2 warns that its carousels would render empty.
+
+## Which SAP server and base site
+
+The picker doesn't call SAP from the browser: the app's own backend calls the server in `SAP_APP_API_BASE_URL`. Point it at a server that carries the **same catalog as the storefront's OCC**: the picker saves product codes, and the storefront looks those codes up on its own server.
+
+| Storefront site | `SAP_APP_BASE_SITE` | Notes |
+| --- | --- | --- |
+| `electronics-spa` (B2C) | `electronics` or `electronics-spa` | The electronics sample catalog. |
+| `powertools-spa` (B2B) | `powertools-spa` | Created by `spartacussampledata` once the Powertools sample data (`powertoolsstore`) is imported. Product search must work without a login. |
+| Your own site | that site's uid | Any site that passes the preflight below. |
+
+Each stack gets its own app configuration, so an electronics stack and a powertools stack can point at the same SAP server with different base sites.
+
+## Before install: preflight
+
+At gate 2, with carousels going into `sap_products`, the orchestrator runs `scripts/marketplace-app/sap_preflight.py` against that server, with TLS verified (`OCC_INSECURE_TLS` doesn't apply: the app's backend verifies). The dry run prints the result. If a check fails, the carousels fall back to `products` and nothing is installed; fix what the `FAIL` line names and re-run to switch them to the picker. With `--carousel-field sap_products` (forced) a failure stops the write with exit code `4` instead.
+
+| Check | Fails when | Fix |
+| --- | --- | --- |
+| tls | The certificate isn't publicly trusted. SAP's default development certificate (`CN=hybris`) is the usual cause. | Give the server a trusted certificate, for example Let's Encrypt behind a reverse proxy. |
+| site | `SAP_APP_BASE_SITE` isn't one of the server's base sites. | Import the store's sample data and `spartacussampledata` on that server, or fix the uid. |
+| search | Product search returns 0 products, or answers 401/403. | Run a full Solr index for the site (for example `full-powertoolsIndex-cronJob`), or allow anonymous product search on the B2B site. |
+| codes | None of the carousels' product codes exist there. Some missing is only a warning; those codes are left out of the picker value. | Point the app at a server with the storefront's catalog. |
+
+Run it on its own with the `SAP_APP_*` variables exported: `python3 "<SKILL_DIR>/scripts/marketplace-app/sap_preflight.py" --plan <run-dir>/connector-plan.json`.
 
 ## What it does
 
@@ -39,7 +66,7 @@ python3 "<SKILL_DIR>/scripts/marketplace-app/sap_app.py" --status               
 python3 "<SKILL_DIR>/scripts/marketplace-app/sap_app.py" --out <run-dir>/sap-app.json    # install/configure once + discover
 python3 "<SKILL_DIR>/scripts/marketplace-app/sap_app.py" --out <run-dir>/sap-app.json --skip-install   # already set up: discover only
 python3 "<SKILL_DIR>/scripts/marketplace-app/sap_app.py" --out <run-dir>/sap-app.json --reinstall      # repair a broken install
-python3 "<SKILL_DIR>/scripts/marketplace-app/use_products.py" --plan <run-dir>/connector-plan.json --env <env>   # fallback to products
+python3 "<SKILL_DIR>/scripts/marketplace-app/use_products.py" --plan <run-dir>/connector-plan.json --env <env> --starter-pack <starter-pack>   # fallback to products
 ```
 
 ## Verify, retry, then ask
@@ -48,7 +75,7 @@ The pipeline can't tell on its own whether the picker works: the app only talks 
 
 **Check (one attempt):**
 
-1. Open a seeded carousel entry: `https://app.contentstack.com/#!/stack/<api_key>/content-type/product_carousel_component/en-us/entries` (use the region's app host outside North America).
+1. Open a seeded carousel entry: `https://app.contentstack.com/#!/stack/<api_key>/content-type/product_carousel_component/en-us/entries` (use the region's app host outside North America). The demo sites have two: "Our Bestselling Products" and "What's New" (electronics), "Our Bestselling Products" and "WHAT'S NEW" (powertools).
 2. Wait about 20 seconds. **Pass** if the SAP Products field shows "N Products" with names. **Fail** if it shows "Something went wrong while fetching data".
 3. Click **Add Product(s)**. **Pass** if the picker lists products. To read the app server's status code, run this in the picker tab with a product code from the carousel:
    ```js
@@ -69,7 +96,7 @@ The pipeline can't tell on its own whether the picker works: the app only talks 
 
 Explain the fallback in a sentence or two: the storefront shows the same products either way, because the connector reads `sap_products` first and falls back to `products`. With `products`, editors type or paste SAP product codes into a list instead of searching and picking them, and the entry shows codes rather than names.
 
-**If the user picks `products`**, run `use_products.py --plan <run-dir>/connector-plan.json --env <env>`. It re-imports the carousel content type without `sap_products`, writes each carousel's SKUs into `products` (same order, every locale the entry exists in) and publishes them. Later runs for that stack: `--carousel-field products`. The app stays installed; the user can uninstall it from Marketplace.
+**If the user picks `products`**, run `use_products.py --plan <run-dir>/connector-plan.json --env <env> --starter-pack <starter-pack>`. It re-imports the carousel content type without `sap_products`, writes each carousel's SKUs into `products` (same order, every locale the entry exists in) and publishes them. Later runs for that stack: `--carousel-field products`. The app stays installed; the user can uninstall it from Marketplace.
 
 ## Limits
 

@@ -6,10 +6,10 @@
  * user's own Contentstack CLI session (`csdx auth:login --oauth`), through csdx's bundled
  * @contentstack/cli-utilities (the same client csdx plugins use). Nothing is stored here.
  *
- *   node sap_app.cjs status --api-key <stack>     # read-only: installation + config summary
- *   node sap_app.cjs ensure --api-key <stack>     # install + configure once if missing;
+ *   CS_API_KEY=<stack> node sap_app.cjs status     # read-only: installation + config summary
+ *   CS_API_KEY=<stack> node sap_app.cjs ensure     # install + configure once if missing;
  *                                                 # an existing install is only checked
- *   node sap_app.cjs ensure --api-key <stack> --reinstall   # uninstall, install, configure once
+ *   CS_API_KEY=<stack> node sap_app.cjs ensure --reinstall   # uninstall, install, configure once
  *
  * The configuration applied is one named multi-config (SAP_APP_CONFIG_NAME, default "hti"),
  * set as default, using a Custom URL, plus "Keys to Save" = Custom Fields: code + name
@@ -21,7 +21,7 @@
  *   SAP_APP_CONFIG_NAME      default "hti"
  *   SAP_APP_API_BASE_URL     SAP OCC host, no scheme      (required for ensure)
  *   SAP_APP_API_ROUTE        default "/occ/v2/"
- *   SAP_APP_BASE_SITE        e.g. "electronics"          (required for ensure)
+ *   SAP_APP_BASE_SITE        e.g. "electronics", "powertools-spa" (required for ensure)
  *   SAP_APP_BACKOFFICE_URL   backoffice host or URL      (required for ensure)
  *   CS_ORG_UID               optional; otherwise read from the stack
  *
@@ -133,7 +133,7 @@ async function main() {
   const cmd = process.argv[2];
   const apiKey = arg('api-key', process.env.CS_API_KEY);
   if (!['status', 'ensure'].includes(cmd) || !apiKey) {
-    fail('usage: node sap_app.cjs <status|ensure> --api-key <stack api key>');
+    fail('usage: CS_API_KEY=<stack api key> node sap_app.cjs <status|ensure>  (or --api-key, which shows in ps)');
   }
   const U = loadCliUtilities();
   const authType = U.configHandler.get('authorisationType');
