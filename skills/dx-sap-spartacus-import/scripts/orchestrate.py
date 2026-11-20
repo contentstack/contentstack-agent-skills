@@ -340,8 +340,9 @@ def main():
                 print(f"    {C['warn']}missing env for the SAP app: {missing}{C['z']}")
     # The picker's SAP server must serve this site to an anonymous caller over trusted TLS,
     # with a built search index and the carousels' product codes (B2C and B2B sites alike).
-    # Checked here so the dry run shows it, and so a failing server stops the run before
-    # the app is installed or anything is written.
+    # Checked here, before the app is installed or anything is written. By default (auto) a
+    # failure falls back to the plain `products` list; only a forced
+    # --carousel-field sap_products stops the run (exit 4).
     preflight_failed = False
     if carousel_field == "sap_products" and all(os.environ.get(k) for k in SAP_APP_ENV[:2]):
         rc_pf, out_pf = run("marketplace-app/sap_preflight.py",
@@ -352,18 +353,33 @@ def main():
                " | ".join(l.strip() for l in out_pf.splitlines()
                           if l.strip().startswith(("ok", "warn", "FAIL")))[:300])
         preflight_failed = bool(rc_pf)
+    if preflight_failed and a.carousel_field == "auto":
+        # The picker is the default; when it can't be set up, carousels keep the plain list.
+        carousel_field, carousel_reason = "products", "the SAP picker preflight failed"
+        rc, out = run("content-model/model_connector.py",
+                      ["--inventory", inv_path, "--profile", PROFILE, "--out", run_dir,
+                       "--starter-pack", a.starter_pack, "--carousel-field", carousel_field])
+        if rc:
+            record("model", "error", out[-300:]); sys.exit("model failed")
+        plan = json.load(open(os.path.join(run_dir, "connector-plan.json")))
+        record("carousel", "fallback", "picker preflight failed -> products")
+        print(f"    {C['warn']}SAP product picker not set up:{C['z']} the preflight failed (FAIL line above), so the "
+              f"carousels fall back to the plain `products` list. Fix what the FAIL line names and re-run to get "
+              f"the picker; the re-run switches the carousels over.")
+        preflight_failed = False
     if not a.approve_publish:
         record("gate2", "dry-run")
         if preflight_failed:
-            print(f"\n  {C['err']}The SAP picker preflight failed{C['z']} — a write would stop before "
-                  f"the app is installed. Fix the SAP server, or use --carousel-field products.")
+            print(f"\n  {C['err']}The SAP picker preflight failed{C['z']} and the picker was forced "
+                  f"(--carousel-field sap_products): a write would stop before the app is installed. Fix the "
+                  f"SAP server, or drop --carousel-field to fall back to the plain products list.")
         print(f"\n  {C['warn']}DRY RUN complete{C['z']} — nothing written. "
               f"Re-run with --approve-publish (and CS_* env) to seed + publish.")
         sys.exit(0)
     if preflight_failed:
         record("gate2", "blocked", "SAP picker preflight failed")
-        print(f"  {C['err']}stopped: the SAP picker preflight failed{C['z']} — nothing installed or written. "
-              f"Fix the SAP server, or re-run with --carousel-field products.")
+        print(f"  {C['err']}stopped: the SAP picker preflight failed and the picker was forced{C['z']} — nothing "
+              f"installed or written. Fix the SAP server, or drop --carousel-field to fall back to products.")
         sys.exit(4)
     if not os.environ.get("CS_API_KEY"):
         record("gate2", "error", "no creds")

@@ -14,7 +14,7 @@ extract ─▶ nav-resolve ─▶ model ─▶ [gate 1] ─▶ [gate 2 + pack ch
 | 2 | nav-resolve | `storefront-extract/nav_resolve.py` | Resolves navigation link entries into full link detail and finds the navigation roots. Adds `navigationLinks` and `navigationRoots` to the inventory. Skipped when `--inventory` is reused without an OCC base. |
 | 3 | model | `content-model/model_connector.py` | Maps the inventory onto the connector model with `registry/connector.registry.json`. Writes `connector-plan.json` (entries, assets, content types needed) and `connector-report.json`. Drops page slots the target content type lacks in the starter pack. With `--carousel-field sap_products`, carousel SKUs become a `sap_products` placeholder the seed resolves. |
 | – | gate 1 | orchestrator | Blocks when the site uses a component typeCode the profile doesn't know. Pass with `--approve-model` once it's mapped. |
-| – | gate 2 | orchestrator | Names the target stack and says whether it's empty (`cs-seed/stack_info.py`, read-only), then prints what will be written: the connector's full starter pack of content types, assets, and components, navigation entries and pages separately. Checks that every content type and field the plan writes exists in the starter pack, and exits with code 3 if not. With carousels in `sap_products`, also runs the SAP picker preflight (`marketplace-app/sap_preflight.py`) and, on `--approve-publish`, exits with code 4 before any write if it fails. Without `--approve-publish` the run ends here as a dry run. |
+| – | gate 2 | orchestrator | Names the target stack and says whether it's empty (`cs-seed/stack_info.py`, read-only), then prints what will be written: the connector's full starter pack of content types, assets, and components, navigation entries and pages separately. Checks that every content type and field the plan writes exists in the starter pack, and exits with code 3 if not. With the picker on, also runs the SAP picker preflight (`marketplace-app/sap_preflight.py`); if it fails, the carousels fall back to `products` (with the picker forced, the write exits with code 4 instead). Without `--approve-publish` the run ends here as a dry run. |
 | 4 | sap-app | `marketplace-app/sap_app.py` (+ `sap_app.cjs`) | Only when carousels use `sap_products`: installs and configures the SAP Commerce Cloud app on the user's csdx login, finds its Product field extension, writes `sap-app.json`. See [sap-commerce-app.md](sap-commerce-app.md). |
 | 5 | seed | `cs-seed/cma_seed_connector.py` | Imports the starter-pack content types (adds a `sap_uid` field where the pack lacks one, and the `sap_products` picker field on the carousel when the app is set up), uploads images, then upserts component entries, the `global_slots` shell entry and page entries in reference order. Exits 3 when items failed (recorded as `warn`; the rest is written). |
 | 6 | publish | `cs-seed/publish.py` | Creates the environment when missing (with a Live Preview URL per locale) and publishes every entry and asset in the stack to it in the master locale (`CS_MASTER_LOCALE`, default `en-us`). Ends with a totals line; exits 3 when some publishes failed (recorded as `warn`). |
@@ -35,7 +35,7 @@ extract ─▶ nav-resolve ─▶ model ─▶ [gate 1] ─▶ [gate 2 + pack ch
 | `--env` | `development` | Target environment for publishing. |
 | `--approve-model` | off | Pass gate 1. |
 | `--approve-publish` | off | Pass gate 2 and write. |
-| `--carousel-field` | `auto` | `sap_products` when the `SAP_APP_*` configuration is exported and the installed connector reads `sap_products` (checked in its code), else `products`. |
+| `--carousel-field` | `auto` | The picker (`sap_products`) by default; falls back to `products` when the `SAP_APP_*` settings aren't exported, the installed connector reads only `products` (checked in its code), or the picker preflight fails. `sap_products` forces the picker; `products` skips it. |
 | `--skip-app-install` | off | The SAP app is already set up: only discover its field extension. |
 | `--reinstall-app` | off | Uninstall, reinstall and configure the SAP app once (repairs a broken install). |
 | `--locales` | none | `sapIso=csLocale` pairs, for example `de=de-de,ja=ja-jp,zh=zh-cn`. |
@@ -53,7 +53,7 @@ extract ─▶ nav-resolve ─▶ model ─▶ [gate 1] ─▶ [gate 2 + pack ch
 - `0`: done, or dry run complete.
 - `2`: gate 1 blocked on unknown typeCodes.
 - `3`: gate 2 blocked on a starter-pack mismatch.
-- `4`: gate 2 blocked because the SAP picker preflight failed (nothing installed or written).
+- `4`: gate 2 blocked because the SAP picker preflight failed while the picker was forced with `--carousel-field sap_products` (nothing installed or written). By default a failed preflight falls back to `products` instead.
 - Per-stage `warn` (seed, publish, a locale) doesn't stop the run: some items failed and are listed as ERR lines; re-running is safe.
 - Anything else: a stage failed. Its output is printed and recorded in `manifest.json`.
 
@@ -63,7 +63,7 @@ extract ─▶ nav-resolve ─▶ model ─▶ [gate 1] ─▶ [gate 2 + pack ch
 - **Starter pack not found**: run from the Spartacus project root after `ng add @contentstack/contentstack-spartacus-connector`, or set `CONNECTOR_STARTER_PACK`.
 - **Gate 2 pack mismatch**: the installed connector is older than the mapping profile expects. Update the connector package.
 - **`csdx not found` or `not logged in`**: the run has no management token, or reached the SAP app stage. Install `@contentstack/cli` and run `csdx auth:login --oauth`, or export `CS_MANAGEMENT_TOKEN` and pass `--carousel-field products`.
-- **SAP picker preflight fails** (exit `4`): the server in `SAP_APP_API_BASE_URL` can't serve the picker. The line marked `FAIL` names the cause: an untrusted certificate, a missing base site, an empty search index, product search behind a login, or a catalog without the carousel codes. See "Before install: preflight" in [sap-commerce-app.md](sap-commerce-app.md).
+- **SAP picker preflight fails**: the server in `SAP_APP_API_BASE_URL` can't serve the picker, so the carousels fall back to `products` (or the run stops with exit `4` when the picker was forced). The line marked `FAIL` names the cause: an untrusted certificate, a missing base site, an empty search index, product search behind a login, or a catalog without the carousel codes. See "Before install: preflight" in [sap-commerce-app.md](sap-commerce-app.md).
 - **A locale ends as `warn`**: an entry update in that locale failed twice (the Management API can answer a transient 422). Re-run with the same `--locales`; it updates in place.
 - **SAP Products field errors or HTTP 414**: see "Verify, retry, then ask" in [sap-commerce-app.md](sap-commerce-app.md).
 - **"SAP product picker not set up" at gate 2**: the `SAP_APP_*` settings are exported, but the installed connector reads only `products` (npm 0.1.0). Update to a connector that reads `sap_products` (the release, or a build of the connector repo's main branch) and re-run.

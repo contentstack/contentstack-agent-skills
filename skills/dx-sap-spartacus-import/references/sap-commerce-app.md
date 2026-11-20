@@ -1,12 +1,12 @@
 # SAP Commerce Cloud app: carousel product picker
 
-The optional `sap-app` stage runs between gate 2 and the seed. It sets up the **SAP Commerce Cloud** marketplace app on the target stack, so carousel products come from the app's product picker (`sap_products`) instead of a hand-typed SKU list (`products`). Editors then add, remove and reorder products visually, and Live Preview's Edit on a carousel opens the picker.
+The `sap-app` stage runs between gate 2 and the seed, by default. It sets up the **SAP Commerce Cloud** marketplace app on the target stack, so carousel products come from the app's product picker (`sap_products`) instead of a hand-typed SKU list (`products`). Editors then add, remove and reorder products visually, and Live Preview's Edit on a carousel opens the picker.
 
-The stage runs when carousels are seeded into `sap_products`: by default when `SAP_APP_API_BASE_URL`, `SAP_APP_BASE_SITE` and `SAP_APP_BACKOFFICE_URL` are all exported **and** the installed connector reads `sap_products`, or always with `--carousel-field sap_products`. Otherwise it's skipped and carousels keep the `products` list.
+The picker is the default: the stage runs and carousels are seeded into `sap_products` unless the picker can't be set up. Then the carousels fall back to the plain `products` list and gate 2 says why: the `SAP_APP_API_BASE_URL`, `SAP_APP_BASE_SITE` and `SAP_APP_BACKOFFICE_URL` settings aren't all exported, the installed connector reads only `products`, or the preflight below fails. `--carousel-field sap_products` forces the picker (a failed preflight then stops the run); `--carousel-field products` skips it.
 
 The orchestrator decides from the connector's code, not its version: it looks for `sap_products` in the installed package's bundle (node_modules, a `file:` tarball or an npm link), else in a connector checkout's `dist/` build or `src/` (with `CONNECTOR_STARTER_PACK` pointing into the checkout). The npm package 0.1.0 reads only `products`; a build of the connector repo's main branch reads `sap_products`, though it also says 0.1.0.
 
-The storefront must run a connector that reads `sap_products` (it falls back to `products` when `sap_products` is absent). Connector 0.1.0 reads only `products`, so by default the picker isn't set up with it; if you force `--carousel-field sap_products`, gate 2 warns that its carousels would render empty.
+The storefront must run a connector that reads `sap_products` (it falls back to `products` when `sap_products` is absent). Connector 0.1.0 reads only `products`, so the picker isn't set up with it (the carousels fall back to `products`); if you force `--carousel-field sap_products`, gate 2 warns that its carousels would render empty.
 
 ## Which SAP server and base site
 
@@ -22,7 +22,7 @@ Each stack gets its own app configuration, so an electronics stack and a powerto
 
 ## Before install: preflight
 
-At gate 2, with carousels going into `sap_products`, the orchestrator runs `scripts/marketplace-app/sap_preflight.py` against that server, with TLS verified (`OCC_INSECURE_TLS` doesn't apply: the app's backend verifies). The dry run prints the result; a write stops with exit code `4` before the app is installed or anything is written if a check fails.
+At gate 2, with carousels going into `sap_products`, the orchestrator runs `scripts/marketplace-app/sap_preflight.py` against that server, with TLS verified (`OCC_INSECURE_TLS` doesn't apply: the app's backend verifies). The dry run prints the result. If a check fails, the carousels fall back to `products` and nothing is installed; fix what the `FAIL` line names and re-run to switch them to the picker. With `--carousel-field sap_products` (forced) a failure stops the write with exit code `4` instead.
 
 | Check | Fails when | Fix |
 | --- | --- | --- |
