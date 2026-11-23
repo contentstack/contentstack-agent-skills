@@ -26,6 +26,11 @@ Condition Blocks are required inside a Repeater for:
 
 Condition Blocks live in the palette under **Smart Containers**.
 
+**Value conditions: two operator traps (SDK 2.0).** When a condition compares a field's value rather than a type:
+
+- For "not equal" on a single select, use `isNot`. `neq` is always false in SDK 2.0.0.
+- A boolean field can arrive as the string `"True"` or `"False"`, not `true` / `false`. Compare against the form the data actually carries, and check it in Preview Mode.
+
 ## Task
 
 1. **Confirm a Repeater exists** bound to the Modular Block or Reference field named in `repeaterSource`. If not, stop and run `use-repeater` first: a Condition Block has nothing to discriminate without a parent Repeater iteration scope.
@@ -69,6 +74,7 @@ This skill succeeds only when ALL of the following are true. If any fails, do no
 | Skipping Condition Block for single-CT Reference | Picker shows generic union, `repeater.<field>` paths fail to resolve | Add one Condition Block matching that single CT |
 | Binding fields directly under Repeater on a Reference / mixed Modular Block | Canvas shows `Add a condition for <ct> schema` hint. Bindings stay broken | Accept the hint OR add Condition Blocks via the modal per this skill |
 | Expecting an unmatched-fallback Condition Block | No such affordance in Studio: items with unmatched types render nothing | If you need a fallback, add a Condition Block for every type you expect. Revisit if new types are added later |
+| Using `neq` for "not equal" on a single select | `neq` is always false in SDK 2.0.0 | Use `isNot`. Booleans can arrive as the strings `"True"` / `"False"`: compare against what the data carries |
 | Forgetting Preview Mode when verifying | Repeater renders only one iteration by default. You cannot see whether each Condition Block routes correctly | Select Repeater in Layers, toggle Preview Mode in Properties |
 
 ## See also

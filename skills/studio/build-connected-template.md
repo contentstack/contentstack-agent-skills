@@ -49,10 +49,10 @@ This skill creates the template, drops sections, confirms bindings, saves. It do
 1. **Confirm prerequisites.** Before touching the UI, verify (ask the user to confirm if you can't check):
    - Studio project exists and is linked to the stack.
    - Content type `contentTypeUid` exists and has at least one entry.
-   - **A URL pattern is available.** Studio resolves which entry to preview by matching the request path against a URL pattern. **One of these five sources must be in play**: `custom_preview_url` (set in the stack's Visual Experience settings), `content_type_url_pattern` (page CT with `url_pattern`), `default_url_pattern` (Studio-generated default, applied automatically for connected templates when nothing else is configured), `user_specified_pattern` (authored via the canvas's Edit URL flow), or `legacy_url` (binding against a CT `url` field on every entry). You do NOT need a CT `url` field. Studio's `default_url_pattern` covers the no-config case. Only verify upfront if the project uses the `legacy_url` path: in that case every entry must have `url` populated AND starting with `/` (without a leading slash the entry is invisible to the matcher. Canvas opens blank with "No composition for /…").
+   - **A URL pattern is available.** Studio resolves which entry to preview by matching the request path against a URL pattern. **One of these five sources must be in play**: `custom_preview_url` (set in the stack's Visual Experience settings), `content_type_url_pattern` (page CT with `url_pattern`), `default_url_pattern` (Studio-generated default, applied automatically for connected templates when nothing else is configured), `user_specified_pattern` (authored via the canvas's Edit URL flow), or `legacy_url` (binding against a CT `url` field on every entry). You do NOT need a CT `url` field for the canvas to open: Studio's `default_url_pattern` covers the no-config case. But never leave a Connected template on that default (`/<compositions CT>/<template uid>/{{entry.title}}`). Give it a real URL per [§ How template URLs work](#how-template-urls-work). Only verify upfront if the project uses the `legacy_url` path: in that case every entry must have `url` populated AND starting with `/` (without a leading slash the entry is invisible to the matcher. Canvas opens blank with "No composition for /…").
    - At least one **published** entry exists for the connected CT. Connected canvas fetches via the CDA. Unpublished entries return 404. Canvas appears blank.
    - At least one Section composition exists whose `linked_schemas` references a field on `contentTypeUid`, otherwise auto-binding will silently leave every section unbound. If unsure, list sections via the Studio Sections tab and check each one's `linked_schemas`.
-   - For a custom URL pattern: prefer configuring the **Preview URL** in the stack's **Settings**, under **Visual Experience**, rather than per-template overrides. If the CT already has a `url` field with a pattern, Studio will derive from it automatically.
+   - For a custom URL pattern: prefer configuring the **Custom Preview URL** in the stack's **Settings**, under **Visual Experience**, rather than per-template overrides. Studio copies it into new templates (`url_source: custom_preview_url`), it works for Live Preview too, and its Advanced Config can tidy a value. If the CT already has a `url` field with a pattern, Studio will derive from it automatically. A per-template pattern (`user_specified_pattern`) is the fallback only when the stack has no Custom Preview URL (some plans).
 
 2. **Open the Templates tab** in the target Studio project. Empty state shows an illustration with a **+ New Template** button. Populated state shows a list with columns Title · Connected Content Type · Publish Status · Modified At · Actions.
 
@@ -69,21 +69,21 @@ This skill creates the template, drops sections, confirms bindings, saves. It do
    - `PREVIEW ENTRY :` (entry name) with a `⇄` swap icon. Studio auto-picks the most recently updated entry that satisfies the URL pattern
    - URL line directly below evaluates against that entry (no `{{...}}` leftovers)
 
-   **Symptom: "No entry has a URL field populated yet" (canvas shows the message, no preview entry is auto-selected):** this is the editor's `MISSING_CT_PATTERN_URL_FIELD` error, raised **only** under `url_source: "content_type_url_pattern"` (or `legacy_url`). Those sources resolve the preview entry by querying for a populated `url` **field**, with no pattern substitution. So it means: the connected CT isn't a page type, OR no entry of that CT has its `url` field set. **If the CT is a singleton with no `url_pattern` by design** (a fixed-URL page), don't add a pattern you don't want, just set the entry's `url` field by hand (e.g. `/rewards`). The source only needs a non-empty `url`, not a CT pattern. Switch to `user_specified_pattern` only when the URL must derive from a different field (`{{entry.slug}}`, a reference). See [`author-composition-entry` § Which `url_source` to write](author-composition-entry.md#url-metadata-matched-pair). Fix: ensure the CT is `is_page: true` with a `url` field + `url_pattern` (see [URL pattern rule below](#single-entry-vs-multi-entry-url-pattern-rule)). For every entry, set the `url` field, then click `⇄` and pick a preview entry. After a CT `url_pattern` change, re-save + republish entries so `entry.url` recomputes, otherwise old entries still carry stale URLs.
+   **Symptom: "No entry has a URL field populated yet" (canvas shows the message, no preview entry is auto-selected):** this is the editor's `MISSING_CT_PATTERN_URL_FIELD` error, raised **only** under `url_source: "content_type_url_pattern"` (or `legacy_url`). Those sources resolve the preview entry by querying for a populated `url` **field**, with no pattern substitution. So it means: the connected CT isn't a page type, OR no entry of that CT has its `url` field set. **If the CT is a singleton with no `url_pattern` by design** (a fixed-URL page), don't add a pattern you don't want, just set the entry's `url` field by hand (e.g. `/rewards`). The source only needs a non-empty `url`, not a CT pattern. Only when the URL must derive from a different field (`{{entry.slug}}`, a reference), use a Custom Preview URL row for the CT, or `user_specified_pattern` if the stack has none. See [`author-composition-entry` § Which `url_source` to write](author-composition-entry.md#url-metadata-matched-pair). Fix: ensure the CT is `is_page: true` with a `url` field + `url_pattern` (see [URL pattern rule below](#single-entry-vs-multi-entry-url-pattern-rule)). For every entry, set the `url` field, then click `⇄` and pick a preview entry. After a CT `url_pattern` change, re-save + republish entries so `entry.url` recomputes, otherwise old entries still carry stale URLs.
 
 6. **(Optional) Edit the URL pattern.** Only if `urlPattern` is provided OR the derived URL is wrong. Click the pencil icon, then Edit URL. Use Insert chips for `{{entry.<field>}}`, `{{environment}}`, `{{taxonomy:<uid>}}`. **Save** validates + refetches. **Avoid `{{locale}}`**: carry locale via routing + SDK `locale` query option.
 
    <a id="single-entry-vs-multi-entry-url-pattern-rule"></a>**Single-entry vs multi-entry URL pattern rule.** Connected templates split into two cases that need different URL shapes:
 
    - **Single-entry template** (homepage, about, pricing: one entry, one URL): a literal URL like `/home` works. The matcher only needs to resolve one path.
-   - **Multi-entry template** (blog posts, products, recipes: many entries through one template): the literal pattern `/blog/:slug` does NOT work. The `:slug` placeholder comes back **literal**: Contentstack's **CMS-side** CT URL-pattern compiler (separate from the Studio SDK pattern compiler) doesn't substitute `:slug`, the entry's `url` field saves as `/:slug` instead of a real slug, and the SDK has no per-entry URL to match against. **The proven shape:** CT `url_pattern: "/:title"`, Contentstack's CMS slugifies the title field into `entry.url` (`:title` is the working CMS substitution token, `:slug` is treated literal) + CT `url_prefix: "/<route>/"` (e.g. `/blog/`), composition `url: "/<route>/{{entry.title}}"` with `url_metadata.url_source: "content_type_url_pattern"` and `url_queries: ""`. The SDK then queries entries by `entry.url`. CT pattern and composition URL must be **consistent by construction**. After changing the CT pattern, re-save + republish every entry so `entry.url` recomputes.
+   - **Multi-entry template** (blog posts, products, recipes: many entries through one template): the literal pattern `/blog/:slug` does NOT work. The `:slug` placeholder comes back **literal**: Contentstack's **CMS-side** CT URL-pattern compiler (separate from the Studio SDK pattern compiler) doesn't substitute `:slug`, the entry's `url` field saves as `/:slug` instead of a real slug, and the SDK has no per-entry URL to match against. **The proven shape:** CT `url_pattern: "/:title"`, Contentstack's CMS slugifies the title field into `entry.url` (`:title` is the working CMS substitution token, `:slug` is treated literal) + CT `url_prefix: "/<route>/"` (e.g. `/blog/`), composition `url: "/<route>/{{entry.url}}"` (the CT's prefix + `{{entry.url}}`) with `url_metadata.url_source: "content_type_url_pattern"` and `url_queries: ""`. The SDK then queries entries by `entry.url`. CT pattern and composition URL must be **consistent by construction**. After changing the CT pattern, re-save + republish every entry so `entry.url` recomputes.
 
    **URL traps: same symptom ("No composition for /…"), different fixes:**
 
-   - **(a) Literal URL on a multi-entry template.** A composition `url` like `/home` works for single-entry, but a multi-entry template needs a placeholder. **Fix:** use `/<route>/{{entry.url}}` or `{{entry.title}}` (NOT `:slug`, see rule above).
+   - **(a) Literal URL on a multi-entry template.** A composition `url` like `/home` works for single-entry, but a multi-entry template needs a placeholder. **Fix:** use `/<route>/{{entry.url}}`, the CT's prefix + `{{entry.url}}` (NOT `:slug`, see rule above).
    - **(b) Entry `url` field missing leading slash.** SDK matches the full request path. `url: "home"` never matches `/home`. **Fix:** every entry's `url` starts with `/`.
-   - **(c) API-set `user_specified_pattern` reverts.** `url_metadata.url_queries` is only generated by the UI's Edit-URL and Save flow. **Zero-UI workaround:** make the CT a page type (`is_page: true` + CT-level `url_pattern`), set composition `url_metadata.url_source: content_type_url_pattern`, put `{{entry.x}}` in composition `url`.
-   - **(d) `:slug` placeholder comes back literal.** Contentstack's CT URL pattern recognizes `:title` but treats `:slug` as a literal string: `url_pattern: "/:slug"` saves and stays `/:slug`, never substituting. **Fix:** use `:title` in the CT pattern (Contentstack slugifies it). Use `{{entry.title}}` in the composition URL.
+   - **(c) `user_specified_pattern` is frozen.** A URL typed in Edit URL or set by API is `user_specified_pattern`, and Studio never changes it again. Only **Sync Pattern** rebuilds it from its sources. Later changes to the Custom Preview URL or the CT don't reach existing templates until re-synced. Never send the CT's own pattern this way: Studio puts the prefix in front of an address that already has it (seen live: `/blog//blog/hello`). **Fix:** make the CT a page type (`is_page: true` + CT-level `url_pattern`), set composition `url_metadata.url_source: content_type_url_pattern`, and use the CT's prefix + `{{entry.url}}` as the composition `url`.
+   - **(d) `:slug` placeholder comes back literal.** Contentstack's CT URL pattern recognizes `:title` but treats `:slug` as a literal string: `url_pattern: "/:slug"` saves and stays `/:slug`, never substituting. **Fix:** use `:title` in the CT pattern (Contentstack slugifies it into `entry.url`). Use the CT's prefix + `{{entry.url}}` in the composition URL.
 
 7. **Drop the primary section.** If `primarySectionUid` was provided, drag it from the left palette (Sections category) or the Sections sidebar onto the empty canvas. Drop targets highlight as you drag.
 
@@ -119,6 +119,46 @@ This skill creates the template, drops sections, confirms bindings, saves. It do
     - Right: `entryBind("imageurl", "images.0.url")` picks the first asset's URL.
 
     If the prop should iterate (multiple images), use a **Repeater** bound to the array and bind `imageurl` to `repeater.url` inside the repeater item. The `.0.url` shortcut is for single-image props only.
+
+<a id="how-template-urls-work"></a>
+
+## How template URLs work
+
+**Where a new template's URL comes from.** Studio takes the first that works:
+
+1. The Custom Preview URL row for this content type, then the row for all content types.
+2. The content type's prefix + `{{entry.url}}`.
+3. Studio's default: `/<compositions content type>/<template uid>/{{entry.title}}`.
+
+Never leave a Connected template on the default.
+
+**A typed or API-set URL never changes.** A URL typed in Edit URL or set by API is `user_specified_pattern`. Studio never changes it again; only Sync Pattern rebuilds it from its sources.
+
+**Values are used exactly as stored.** They are not lowercased, slugified or trimmed. Spaces become `%20`. An empty value can leave `//`. A field with several values uses the first.
+
+**An entry URL starting with `/` is the whole address.** Visual Editor and the canvas ignore the rest of the pattern, so a pattern can't put `/ai-101` under `/blog`.
+
+**Matching is exact.** Letter case and the trailing slash count. The address is decoded first. Digit-only and `true`/`false` values don't match text fields. An entry at the prefix itself (`/trip/{{entry.url}}` for `/trip`) never matches.
+
+**Ties.** The pattern with more fixed text wins. On a tie, a Freeform template always counts as owning the address, and a Connected one only when its content type has an entry there. The first that qualifies, in the order the templates are fetched, wins. Give every template its own fixed text.
+
+**References in the pattern.** A reference the pattern reads (`{{entry.author.slug}}`) must be listed in `url_metadata.url_queries.include` (here `["author"]`). The SDK passes that list as the references to fetch when it resolves an address.
+
+**Tidied addresses.** With Advanced Config, Live Preview opens `/x/my-entry` while Visual Editor and Studio open `/x/My%20Entry`. The site must answer both, or pass the template and entry itself.
+
+**Stacks with unique URLs** (`enforce_unique_urls: true`). A template at a fixed address (`/`, `/plan`) clashes with its page's entry, and the entry's next save is refused as "is not unique". Use `/{{entry.url}}` for that template; the page keeps its address.
+
+**Variants.** A Personalize variant never changes which template answers an address. Never add a variant segment. A variant that changes the slug gives its visitors a different address.
+
+**Languages.** Never put a language in the pattern. Each language's Base URL carries it.
+
+**Freeform templates** take only `{{composition_uid}}`, `{{locale}}`, `{{environment}}` and `{{branch}}`.
+
+**Rejected at save:** date variables (store the date as text in a field), fields inside modular blocks, and a path past a non-group field. Studio doesn't check a leading slash, length, or an address another template uses.
+
+**Preview entry.** The editor previews the most recently updated entry that fills every variable, so at least one published entry must have those values.
+
+**Unchanged rules.** Always send `url_metadata` (else `legacy_url`). `url_queries` is a JSON string. Don't use `:slug`. Put fixed text before `{{entry.url}}`. The site needs a catch-all route passing `{ url }`. Use a literal URL only on a single-entry content type.
 
 ## Inputs needed from the user
 

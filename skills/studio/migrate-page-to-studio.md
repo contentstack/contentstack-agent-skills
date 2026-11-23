@@ -102,7 +102,7 @@ The skill is conservative. It stops on anything it can't represent cleanly. Bett
    - **Bind one field per prop.** See § Studio fetches only the fields your bindings name, below, before binding any whole entry or reference to an `object` prop
    - Save the template
 
-5. **Generate the swap: server-rendered, with the route's SEO kept.** Rewrite `routeFilePath` so the server fetches the composition through the canonical [`resolveComposition`](configure-csr-vs-ssr.md#resolve-composition-helper) helper (it lives in `configure-csr-vs-ssr`, don't write a second one) and renders through the `"use client"` wrapper from [`configure-csr-vs-ssr`](configure-csr-vs-ssr.md) step 3. Next.js App Router shown. Other frameworks: same contract, that skill's recipe for the framework.
+5. **Generate the swap: server-rendered, with the route's SEO kept.** Rewrite `routeFilePath` so the server fetches the composition, catches the fetch's error and calls `isCompositionNotFound(err)` (the pattern in [`configure-csr-vs-ssr`](configure-csr-vs-ssr.md#resolve-composition-helper)), and renders through the `"use client"` wrapper from [`configure-csr-vs-ssr`](configure-csr-vs-ssr.md) step 3. Next.js App Router shown. Other frameworks: same contract, that skill's recipe for the framework.
 
    ```tsx
    // Before — preserved as a reference comment so you can diff:
@@ -119,9 +119,8 @@ The skill is conservative. It stops on anything it can't represent cleanly. Bett
 
    // app/blog/[slug]/page.tsx — a Server Component: NO "use client"
    import { notFound } from "next/navigation";
-   import { getSSRStyles } from "@contentstack/studio-react";
-   import { sdk } from "@/lib/studio.server";                      // server-only Studio init
-   import { resolveComposition } from "@/lib/resolve-composition"; // configure-csr-vs-ssr
+   import { getSSRStyles, isCompositionNotFound, type StudioComponentSpecOptions } from "@contentstack/studio-react";
+   import { sdk, stack } from "@/lib/studio.server";               // server-only Studio init
    import { ClientRender } from "@/components/studio/ClientRender"; // "use client" wrapper, configure-csr-vs-ssr step 3
    import { getPost, blogPostingJsonLd } from "@/lib/blog";          // the app's own helpers, unchanged
 
@@ -132,12 +131,18 @@ The skill is conservative. It stops on anything it can't represent cleanly. Bett
    export default async function BlogPost({ params, searchParams }) {
      const { slug } = await params;                                  // a Promise on Next 15+
      const searchQuery = new URLSearchParams((await searchParams) as Record<string, string>).toString();
-     const { specOptions, notFound: miss } = await resolveComposition(sdk, {
-       url: `/blog/${slug}`,
-       templateContentTypeUid: "blog_post",                          // narrows resolution to this CT
-       searchQuery,
-     });
-     if (miss) notFound();      // no composition or no entry at this URL: the app's 404, never a 500
+     stack.livePreviewQuery({ live_preview: "" });                  // shared stack: drop the last request's preview hash
+     let specOptions: StudioComponentSpecOptions;
+     try {
+       specOptions = await sdk.fetchCompositionData({
+         url: `/blog/${slug}`,
+         templateContentTypeUid: "blog_post",                        // narrows resolution to this CT
+         searchQuery,
+       });
+     } catch (err) {
+       if (!isCompositionNotFound(err)) throw err;                   // a real failure stays a 500
+       notFound();      // no composition or no entry at this URL: the app's 404
+     }
      const post = await getPost(slug);                               // the app's own fetch, for JSON-LD only
      return (
        <>
@@ -152,7 +157,7 @@ The skill is conservative. It stops on anything it can't represent cleanly. Bett
 
    Rules for the swap:
 
-   - **A missing page stays a 404.** `fetchCompositionData` throws on a miss. `resolveComposition` turns only the not-found case (`isCompositionNotFound`, exported by `@contentstack/studio-react`) into `notFound()` and rethrows every real failure. Never `if (error) throw error` on a client hook: every bad URL becomes a 500.
+   - **A missing page stays a 404.** `fetchCompositionData` throws on a miss. The `catch` turns only the not-found case (`isCompositionNotFound`, exported by `@contentstack/studio-react`) into `notFound()` and rethrows every real failure. Never decide from the returned object. Never `if (error) throw error` on a client hook: every bad URL becomes a 500.
    - **SEO survives.** Keep `generateMetadata`, the JSON-LD and `generateStaticParams` exactly as the original route had them. If the composition's own SEO fields should drive the head instead, build it from the fetched `specOptions` with `getCompositionMetadata(specOptions, { baseUrl })` (exported by `@contentstack/studio-react` and `@contentstack/studio-react/rsc`; it returns `title`, `description`, `ogImage`, `canonical` and `tags`). `renderMetadataToHtml` renders the same object to a string for non-React hosts. Pick one source per tag, never both.
    - **Reading `searchParams` makes this route dynamic.** That is what lets Live Preview and the editor pass their hash. What it does to static generation and caching, and how to keep the app's strategy: [`configure-csr-vs-ssr`](configure-csr-vs-ssr.md).
    - **Client-only fallback.** On a framework with no server render, use the CSR recipe in `configure-csr-vs-ssr` step 2, which classifies `error` with `isCompositionNotFound` and renders the app's 404 for a miss.
@@ -188,7 +193,7 @@ This skill succeeds only when ALL of the following are true.
 - [ ] Every prop assignment in the original JSX was either represented as a Studio binding OR explicitly listed as a blocker.
 - [ ] If any blocker was reported, the skill stopped and did NOT proceed to scaffold.
 - [ ] If the skill proceeded - a new Connected template exists in the Studio project with bindings populated. The user did NOT re-author bindings in the canvas.
-- [ ] The route file is rewritten - new render is `<StudioComponent specOptions={…} />` (through the client wrapper), fetched server-side via `resolveComposition`. Original JSX is preserved as a commented block above so the user can diff.
+- [ ] The route file is rewritten - new render is `<StudioComponent specOptions={…} />` (through the client wrapper), fetched server-side, with the fetch's error caught and checked with `isCompositionNotFound`. Original JSX is preserved as a commented block above so the user can diff.
 - [ ] **A bad URL returns the app's 404, not a 500**, checked with `curl -s -o /dev/null -w '%{http_code}'` on a slug that doesn't exist.
 - [ ] **The route's metadata, JSON-LD and static params survived the swap**: every item under KEPT IN THE ROUTE in the report is still exported or rendered.
 - [ ] **One Section per page region**, per the [Section rule](SKILL.md#section-rule), and every whole-entry `object` prop either replaced by per-field bindings or backed by an explicit field request (§ Studio fetches only the fields your bindings name), verified on the live route.
@@ -211,7 +216,7 @@ This skill succeeds only when ALL of the following are true.
 | Declaring success on "it renders" without comparing to the ORIGINAL design | Design drift ships (a crude lookalike, a position-dependent layout flattened to a uniform Repeater, a section rendering blank because a prop collapsed or received only some fields) and the USER catches it, re-prompting "the design doesn't match" | Run the before/after visual-parity gate (step 6). Capture the original render first, compare after, fix any drift before declaring done |
 | Rebuilding an interactive or computing component as a hand-authored lookalike | Loses its behavior and exact layout. The user sees a "close but wrong" render and has to correct it | Register the app's actual component whole, as the [Section rule](SKILL.md#section-rule) says for these two cases |
 | Registering a presentational component whole "for fidelity" | One block an author can't restructure, and a coarse prop that only receives the fields bound to it (§ Studio fetches only the fields your bindings name) | Rebuild it from the library primitives with per-field bindings. The library's design props carry the original classes |
-| Client-rendered swap with `if (error) throw error` | Every bad URL becomes a 500, and the route loses its metadata, JSON-LD and static params | Server-rendered swap through `resolveComposition` (step 5), SEO exports kept |
+| Client-rendered swap with `if (error) throw error` | Every bad URL becomes a 500, and the route loses its metadata, JSON-LD and static params | Server-rendered swap with the `isCompositionNotFound` catch (step 5), SEO exports kept |
 | Inferring `templateEntryUid` wrong (e.g. passing `params.slug` when the entry is looked up by a different field) | The route fetches the wrong entry or 404s | Re-read the original entry-fetch code carefully. Use the same lookup key Studio's spec resolver expects |
 
 ## Where does call-site display logic go?
@@ -233,7 +238,7 @@ Rule of thumb: **if the call site is doing anything the Data Picker can't expres
 This bites migrations more than any other build, because the original route passed whole entries to its components. On the live site the SDK projects the Delivery API query (`only[]`) down to the fields the composition's bindings name. Inside the editor it fetches everything. So a whole referenced entry bound to one `object` prop renders fully while you author and arrives as little more than its `uid` on the published page, with no error. Measured on a product card: no title, price or images.
 
 - **Bind one field per prop**: the default, and what the [Section rule](SKILL.md#section-rule) already asks for on presentational components.
-- **A component kept whole that genuinely needs the whole entry** (interactive, or computing from many fields): request the extra fields explicitly. The options in 2.0.1, `extendQuery.only` (deprecated, still honoured) or fetching the data yourself through the `data` prop, and their caveats are defined once in [`register-component-prop-contracts`](register-component-prop-contracts.md) § Studio fetches only the fields your bindings name. Pass `extendQuery` as the third argument of `resolveComposition`, which forwards it to `fetchCompositionData`.
+- **A component kept whole that genuinely needs the whole entry** (interactive, or computing from many fields): fetch the extra data yourself through the `data` prop. The options and their caveats are defined once in [`register-component-prop-contracts`](register-component-prop-contracts.md) § Studio fetches only the fields your bindings name. Older code passed `extendQuery.only` to the fetch for this. It is deprecated (confirmed by the Studio team): don't add it to new code.
 
 Verify on the published route in a plain browser tab, not in the editor: the editor fetches everything and hides the gap.
 

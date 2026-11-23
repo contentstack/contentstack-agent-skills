@@ -2,6 +2,21 @@
 
 All notable changes to the Contentstack agent skills bundle. Versions match the `version` field in every plugin manifest that declares one.
 
+## 0.4.2
+
+### Changed skills
+
+- **`studio` sends work to the Studio MCP first.** The router now uses the Studio MCP (built on Flux) whenever its tools are callable, and falls back to the bundled guides only for five named reasons. The new `fallback-map` says which guides continue a goal the Studio MCP stopped part-way through.
+  - The description also covers Live Preview, Visual Editor, Launch, content types and Personalize when they are part of Studio work.
+  - Definition of done: Studio writes a Section thumbnail only while it is empty (PNG, JPEG or WebP; SVG shows blank). The canvas route sits at the project's Canvas URL path. The site reads the preview token on preview environments only.
+  - SDK 2.0: `extendQuery` is deprecated; switch the reference on in the template instead. 404s are decided by `isCompositionNotFound` in a try/catch, with `isStudioEditorMode` gating the editor's empty page, never by `hasSpec`/`hasTemplate`. Object props must declare `properties`. Use `isNot` rather than `neq` on single selects. `schema_version` 1.1.0 is explained.
+  - Template URLs: the pattern is the content type prefix + `{{entry.url}}`, a typed or API-set `user_specified_pattern` never reverts, references in a URL pattern go in `url_queries.include`, ties break on fixed text rather than `composable_uid`, and the Custom Preview URL can be set by API. `build-connected-template` has a new "How template URLs work" section.
+  - `skills-index`, `install-contentstack-mcp` and `understand-contentstack-mcp` point to the Studio MCP for Studio work.
+  - Visual Editor edit tags in components (`register-component-cslp`, `register-component-prop-contracts`, `decompose-jsx-to-atomics`, `make-visual-editor-editable`): a list passed as a prop spreads `$<prop>` on its wrapper and each item's tag through a new `itemTag` helper. studio-registry 2.0.1 writes item tags as `<field>.$0`, which Visual Editor rejects as "Invalid CSLP tag"; the helper rewrites them to `<field>.0` and leaves a correct tag alone. Fields inside a listed entry use the tags under `item.$`. A component built from atoms hands each value's tag down with it. An empty `<img>` still renders a tagged placeholder. A prop added only to pass tags through shows up as a Studio setting.
+  - `register-component` gives every registration a `layerIcon`, so parts don't all show Studio's default glyph in the Layers tree. `register-component-pitfalls` covers `icon` used instead, and bare names or source paths.
+  - An expired or copied preview link no longer answers 500: `configure-csr-vs-ssr` retries once without the preview parameters when the preview host turns the code down (`UPSTREAM_ERROR` with a 4xx), and decides the 404 from the query actually fetched. `troubleshoot` and `troubleshoot-composition-resolution` route the symptom there.
+  - `install-studio` drops `exclude: ["outsideLivePreviewPortal"]` from `editButton`, so the Live Preview pane shows the Edit button that leads to Visual Editor.
+
 ## 0.4.1
 
 This release adds nine skills, connects every plugin to the hosted Contentstack MCP server, and corrects claims in the existing skills that didn't match the product. The `studio` skill now matches Studio SDK 2.0.

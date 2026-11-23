@@ -18,7 +18,7 @@ Do NOT use for: choosing CSR or SSR ([`configure-csr-vs-ssr`](configure-csr-vs-s
 - `sdk.fetchCompositionData` (SSR) throws it.
 - `isCompositionNotFound(error)` (from `@contentstack/studio-react`) tells "no composition for this URL" apart from everything else: the preview host down, a bad token, a network failure.
 
-Branch on that and nothing else. Never check `specOptions.spec`, `hasSpec` or `hasTemplate`: a successful fetch always returns a spec, and `hasTemplate` is `false` for every freeform composition.
+Branch on that and nothing else. Never check `specOptions.spec`: a successful fetch always returns a spec. Never check the deprecated `hasSpec` or `hasTemplate` either (both `@deprecated` in studio-client 4.1.0): `hasTemplate` is `false` for every freeform composition, so gating on it 404s them.
 
 **Why not 404 on every error:** an outage would show visitors "Page not found" with status 404, and search engines drop pages that answer 404. A real failure has to stay a 500 (SSR) or an error state (CSR), so it's noticed and retried.
 
@@ -89,7 +89,7 @@ React 19 hoists the `<meta>` into `<head>`. On React 18, set it with your head m
 
 Wrap the fetch in `try` / `catch`. In `catch`, send the 404 when `isCompositionNotFound(err)`, and rethrow anything else so it stays a 500. Pass the full request query string as `searchQuery`: Studio's editor context (locale, variant, edit mode) and its preview hash reach the server only that way.
 
-**Clear the preview hash before each fetch.** The stack in `lib/studio.server` is shared by every request. The SDK sets a request's preview hash on it but never clears it, so on a deployment with a preview token the next visitor is served the last editor's drafts. `stack.livePreviewQuery({ live_preview: "" })` before the fetch prevents that; when the request carries a hash, the SDK sets it again itself. The [`resolveComposition`](configure-csr-vs-ssr.md#resolve-composition-helper) helper does this and the `isCompositionNotFound` check in one call, if you'd rather not repeat them per route.
+**Clear the preview hash before each fetch.** The stack in `lib/studio.server` is shared by every request. The SDK sets a request's preview hash on it but never clears it, so on a deployment with a preview token the next visitor is served the last editor's drafts. `stack.livePreviewQuery({ live_preview: "" })` before the fetch prevents that; when the request carries a hash, the SDK sets it again itself. Up to and including studio-react 2.0.1 the SDK doesn't clear it itself; keep the line until the site runs the release that does ([`upgrade-studio-sdk`](upgrade-studio-sdk.md)).
 
 ### Next.js App Router
 
@@ -277,7 +277,7 @@ Succeeds only when ALL of the following are true:
 - [ ] A real failure isn't a 404: with the delivery token changed to a wrong one, a page returns 500 (SSR) or the error state (CSR), not the 404 page.
 - [ ] A new, unpublished template opens in Studio's canvas without showing the 404 page.
 - [ ] React Router: only one `path="*"` route exists.
-- [ ] No route checks `specOptions.spec`, `hasSpec` or `hasTemplate` to decide a 404, and every 404 branch checks `isCompositionNotFound`.
+- [ ] No route checks `specOptions.spec` or the deprecated `hasSpec` / `hasTemplate` to decide a 404, and every 404 branch checks `isCompositionNotFound`.
 
 If acceptance fails, report which check broke and stop.
 
@@ -287,7 +287,7 @@ If acceptance fails, report which check broke and stop.
 | --- | --- | --- |
 | `await sdk.fetchCompositionData()` with no `try` | The fetch throws on a miss, so the framework's error page shows a 500 | Wrap it and send the 404 from `catch` |
 | Every error sent to the 404 page | An outage (preview host down, bad token) shows "Page not found" with status 404, and search engines drop the pages | 404 only when `isCompositionNotFound(err)`; rethrow anything else |
-| `if (!specOptions?.spec)`, `!hasSpec` or `!hasTemplate` as the 404 test | A successful fetch always has a spec, so the check never fires. `hasTemplate` is `false` on every freeform composition, so that one 404s working pages | Branch on `error` (CSR) or `catch` (SSR) only |
+| `if (!specOptions?.spec)`, or the deprecated `!hasSpec` / `!hasTemplate`, as the 404 test | A successful fetch always has a spec, so the check never fires. `hasTemplate` is `false` on every freeform composition, so that one 404s working pages | Branch on `error` (CSR) or `catch` (SSR) only |
 | `if (error) return <ErrorState />` on the CSR hook | Every unknown URL looks like a crash | `isCompositionNotFound(error) ? <NotFound /> : <ErrorState />` |
 | `notFound()` inside `try` | It throws, and your own `catch` swallows it | Call it in `catch` |
 | `generateMetadata` without `try` / `catch` | A miss throws there first, and the page errors instead of 404ing | Return `{}` from `catch` |
@@ -295,7 +295,7 @@ If acceptance fails, report which check broke and stop.
 | A new 404 page when the site already has one | Two designs, and the old one silently stops showing | Reuse the existing page |
 | SSR `searchQuery` not forwarded | Studio's editor context and preview hash never reach the server, so the canvas renders the wrong locale or variant, and an unpublished template 404s in the canvas | Pass the full request query string |
 | `generateMetadata` calling `fetchCompositionData` itself | Two fetches per request | Wrap the fetch in React's `cache()` and call that from both |
-| SSR fetch without clearing the preview hash | The SDK sets a request's preview hash on the shared stack and never clears it, so later visitors get the last editor's drafts | `stack.livePreviewQuery({ live_preview: "" })` before each fetch, or use `resolveComposition` |
+| SSR fetch without clearing the preview hash | The SDK sets a request's preview hash on the shared stack and never clears it, so later visitors get the last editor's drafts | `stack.livePreviewQuery({ live_preview: "" })` before each fetch |
 | Testing with one unknown URL only | A bad slug under a connected template fails at a later step | Test both URLs in Acceptance |
 | SSR browser init only inside the page component | On a 404 the page never mounts, and Studio shows "Can't Connect" | Init from the root layout |
 

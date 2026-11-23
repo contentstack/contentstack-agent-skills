@@ -10,7 +10,7 @@ Part of the API-authoring set. Start at [`author-composition-via-api`](author-co
 
 ## Never pass the compressed `ui` inline via a shell variable
 
-A large `zlib:<base64>` blob inlined into a `curl -d "..."` string is fragile: JSON quoting and escaping mistakes, argument-length limits and copy-paste truncation all corrupt the payload. A corrupted `ui` tree fails silently: `hasSpec: true`, SSR looks fine, but if a structural key such as `"children"` is wrong, every child slot resolves empty and the canvas renders blank with **no error anywhere**. Background colors still paint (from `responsiveStyles`), masking the bug until you inspect the raw HTML.
+A large `zlib:<base64>` blob inlined into a `curl -d "..."` string is fragile: JSON quoting and escaping mistakes, argument-length limits and copy-paste truncation all corrupt the payload. A corrupted `ui` tree fails silently: the fetch succeeds, SSR looks fine, but if a structural key such as `"children"` is wrong, every child slot resolves empty and the canvas renders blank with **no error anywhere**. Background colors still paint (from `responsiveStyles`), masking the bug until you inspect the raw HTML.
 
 Always build the payload in a file and POST with `-d @file`. Save the uncompressed tree as `ui.json` first, then:
 

@@ -31,6 +31,8 @@ This is the **preferred path** for wrapping an existing production component who
 
 **Bindable: `type: "object"` bound to a matching entry Group / Global Field.** Same idea for a single-entry-object shape (a nested `cta: { label, href }` binding into an entry Group with matching sub-fields). Groups live on the entry, no `resolvedReferences` step.
 
+**From SDK 2.0, an `object` prop must declare `properties`.** The same holds for a group, a global field, or a modular block bound as an object. List each sub-field the component reads (`cta: { type: "object", properties: { label: { type: "string" }, href: { type: "href" } } }`).
+
 **When array/object won't fit: reach for the Repeater or the adapter pattern.** If the list iterates a **Modular Block** (polymorphic, each item can be a different block type), template authors need to **swap a different child Section per template instance**, or the production leaf's shape doesn't reduce cleanly to array-item scalars, use one of:
 
 - **`build-repeating-section`**: greenfield parent+child+Repeater pattern with a Section Slot for template-author swaps.
@@ -45,6 +47,28 @@ The narrow non-CMS use for `type: "array"` / `type: "object"` remains: authoring
 - **Prefer atomic + Repeater**: register the leaf card's fields as atomic components and iterate with a Repeater + child Section ([`build-repeating-section`](build-repeating-section.md)), so per-item binding is visible and verifiable in Studio rather than hidden inside one array prop.
 
 `build-section` Step 5e enforces this at bind time. Catching it at registration saves a round trip.
+
+### Lists passed as a prop
+
+An array prop renders, but its items are only editable in Visual Editor if the component spreads their tags. Studio sends `$<prop>` for the whole list and `$<prop>Items`, an array with one tag per item. Spread `$<prop>` on the list's wrapper and each item's tag on its element, through the `itemTag` helper. Declare both:
+
+```tsx
+import type { Cslptag } from "@contentstack/studio-react";
+
+interface GalleryProps {
+  images?: { url?: string; description?: string }[];
+  $images?: Cslptag;
+  $imagesItems?: Cslptag[];
+}
+```
+
+```tsx
+<ul {...$images}>
+  {images.map((img, i) => <li key={img.url ?? i} {...itemTag($imagesItems, i)}>…</li>)}
+</ul>
+```
+
+Fields inside each item carry their own tags under `item.$`. Without `itemTag`, studio-registry 2.0.1's item tags (`<field>.$0`) show "Invalid CSLP tag" in Visual Editor and the list has no "+". The helper, the full pattern and the check are in [`register-component-cslp` § Lists passed as a prop](register-component-cslp.md#lists-passed-as-a-prop).
 
 ## Studio fetches only the fields your bindings name
 

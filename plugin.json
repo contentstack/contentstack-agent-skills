@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "contentstack-skills",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Contentstack agent skills plus the hosted Contentstack MCP server: CMS modeling and APIs, Delivery SDK and GraphQL, Live Preview, Studio, Brand Kit, Personalize, Lytics, Launch, Automate, Developer Hub and Marketplace apps, the CLI, and migrations.",
   "author": { "name": "Contentstack", "url": "https://www.contentstack.com" },
   "homepage": "https://developers.contentstack.com",
