@@ -30,6 +30,7 @@ Classify each hit with the recipe's rule: analytics / flags / banners / chat / p
 | JS init in app code (banner, chat, flags) | `if (!isStudioCanvas()) { … }` |
 | Analytics / pixels in app code | `if (!isStudioEditorMode()) { … }` (preview sessions aren't visitors either) |
 | GTM snippet in `<head>` (runs before SDK) | Inline `window.dataLayer = window.dataLayer || []; window.dataLayer.push({ cs_studio_canvas: new URLSearchParams(location.search).has("cs-composable-studio") })` BEFORE the GTM script, then tell the user to add the per-tag trigger condition `{{cs_studio_canvas}} equals false` in the GTM console. The SDK cannot do the GTM-console half |
+| Analytics loader tag in `<head>` (`<script async src=".../gtag/js?id=…">`, a pixel's base script) | Leave the tag. Loading the library sends nothing; the `gtag("config" \| "event", …)` and `fbq(…)` calls do, so gate those calls in app code with `isStudioEditorMode()` (row 2). Don't add a `location.search` check to the tag: only the GTM flag above may read the URL |
 | Declaratively injected widgets you can't reach in code | CSS: `html.cs-studio-canvas <widget-selector> { display: none !important; }` |
 | Server-emitted script tags (SSR) | `isStudioCanvas(<request search params>)` (no-arg form is always `false` on the server) |
 

@@ -26,7 +26,7 @@ Do **not** use `node -e "require('@contentstack/studio-react/package.json')"`: t
 
 **Availability has two independent halves**: the SDK in your app and the Studio editor. The editor half (declared variables in the Data Picker, the `action` prop picker) is **not yet rolled out on every data center**, so a stack whose editor lacks it can't author BYOS even with a correct SDK build. Check the DC alongside the export: [`analyze-project-fit`](analyze-project-fit.md) § 2b.
 
-**`BYOS ABSENT` means stop.** Releases up to `1.7.0` are ABSENT; `1.9.0` ships it. This chapter applies only to a build that ships it. Either obtain such a build, or fall back to component-local state (a plain `useState` inside one registered component, no author binding, no cross-component sharing) and say so explicitly. Don't emit `useStudioState` against a package that can't import it.
+**`BYOS ABSENT` means stop.** Releases up to `1.7.0` are ABSENT; `1.8.0` and later ship it (checked on npm: 1.8.0's `index.d.ts` exports `registerGlobalStateVariables`, `studioState` and `useStudioState`). This chapter applies only to a build that ships it. Either obtain such a build, or fall back to component-local state (a plain `useState` inside one registered component, no author binding, no cross-component sharing) and say so explicitly. Don't emit `useStudioState` against a package that can't import it.
 
 ## Context
 
@@ -146,7 +146,7 @@ Registered components give Studio your markup. **BYOS gives it your behavior.** 
 
 ## Acceptance
 
-- [ ] **Preflight passed**: the installed `@contentstack/studio-react` actually exports the state APIs (≥ 1.7.0). Nothing was written against a version that can't import them.
+- [ ] **Preflight passed**: the installed `@contentstack/studio-react` actually exports the state APIs (1.8.0 or later; 1.7.0 does not). Nothing was written against a version that can't import them.
 - [ ] Every variable authors need is **declared** (init or component tier): nothing relies on an ad-hoc key being bindable.
 - [ ] The tier choice is deliberate, and no key is declared in both places expecting init to win.
 - [ ] `storage` is set explicitly, and for `custom` both `getState` and `setState` exist.

@@ -1,0 +1,46 @@
+name: Routing evals
+
+# Checks that each prompt in evals/ loads the right skill. Each run is a real Claude session
+# (about $0.10-0.15), so this runs once per case on PRs that touch skills or evals.
+on:
+  pull_request:
+    paths: ["skills/**", "evals/**"]
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Runs per case
+        default: "3"
+
+permissions:
+  contents: read
+
+jobs:
+  routing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - name: Skip without an API key
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "::notice::ANTHROPIC_API_KEY is not set (forks and Dependabot PRs), so routing evals were skipped."
+      - uses: actions/checkout@v4
+        if: env.ANTHROPIC_API_KEY != ''
+      - uses: actions/setup-node@v4
+        if: env.ANTHROPIC_API_KEY != ''
+        with:
+          node-version: 22
+      - name: Install Claude Code
+        if: env.ANTHROPIC_API_KEY != ''
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Run routing evals
+        if: env.ANTHROPIC_API_KEY != ''
+        run: >-
+          claude plugin eval . --tag routing --ablation none
+          --runs ${{ inputs.runs || '1' }} -j 6 --max-cost-usd 40
+          --trust-plugin --no-publish --json evals/results/routing.json
+      - uses: actions/upload-artifact@v4
+        if: always() && env.ANTHROPIC_API_KEY != ''
+        with:
+          name: routing-evals
+          path: evals/results/

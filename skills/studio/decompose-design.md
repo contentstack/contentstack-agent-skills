@@ -28,10 +28,11 @@ Ship this decomposition BEFORE registering anything. Registrations are expensive
 
 This skill runs **all four questions** of the [decision framework](design-component-library.md) once per identified section on the design. The framework is an open validator. It doesn't assume any specific pre-registered library:
 
-- **Q1. Classify: Atom, Layout, or Compound?** For each irreducible fragment of the design, ask what shape it is. A single content unit is an Atom. A slot-carrying arrangement is a Layout. Both content AND arrangement is a Compound. Refuse and decompose further, running Q1 recursively on each sub-fragment until every leaf is an atom or a layout. Sections themselves are compositions of primitives, not primitives. A marketing section design almost always starts as a compound that decomposes to Section + Stack + atoms.
-- **Q2. Does the library already have it?** Check the target project's existing registry **and** the Studio project itself. [`match-existing-pattern`](match-existing-pattern.md) § Step 1b returns the palette ranked by usage plus every Section grouped by the schema it binds. If a matching primitive exists, mark the row as reuse. If a Section already covers the target schema, the row is reuse or extend, not a build. Otherwise mark as new registration. Aggressively dedup across sections on the same design.
-- **Q3. Which props?** For each proposed prop on a new primitive: varies per-instance AND functional/content intent (not visual polish)? Refuse props that fail either half.
-- **Q4. Which are Exposed?** For each schema prop: author-understandable AND DS-portable? If both, mark as Exposed Prop candidate. Never expose atom props.
+The four questions are defined once in [`design-component-library`](design-component-library.md) § The four-question decision framework. What this skill adds:
+
+- **Q1** — run it on each irreducible fragment, then recursively on every sub-fragment, until every leaf is an atom or a layout. Sections are compositions of primitives, not primitives: a marketing section design almost always starts as a compound that decomposes to Section + Stack + atoms.
+- **Q2** — check the target project's registry **and** the Studio project itself. [`match-existing-pattern`](match-existing-pattern.md) § Step 1b returns the palette ranked by usage plus every Section grouped by the schema it binds. A matching primitive makes the row reuse; a Section already covering the target schema makes it reuse or extend, not a build. Aggressively dedup across sections on the same design.
+- **Q4** — a prop that passes becomes an Exposed Prop candidate on the Section.
 
 Every "Components" row in the emitted sheet ends with the Q1 to Q4 verdict for that component. When a customer designer or developer reads the sheet, they can see WHY each primitive was proposed. No black-box decisions.
 

@@ -81,7 +81,7 @@ The section's own canvas therefore always shows **one empty placeholder** (no pa
 
 | Section shape | Rule | Where its bindings resolve against |
 |---|---|---|
-| **One Repeater over one field** (Card Grid over `related_posts`, feature list over `features[]`) | Set `selectedField=<that field>` + use scope-root repeater binding `{ path: {} }` inside | `template` becomes the field's array value directly |
+| **One Repeater over one field** (Card Grid over `related_posts`, feature list over `features[]`) | Keep whole-entry scope and bind the Repeater to `{ <field>: {} }`, per the [canonical list recipe](author-composition-repeater-recipes.md#canonical-list-recipe) | `template` stays the entry; the Repeater iterates the field |
 | **Multiple fields on the page entry** (Header reading `brand` + `nav_links` + `signin_label`, Hero reading a `hero` group) | **Leave `selectedField` unset**: the section needs the whole entry | `template` is the full page entry. Keep original `template.<field>` binding paths |
 
 Setting `selectedField` on a multi-field section loses access to everything outside the scoped path. Bindings to those fields resolve to `undefined`.

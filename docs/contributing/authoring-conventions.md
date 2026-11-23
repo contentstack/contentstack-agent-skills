@@ -9,9 +9,7 @@ These conventions keep skills consistent, parseable by agents, and safe. Follow 
 
 ## Structure
 
-Follow the section outline described in [Anatomy of a SKILL.md](../how-it-works/skill-anatomy.md): Description, When to Use, User Problem, Success Criteria, Expected Inputs/Outputs, Example User Requests, Workflow Summary, Instructions, Output Format, Tooling Notes, Security, Product Context, References, Examples.
-
-Not every skill needs every section, but keep the order consistent so agents (and readers of the docs) find things in predictable places.
+Use the [skill template](skill-template.md): When to use, Before you answer, Instructions, MCP tools, Output, Security, References, Examples. When to use, Instructions, MCP tools and Security are required, and `scripts/validate.mjs` rejects other sections or a different order. Put subtopics under `###` headings inside Instructions.
 
 ## Frontmatter
 
@@ -23,7 +21,7 @@ Not every skill needs every section, but keep the order consistent so agents (an
 
 ## Write the description as the trigger
 
-Agents choose a skill by matching your request against its description (see [How skill selection works](../how-it-works/router.md)). Make the "Use when…" clause list the concrete requests, tools, and terms a user would mention: "Delivery SDK", "Live Preview", "pagination", not "helps with content". Keep the **When to Use** section in the body consistent with it, and avoid overlap with neighboring skills' descriptions.
+Agents choose a skill by matching your request against its description (see [How skill selection works](../how-it-works/router.md)). Make the "Use when…" clause list the concrete requests, tools, and terms a user would mention: "Delivery SDK", "Live Preview", "pagination", not "helps with content". Keep the **When to use** section consistent with it, avoid overlap with neighboring skills' descriptions, and add a "For X, use Y." cue where two skills sit close together. The [routing evals](routing-evals.md) test this.
 
 ## Security is mandatory
 
@@ -38,7 +36,7 @@ Inherit the product's shared safety rules (see [Security & safety model](../how-
 
 ## Default to read-only
 
-Unless a skill genuinely needs to perform an external action, make it advisory and read-only. If it does perform actions, gate every destructive or production-facing step behind explicit confirmation, and prefer dry-run defaults.
+Unless a skill genuinely needs to perform an external action, make it advisory. List the MCP tools that would carry out its steps under **MCP tools**, so an agent with the Contentstack MCP server connected can act when the user asks. Whenever a skill or its tools perform actions, gate every destructive or production-facing step behind explicit confirmation, and prefer dry-run defaults.
 
 ## References, not assumptions
 

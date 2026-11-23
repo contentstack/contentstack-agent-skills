@@ -70,8 +70,8 @@ Both Repeaters carry `props.children` pointing at their own slot. Without it the
 | Source-type combo | Extra prerequisites |
 |---|---|
 | group-multiple (e.g. `footer_columns`) containing group-multiple (`column.links`) | (nothing extra), inline values both ways |
-| group-multiple containing multi-reference (e.g. column.related_entries) | Add `data_sources.resolvedReferences` for the nested reference path (e.g. `"root.footer_columns.0.related_entries": ["footer_columns.related_entries"]`). Add Condition Block as immediate child of `R-inner`. |
-| multi-reference containing group-multiple (e.g. category.products[].images) | `resolvedReferences` for the outer reference (`root.products`). Condition Block as child of `R-outer`. Inner iteration is over the (inline) `images` group-multiple, no extra prerequisites for `R-inner`. |
+| group-multiple containing multi-reference (e.g. column.related_entries) | Add `data_sources.resolvedReferences` for the nested reference path (e.g. `"template": ["footer_columns.related_entries"]`). Add Condition Block as immediate child of `R-inner`. |
+| multi-reference containing group-multiple (e.g. category.products[].images) | `resolvedReferences` for the outer reference (`"template": ["products"]`). Condition Block as child of `R-outer`. Inner iteration is over the (inline) `images` group-multiple, no extra prerequisites for `R-inner`. |
 | multi-reference containing multi-reference | `resolvedReferences` entries for BOTH the outer reference AND each inner reference path, inner path is `<outer_ref>.<inner_ref>`, with **no** content-type uid between them (§ [Where a reference path must terminate](author-composition-repeater-recipes.md#reference-path-termination)). Condition Block in both Repeaters. |
 | **Modular Block with a reference inside a block** (e.g. `blocks[].feature_block.related_products`) | `resolvedReferences` path must include the **block uid** segment, `"blocks.feature_block.related_products"`, NOT `"blocks.related_products"`. Condition Block per block uid on the Repeater. See § Modular Block to reference: the block-uid segment below. |
 
@@ -89,7 +89,8 @@ Omitting the block uid fails silently, for the reason given in § [Where a refer
 
 ```jsonc
 // Template composition — MB field `blocks`, block uid `feature_block`,
-// reference field `related_products` inside that block.
+// reference field `related_products` inside that block. Raw CMA form (a JSON string);
+// the Compositions API takes the array: author-composition-entry § Wire shapes.
 "data_sources": "[{\"uid\":\"template\",\"data\":null,\"resolvedReferences\":{\"template\":[\"blocks.feature_block.related_products\"]}}]"
 ```
 

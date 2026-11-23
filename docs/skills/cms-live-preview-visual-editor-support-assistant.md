@@ -41,6 +41,10 @@ The skill stops once one contract is localised and adds no fallbacks while diagn
 - "My preview iframe is blank. What should I check?"
 - "How do preview tokens and live preview hashes work?"
 
+## MCP tools
+
+No MCP tool reads the Visual Experience settings or the Onboarding Check. With the Contentstack MCP server connected, the agent uses read tools to gather evidence: environments and base URLs (`get_all_environments`), draft versus published entries (`get_single_entry` against `get_a_single_entry_cdn`), locales, branches and entry variants, and Launch deployment and server logs for sites hosted on Launch.
+
 ## Safety notes
 
 Never makes changes automatically. Provides safe diagnostics and requires confirmation before any config change. Never asks for, echoes or reconstructs preview tokens or live preview hashes, and never asks for cookies or auth headers. Delivery tokens are safe in the browser; preview tokens read unpublished content, so they are exposed client-side only on preview deployments (CSR preview needs them), never in production builds; management tokens never reach the browser. Never recommends enabling Live Preview in production builds. If a secret appears in input, advises rotating it.

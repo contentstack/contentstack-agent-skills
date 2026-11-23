@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "contentstack": {
+      "type": "http",
+      "url": "https://mcp-profile-hub.contentstack.com/api/mcp"
+    }
+  }
+}

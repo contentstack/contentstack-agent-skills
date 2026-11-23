@@ -147,7 +147,7 @@ Also required on the Repeater: `metadata.mode: "preview"`, or the canvas shows o
 
 **Worked failure.** A carousel repeater bound with the reference shape (`{"case_study_cards": {"": {}}}`) over a modular-block field rendered **0** cards. The same tree with the plain path and `repeaterBindingFieldType: "modular_block"` rendered all **6**, with each Condition Block routing to its branch. Nothing in the entry data or the panel indicated which shape was wrong. The Layers panel read "Iterates Case Study Cards" in both cases.
 
-**Scope the section at the content type root when the repeated field is top-level.** A `linked_schemas` entry of `{content_type_uid}` alone makes root fields addressable. Adding `selected_field` narrows the scope to that field, after which a path naming the same field no longer resolves.
+**Scope the section at the content type root when the repeated field is top-level.** A `linked_schemas` entry of `{content_type_uid}` alone makes root fields addressable. Adding `selected_field` narrows the scope to that field, after which a path naming the same field no longer resolves. This is step 1 of the [canonical list recipe](author-composition-repeater-recipes.md#canonical-list-recipe).
 
 **Verify a `resolvedReferences` path against the API before assuming it is wrong.** The paths feed `include[]`, so they are directly testable:
 

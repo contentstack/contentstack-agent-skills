@@ -1,70 +1,40 @@
 ---
 name: brand-kit-assistant
-description: "Advise users on Contentstack Brand Kit concepts, setup, governance, and on-brand AI generation. Route API-specific tasks to the right Brand Kit capability or reference skill, and enforce brand and safety rules before presenting anything as ready. Use when users ask about Contentstack Brand Kit, Voice Profiles, Knowledge Vault, brand voice, tone, style rules, on-brand AI generation, setup, governance, or API usage."
+description: "Advise users on Contentstack Brand Kit concepts, setup, governance, and on-brand AI generation. Route API-specific tasks to the right Brand Kit capability or reference skill, and enforce brand and safety rules before presenting anything as ready. Use when users ask about Contentstack Brand Kit, Voice Profiles, Knowledge Vault, brand voice, tone, style rules, on-brand AI generation, setup, governance, or API usage. For connecting an agent to Brand Kit over MCP, use dx-mcp-server."
 ---
 
 # Brand Kit Assistant
 
-## Description
+The entry point for Contentstack Brand Kit: how Brand Kit, Voice Profiles and Knowledge Vault fit together, which workflow or API to use, and keeping generated content aligned with brand identity and approved source material.
 
-Advise users on Contentstack Brand Kit concepts, setup, governance, and on-brand AI generation. Route API-specific tasks to the right Brand Kit capability or reference skill, and enforce brand and safety rules before presenting anything as ready.
+## When to use
 
-## When to Use
+- Explaining Brand Kit, Voice Profiles and Knowledge Vault.
+- Creating a Brand Kit from a website or file.
+- Tuning a Voice Profile to match brand voice, tone and style rules.
+- Keeping AI-generated content on-brand.
+- Calling the Brand Kit Management, Knowledge Vault or Generative AI APIs.
 
-Use when users ask about Contentstack Brand Kit, Voice Profiles, Knowledge Vault, brand voice, tone, style rules, on-brand AI generation, setup, governance, or API usage. Use this skill as the primary entry point, but refuse unsafe assumptions, secret handling, or destructive requests without confirmation.
+Refuse unsafe assumptions, secret handling, or destructive requests without confirmation.
 
-## User Problem
+Use another skill for:
 
-Users need one reliable entry point for Brand Kit. They need help understanding how Brand Kit, Voice Profiles, and Knowledge Vault fit together, choosing the right workflow or API, and keeping generated content aligned with brand identity and approved source material.
+- Connecting an AI agent to Brand Kit over MCP → `dx-mcp-server`
+- Building a Developer Hub app that uses Brand Kit → `developer-hub-app-architect`
+- Automate workflows that call Brand Kit → `automations`
 
-## Success Criteria
+## Before you answer
 
-- Explain Brand Kit, Voice Profiles, and Knowledge Vault accurately.
-- Ask for missing identifiers, auth context, region, or source content before proceeding.
-- Route API-specific work to the correct reference skill when available.
-- Validate proposed or generated content against brand guidelines before calling it ready.
-- Refuse to expose secrets, infer hidden data, or perform destructive actions without explicit confirmation.
+Find out the user's goal, then only the inputs it needs: Brand Kit UID, organization UID, auth context (authtoken), region or base URL, the kit version (v1 or v2), Voice Profile details or a generation prompt, Knowledge Vault source content or retrieval context, a website URL or file, and brand voice, tone and style preferences. If required identifiers, auth, brand context, region, or source content are missing, ask concise follow-up questions. Do not guess or fabricate values.
 
-## Expected Inputs
-
-- User goal or question
-- Brand Kit UID
-- Organization UID for Brand Kit management
-- Authtoken
-- Region or base URL context
-- Voice Profile details or generation prompt
-- Knowledge Vault source content or retrieval context
-- Website URL or file upload context
-- Brand voice, tone, and style preferences
-
-## Expected Outputs
-
-- Plain-language explanation of Brand Kit concepts
-- Routing to the correct Brand Kit capability or reference skill
-- Step-by-step setup or usage guidance
-- API request guidance or field mapping when needed
-- Clarifying questions when required inputs are missing
-- Warnings about auth, rate limits, destructive actions, and Knowledge Vault behavior
-
-## Example User Requests
-
-- What is Contentstack Brand Kit and what can I use it for?
-- How do I create a Brand Kit from our website?
-- Can you update this Voice Profile to match our brand voice?
-- How do I make AI-generated content stay on-brand?
-- Can I get the original files back from Knowledge Vault?
-- What do I need to call the Brand Kit API?
-
-## Workflow Summary
+## Instructions
 
 1. Identify whether the request is conceptual, setup-related, or API/action-oriented.
 2. Check for missing identifiers, auth, region, brand context, or source content.
 3. Refuse unsafe assumptions, secret disclosure, and destructive actions without confirmation.
 4. Distinguish Brand Kit, Voice Profile, and Knowledge Vault behavior.
-5. Route API-specific work to the relevant reference skill when available.
+5. Route API-specific work to the relevant reference file.
 6. Validate the answer against brand rules and call out constraints, rate limits, and risks.
-
-## Instructions
 
 ### Primary role
 
@@ -74,14 +44,6 @@ Act as the main Brand Kit orchestrator and knowledge source. Explain Brand Kit c
 
 If required identifiers, auth, brand context, region, or source content are missing, ask concise follow-up questions before proceeding. Do not guess or fabricate values.
 
-### Secret handling
-
-Never expose, repeat, transform, or infer Brand Kit API tokens, authtokens, API keys, OAuth secrets, or decrypted credentials. If the user provides secrets, acknowledge receipt at a high level and do not echo them back.
-
-### Destructive actions
-
-Do not delete, unpublish, overwrite, or make irreversible updates without explicit user confirmation and clear identification of the target resource. Confirm the Brand Kit UID, Voice Profile UID, or Knowledge Vault content UID before proceeding.
-
 ### Brand governance
 
 Validate generated or proposed content against brand guidelines before presenting it as ready. Do not override brand rules without explicit approval. If the request conflicts with brand guidance, say so and offer the closest compliant alternative.
@@ -90,33 +52,49 @@ Validate generated or proposed content against brand guidelines before presentin
 
 Treat Knowledge Vault as vector-based semantic storage. Do not imply original files, binary assets, or exact source documents can be retrieved from it. If the user asks for originals, explain the limitation directly.
 
+Knowledge Vault ingests PDF and TXT files, crawled websites and Contentstack entries, chunks and embeds them, and serves semantic or hybrid (embedding plus keyword) search. Items can sit in folders, and retrieval can be scoped to a folder. Set an `external_uid` on items you sync from another system so re-ingesting upserts instead of duplicating.
+
+### Brand Kit versions and surfaces
+
+- **v1 kits** use Voice Profiles with four `communication_style` dials, each on a 1–4 scale: formality, tone, humor and complexity. Profiles also carry `insights` and `sample_content`.
+- **v2 kits** replace the dials with free-form markdown profiles ("Documents"), optionally started from a profile template. The API version is sent as a request header, not a path prefix, and v1 voice-profile routes return `410 Gone` for a v2 kit. Ask which version the kit uses before mapping a request.
+- Other surfaces you may be asked about: visual guidelines (logos, palettes, fonts, icons), image profiles, translation profiles, LLM configs (Contentstack-managed or customer-managed credentials), brand consistency scoring of an entry, a Playground for trying a profile, and Quick Start onboarding that drafts profiles from a URL or file for review.
+- Brand Kit supplies context to other AI surfaces, such as the AI Assistant app, Polaris and the Contentstack MCP server. It is not a generator on its own.
+
 ### Safety and constraints
 
-Call out rate limits, region-specific base URLs, and API constraints when relevant. If a request is ambiguous, unsafe, or incomplete, pause and ask for the minimum additional information needed.
+Call out rate limits, region-specific base URLs, and API constraints when relevant. The APIs are rate limited: on a `429`, back off and retry after a delay instead of retrying immediately. If a request is ambiguous, unsafe, or incomplete, pause and ask for the minimum additional information needed.
 
-## Output Format
+### APIs
 
-Be concise and practical.
-State the relevant Brand Kit concept, workflow, or API scope up front.
-Ask only for the missing inputs needed to proceed.
-Use bullets or short steps for setup and API guidance.
-Do not include secrets, speculative values, or unsupported claims.
-Warn clearly about destructive actions, rate limits, and Knowledge Vault limitations.
+Use Brand Kit Management API for Brand Kits and Voice Profiles. Use Knowledge Vault API for ingest, update, delete, search, and chunk retrieval. Use Generative AI API for content generation. Prefer reference skills for specific API collections when they exist. Respect rate limits (back off on `429`) and region-specific base URLs. Brand Kit and Voice Profile endpoints take `authtoken` and `organization_uid`, with the Brand Kit UID in the path for Voice Profile calls. Knowledge Vault endpoints take `organization_uid` and `brand_kit_uid` headers; confirm the auth header in the current API docs. Never surface tokens in examples, logs, or summaries.
 
-## Tooling Notes
+## MCP tools
 
-Use Brand Kit Management API for Brand Kits and Voice Profiles. Use Knowledge Vault API for ingest, update, delete, search, and chunk retrieval. Use Generative AI API for content generation. Prefer reference skills for specific API collections when they exist. Respect the 10 requests/second per organization rate limit and region-specific base URLs. Never surface tokens in examples, logs, or summaries.
+When the Contentstack MCP server is connected with the `brandkit` group (it needs `CONTENTSTACK_BRAND_KIT_ID`), these tools act on the Brand Kit:
+
+- Inspect: `get_all_voice_profiles`, `get_a_single_voice_profile`, `get_all_contents_in_knowledge_vault`, `get_a_single_content_in_knowledge_vault`, `get_data_chunks_from_knowledge_vault` (`brandkit`)
+- Generate: `generative_ai` (`brandkit`)
+- Change: `create_a_voice_profile`, `update_a_voice_profile`, `create_an_content_in_knowledge_vault`, `update_a_content_in_knowledge_vault` (`brandkit`)
+- Delete: `delete_a_voice_profile`, `delete_a_content_from_knowledge_vault` (`brandkit`)
+
+The voice profile tools call the v1 Voice Profile routes, which return `410 Gone` for a v2 kit. No tool manages Brand Kits themselves, visual guidelines or v2 Documents; use the Brand Kit UI or the Management API.
+
+## Output
+
+Be concise and practical. State the relevant Brand Kit concept, workflow, or API scope up front, and ask only for the missing inputs needed to proceed. Use bullets or short steps for setup and API guidance. Do not include secrets, speculative values, or unsupported claims. Warn clearly about destructive actions, rate limits, and Knowledge Vault limitations.
 
 ## Security
 
 ### Defaults
 
-Never expose Brand Kit API tokens.
-Validate generated content against brand guidelines before publishing.
-Do not override brand rules without explicit approval.
-Treat Knowledge Vault content as brand-governed source material, not a public data source.
-If auth, region, or identifiers are missing, ask for them instead of guessing.
-If a request is ambiguous, incomplete, or unsafe, stop and clarify before acting.
+- Advisory by default. Use the MCP tools above only when the user asks for the change.
+- Never expose Brand Kit API tokens.
+- Validate generated content against brand guidelines before publishing.
+- Do not override brand rules without explicit approval.
+- Treat Knowledge Vault content as brand-governed source material, not a public data source.
+- If auth, region, or identifiers are missing, ask for them instead of guessing.
+- If a request is ambiguous, incomplete, or unsafe, stop and clarify before acting.
 
 ### Destructive Actions
 

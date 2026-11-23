@@ -84,10 +84,49 @@ Before doing anything destructive, check whether the user already has `@contents
 - Search for `Contentstack.stack({` or `contentstack.stack({`. The existing stack factory is what to reuse.
 - Search for `ContentstackLivePreview.init(`. If present, do NOT call `init()` again. Doing so double-initializes the channel.
 - Add `@contentstack/studio-react` only.
-- Create a SEPARATE module (e.g. `lib/studio.ts`) that imports the existing `stack` and calls `studioSdk.init({ stackSdk: stack, contentTypeUid: "<studioContentTypeUid>" })`, using the uid resolved in § 0c. Export `sdk` from there. This branch needs § 0c exactly as much as the greenfield one does.
+- Create a SEPARATE module (e.g. `lib/studio.ts`) that imports the existing `stack` and calls `studioSdk.init({ stackSdk: stack, contentTypeUid: "<studioContentTypeUid>", cslp: { appendTags: true } })`, using the uid resolved in § 0c. Export `sdk`, and export the stack it passed as `stack`: [`resolveComposition`](configure-csr-vs-ssr.md#resolve-composition-helper) imports it (step 6b). This branch needs § 0c exactly as much as the greenfield one does.
 - Do not modify the existing `lib/contentstack.ts` (or equivalent module).
 
 The full emit would clobber a custom stack factory. If NEITHER package is installed, proceed with the greenfield emit below.
+
+<a id="live-preview-without-delivery-sdk"></a>
+
+### Live Preview present, no Delivery SDK
+
+Common: the app reads content with its own `fetch` client and only uses `@contentstack/live-preview-utils` for the edit channel. Studio cannot run without a Delivery SDK stack (`studioSdk.init` needs `stackSdk`), so this branch adds one, for Studio alone:
+
+- `<pm> add @contentstack/delivery-sdk @contentstack/studio-react`. Leave `@contentstack/live-preview-utils` at the version the app pins.
+- Create `lib/studio.ts` with its own stack, built from the same credentials the app's fetch client already reads. Do not route the app's own reads through it.
+- Keep the app's existing `ContentstackLivePreview.init(...)` exactly as it is, and **do not call `init()` again**. One init per page serves both the app's edit tags and Studio.
+- Take region and hosts from the Regional host map above, as in the greenfield file.
+
+```ts
+// lib/studio.ts — the app already starts Live Preview; it had no Delivery SDK
+import Contentstack from "@contentstack/delivery-sdk";
+import { studioSdk } from "@contentstack/studio-react";
+
+const previewToken = process.env.NEXT_PUBLIC_CONTENTSTACK_PREVIEW_TOKEN;
+
+// Studio's own stack. Same credentials the app's fetch client uses; region and
+// host exactly as in the greenfield file below (CDN_HOSTS / PREVIEW_HOSTS).
+export const stack = Contentstack.stack({
+  apiKey: process.env.NEXT_PUBLIC_CONTENTSTACK_API_KEY!,
+  deliveryToken: process.env.NEXT_PUBLIC_CONTENTSTACK_DELIVERY_TOKEN!,
+  environment: process.env.NEXT_PUBLIC_CONTENTSTACK_ENVIRONMENT!,
+  ...(previewToken ? {
+    live_preview: { enable: true, preview_token: previewToken, host: "<preview-host>" },
+  } : {}),
+});
+
+// No ContentstackLivePreview.init() here: the app's existing call stays the only one.
+export const sdk = studioSdk.init({
+  stackSdk: stack,
+  contentTypeUid: process.env.NEXT_PUBLIC_CONTENTSTACK_STUDIO_CONTENT_TYPE ?? "<studioContentTypeUid>",
+  cslp: { appendTags: true },
+});
+```
+
+Use the app's existing env variable names rather than inventing new ones, and the framework's env syntax (step 6 table). Then continue with steps 6b to 10, skipping the greenfield file in step 6.
 
 > **Hazard: reusing the existing stack instance means Studio shares its Live Preview state with everything else that touches it.** `stack.livePreviewQuery(...)` doesn't scope to one call: it mutates a single shared object (`_client.stackConfig.live_preview` in `@contentstack/delivery-sdk`, the equivalent on the legacy `contentstack` v3 SDK) that lives on the stack instance itself, not on the request. If the app's OWN code calls `.livePreviewQuery(...)` on that SAME stack anywhere else — even with a legitimate, unrelated reason, e.g. a parent layout's own data fetch doing `stack.livePreviewQuery(live_preview ?? {})` with no override — it resets that shared state to empty. Next.js (and most SSR frameworks) run a page's layout(s) and the page itself concurrently on one request, so that reset can land in between two of Studio's OWN internal composition-resolution queries for the SAME lookup, flipping some of them back to the Delivery API mid-resolution with no code change and no error. Symptom: Live Preview intermittently doesn't apply — see [`troubleshoot-canvas`](troubleshoot-canvas.md) § Live Preview state resets mid-request for the full diagnosis. **If the app makes its own `.livePreviewQuery(` calls elsewhere on the same stack, give Studio's `stackSdk` its own independent stack instance instead of reusing the app's.** Reuse the app's Delivery Token/credentials to construct it, just not the same object.
 
@@ -122,8 +161,9 @@ grep -rEn "Contentstack\.stack\(|contentstack\.stack\(" --include='*.ts' --inclu
 # Existing Live Preview init (NEVER call init() twice)
 grep -rEn "ContentstackLivePreview\.init\(" --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' . 2>/dev/null | head -5
 
-# Existing Contentstack-config module (common names)
-ls src/lib/contentstack.* lib/contentstack.* src/contentstack.* contentstack.config.* 2>/dev/null
+# Existing Contentstack-config module (common names). `find`, not a bare glob:
+# zsh aborts the whole line with "no matches found" when a glob matches nothing.
+find . -maxdepth 3 -path ./node_modules -prune -o \( -name 'contentstack.*' -o -name 'contentstack.config.*' \) -print 2>/dev/null
 
 # package.json — Delivery SDK + Live Preview already installed?
 grep -E "@contentstack/delivery-sdk|@contentstack/live-preview-utils" package.json | head -3
@@ -134,7 +174,8 @@ grep -E "@contentstack/delivery-sdk|@contentstack/live-preview-utils" package.js
 | Signal | Branch to take |
 |---|---|
 | Both `@contentstack/delivery-sdk` AND `@contentstack/live-preview-utils` already in `package.json` | **Minimal-add**: `npm install @contentstack/studio-react` only, create separate `lib/studio.ts` (see § Existing Contentstack app above) |
-| Only one of the two installed | Ask user, likely partial install in progress. Do NOT auto-install the other |
+| `@contentstack/live-preview-utils` installed, **no** `@contentstack/delivery-sdk` (the app fetches with its own client) | **Live Preview without Delivery SDK**: install `@contentstack/delivery-sdk` + `@contentstack/studio-react`, give Studio its own stack in `lib/studio.ts`, keep the app's Live Preview init and don't start it a second time ([§ Live Preview present, no Delivery SDK](#live-preview-without-delivery-sdk)) |
+| `@contentstack/delivery-sdk` installed, **no** `@contentstack/live-preview-utils` | **Minimal-add** on the existing stack for Studio, then add Live Preview to that stack with [`install-live-preview`](install-live-preview.md). Ask first if the stack factory looks half-built (a partial install in progress) |
 | **Existing `lib/contentstack.ts`** (or similar) with a stack factory | **Minimal-add**: even if package.json looks "clean," the project may have a custom stack module. Don't overwrite. |
 | **Existing `ContentstackLivePreview.init(...)` call** anywhere in the codebase | **Minimal-add**: adding a second `init()` double-initializes the channel and breaks Live Preview. |
 | NEITHER package installed AND no existing stack module | **Greenfield**: proceed with the full emit below |
@@ -420,6 +461,37 @@ curl -s "https://<studio-api-host>/v1/projects" \
 
    `export const sdk = studioSdk.init(...)`: the return value is the live SDK that downstream skills call (`sdk.fetchCompositionData(...)`). The `studioSdk` namespace export is un-initialized.
 
+6b. **Create `lib/resolve-composition.ts` next to the init file, on every branch.** Every server route fetches through it. It does two things a bare `sdk.fetchCompositionData` call doesn't:
+
+   - **Clears the last request's preview hash off the shared stack.** The stack above lives for the whole server process. The SDK sets a request's `hash` on it but never clears it, so after one Studio preview every later visitor is served that session's drafts until restart. Reproduced on a live app.
+   - **Turns a miss into a 404 and leaves real failures as 500s**, via `isCompositionNotFound`.
+
+   ```ts
+   // lib/resolve-composition.ts — server-only
+   import { isCompositionNotFound, type studioSdk } from "@contentstack/studio-react";
+   // The Delivery stack your Studio sdk was initialized with (`stackSdk`). On the
+   // minimal-add branch that module is lib/studio.ts.
+   import { stack } from "@/lib/contentstack";
+
+   type StudioSdk = ReturnType<typeof studioSdk.init>;
+   type FetchArgs = Parameters<StudioSdk["fetchCompositionData"]>;
+
+   export async function resolveComposition(sdk: StudioSdk, args: FetchArgs[0], opts: FetchArgs[1] = {}) {
+     // Clearing first is always safe: when this request carries a hash, the SDK
+     // sets it again itself.
+     stack.livePreviewQuery({ live_preview: "" });
+     try {
+       const specOptions = await sdk.fetchCompositionData(args, opts);
+       return { specOptions, notFound: false as const };
+     } catch (err) {
+       if (isCompositionNotFound(err)) return { specOptions: null, notFound: true as const };
+       throw err;   // real failure — must stay a 500
+     }
+   }
+   ```
+
+   This is the canonical helper from [`configure-csr-vs-ssr` § resolveComposition](configure-csr-vs-ssr.md#resolve-composition-helper), which explains both halves. Vite SPAs fetch in the browser with `useCompositionData` and don't need it until they add a server render.
+
 7. **Create `.env.local`** (gitignored) with the collected values:
    ```
    <PREFIX>_CONTENTSTACK_API_KEY=<stackApiKey>
@@ -549,6 +621,7 @@ This skill succeeds only when ALL of the following are true. If any fails, do no
 - [ ] Delivery credentials passed the delivery read; preview credentials passed `verify-setup` Layer 6 on the preview host. These are separate checks.
 - [ ] The target environment has a non-empty Base URL for **every locale the app serves** (asserted from the `environments` pre-flight — the default locale alone is not enough on a localized app), or the user was told which locales are missing and stopped
 - [ ] `src/lib/contentstack.ts` (or framework equivalent) exists with the three SDK inits
+- [ ] On a server-rendering framework, `lib/resolve-composition.ts` exists (step 6b), imports the same `stack` the init passed as `stackSdk`, and clears the preview hash before each fetch
 - [ ] **`cslp: { appendTags: true }` is set in `studioSdk.init`**. Every Studio project is a Visual Editor project. With this off or absent, `studioAttributes` and every `$`-twin arrive empty across the whole app and no component-level fix helps. See [`complete-the-build`](complete-the-build.md) item 1.
 - [ ] Live Preview init is wrapped in **try/catch** and the `live_preview` block on the stack is **conditional on a non-empty preview token**
 - [ ] **A Studio project was resolved from an actual `GET /v1/projects` listing, not assumed.** With 2+ projects the user picked; with exactly 1 it was named back to them. Its `connectedStackApiKey` equals `<stackApiKey>`
@@ -585,7 +658,7 @@ Same fetch, same hash, sometimes hits `rest-preview.contentstack.com` and someti
 
 Not a broken install, three separate gates control the Design tab:
 
-1. **Design tab missing entirely** (right panel is Settings only) means **Enable Freeform Feature** is off on the Studio project. Toggle it in Studio's Settings, under Configuration, or PUT `settings.configuration.isFreeformEnabled: true` via the Studio API.
+1. **Design tab missing entirely** (right panel is Settings only) means **Enable Freeform Feature** is off on the Studio project. Toggle it in Studio's Settings, under Configuration, or set `settings.isFreeformEnabled: true` with `PUT /v1/projects/<uid>` (a sibling of `settings.configuration`, not inside it; full body in [`provision-studio-project`](provision-studio-project.md) step 10). Read the project back and confirm the flag before reopening Studio.
 2. **Design tab present but every control looks disabled / read-only** means `registerDesignTokens(tokens)` was called **without** the options arg. `allowedValuesLevel` defaults to `"dynamic"` which permits data-binding only, not token selection. **Fix:** always pass `{ allowedValuesLevel: "tokens" }` as the second arg. See [`import-design-tokens`](import-design-tokens.md) for the full token payload shape.
 3. **Design tab appears but is empty for one specific component** means that component's `registerComponent` schema didn't declare a `styles` block. See [`register-component`](register-component.md) § Design panel: component must declare `styles`.
 

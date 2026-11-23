@@ -34,34 +34,24 @@ Every tool installs the file unchanged, frontmatter included. See [How skill sel
 
 ## Body sections
 
-The Markdown body follows a repeatable outline. Not every skill uses every section, but most include:
+Every skill uses the same sections in the same order, and `scripts/validate.mjs` enforces it. The full template is in [Skill template](../contributing/skill-template.md).
 
-| Section | What it captures |
-| --- | --- |
-| **Description** | What the skill does. |
-| **When to Use** | The user intents that should activate it, expanding on the description's "Use when…". |
-| **User Problem** | The underlying need the skill addresses. |
-| **Success Criteria** | What a correct answer looks like. |
-| **Expected Inputs** | What the agent should gather (UIDs, locale, framework, etc.). |
-| **Expected Outputs** | The deliverables (code, recommendations, checklists). |
-| **Example User Requests** | Representative prompts the skill handles. |
-| **Workflow Summary** | The step-by-step approach. |
-| **Instructions** | The detailed rules and decision logic: the core of the skill. |
-| **Output Format** | How answers should be shaped. |
-| **Tooling Notes** | Which tools/SDKs to prefer; read-only vs action behavior. |
-| **Security** | Defaults, destructive-action gating, secret handling, env vars. |
-| **Product Context** | The product area and its shared safety rules. |
-| **References** | Bundled `references/` files to read on demand. |
-| **Examples** | Few-shot user/assistant pairs that calibrate behavior. |
+| Section | Required | What it captures |
+| --- | --- | --- |
+| **When to use** | Yes | The requests the skill handles, and which neighbouring skill to use instead for related topics. |
+| **Before you answer** | No | What to find out or inspect first. |
+| **Instructions** | Yes | A short numbered workflow, then the rules and facts under `###` subsections. |
+| **MCP tools** | Yes | The Contentstack MCP tools that carry out the steps, or what to use when no tool covers the area. |
+| **Output** | No | How answers should be shaped. |
+| **Security** | Yes | Defaults, destructive-action gating, secret handling, env vars. |
+| **References** | No | Bundled `references/` files and public docs. |
+| **Examples** | No | Few-shot user/assistant pairs that calibrate behavior. |
 
-## Instructions: two styles
+The body doesn't restate the frontmatter description. Example prompts live in the [routing evals](../contributing/routing-evals.md), where they're tested.
 
-The **Instructions** section appears in two forms across the bundle:
+## Advisory by default, MCP when asked
 
-- **Prose with subheadings**: narrative rules grouped under headings (e.g. Delivery SDK, Webhooks).
-- **Structured JSON blocks**: an array of `{ "heading", "content" }` objects (e.g. Assets, Branches & Aliases, Environments & Publishing, Localization). These render as discrete rule cards.
-
-Both are valid; they encode the same kind of guidance.
+Skills explain and show code. When the Contentstack MCP server is connected and the user asks for the change, the agent uses the tools named in **MCP tools**: read tools freely, and write, publish, deploy or delete tools only after naming the target and getting confirmation.
 
 ## References
 
@@ -78,7 +68,7 @@ The agent reads these **on demand**, only when the task actually needs them, to 
 
 ## Examples (few-shot)
 
-Many skills end with worked **User → Assistant** pairs, often tagged `few shot` or `edge case`. These calibrate tone, format, and especially safety responses (for instance, how to refuse hardcoding a token, or how to gate a destructive action).
+Some skills end with worked **User → Assistant** pairs. These calibrate tone, format, and especially safety responses (for instance, how to refuse hardcoding a token, or how to gate a destructive action).
 
 ## Why the consistency matters
 

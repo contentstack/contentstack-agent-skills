@@ -36,6 +36,10 @@ When you want to migrate, move, switch, port, or re-platform to Contentstack: co
 
 Ships per-step runbooks in `references/` (`step-1-prerequisites.md` through `step-5-welcome-message.md`, loaded only when that step runs), the Contentful → Contentstack mapping file (`CONTENTFUL_TO_CONTENTSTACK_MIGRATION_CONTEXT.md`), and a `scripts/` suite: the prerequisite checker, `read_cf_token.py` (resolves the Contentful token without printing it), the import-summary parser, logging helpers, and per-check eval scripts (`run-all.sh` plus numbered checks).
 
+## MCP tools
+
+The migration runs on the Contentstack CLI and its migrate plugin. MCP is optional: with the server connected, its read tools (`get_all_content_types`, `get_all_entries`, `get_all_assets`, `get_all_entries_cdn`) can verify the result in the new stack. The skill doesn't use MCP write tools to patch content mid-run.
+
 ## Safety notes
 
 Action skill with explicit gates: confirms before logging in, before creating a stack, and before editing your code. The prerequisite checker may install or upgrade global CLIs, and says so. Treats management and Contentful tokens as secrets: never prints or echoes them, and never writes them to workspace files; logs go to `<SESSION_DIR>/migration-log` by default; sets `CS_*` credentials only in the migrated app's gitignored `.env`. Converts reference dereferences to safe array access and flags every guessed field UID with a `TODO(migration)` comment rather than guessing silently.

@@ -51,48 +51,86 @@ Only once 1 to 3 hold, continue.
 
 2. **Create the canvas route file** at the framework-appropriate path.
 
-   **The canvas route MUST be isolated from your app's global chrome.** The route that mounts `<StudioCanvas />` should render ONLY that component: no site header/footer, no analytics tags (Lytics / Segment / GA), no third-party embeds, no global `<Script>`s (FontAwesome kits, commerce widgets, chat popups), no auth-gated wrappers. Every one of those runs inside Studio's canvas iframe when the user opens Studio, and any script that `throw`s on failure surfaces as a runtime overlay INSIDE Studio's canvas (looks like Studio is broken, isn't).
+   **The canvas route MUST be isolated from your app's global chrome, but not from its styles.** The route that mounts `<StudioCanvas />` should render no site header/footer, no analytics tags (Lytics / Segment / GA), no third-party embeds, no global `<Script>`s (FontAwesome kits, commerce widgets, chat popups), no auth-gated wrappers. Every one of those runs inside Studio's canvas iframe when the user opens Studio, and any script that `throw`s on failure surfaces as a runtime overlay INSIDE Studio's canvas (looks like Studio is broken, isn't).
+
+   **What the canvas still needs:** the site's global CSS, fonts, and the React providers your registered components read (theme, i18n, cart, query client). Sections render the app's own components on the canvas; strip those and every component renders unstyled or throws on a missing context.
 
    **Framework-specific isolation patterns:**
 
-   - **Next.js App Router:** put the canvas at a route group that has its own minimal `layout.tsx` returning `{children}` only, e.g. `app/(studio)/canvas/page.tsx` with `app/(studio)/layout.tsx` doing `export default function StudioLayout({children}) { return <>{children}</>; }`. Route groups let you opt out of the app's parent layouts (analytics, header, etc.) without changing URLs.
-     - **Alternative, layout guard:** if you can't use a route group, guard the existing `RootLayout` with a pathname check that skips analytics / third-party scripts when the pathname matches `*/canvas`.
+   - **Next.js App Router: gate the chrome in the root layout.** A route group can't opt out of the **root** `app/layout.tsx`: every route renders inside it, and that's where most apps put the header, footer, CSS imports and providers. A `(studio)` group with its own `layout.tsx` adds a layer inside the root one; it removes nothing. Instead, keep one root layout and let a small client component drop the chrome on the canvas path:
+
+     ```tsx
+     // app/site-chrome.tsx
+     "use client";
+     import type { ReactNode } from "react";
+     import { usePathname } from "next/navigation";
+
+     const CANVAS_PATH = "/canvas";   // your <canvasPath>
+
+     export function SiteChrome({ header, footer, children }: {
+       header: ReactNode; footer: ReactNode; children: ReactNode;
+     }) {
+       const pathname = usePathname();
+       // endsWith covers a locale-prefixed canvas (/en/canvas).
+       const onCanvas = pathname === CANVAS_PATH || pathname.endsWith(CANVAS_PATH);
+       return (
+         <>
+           {onCanvas ? null : header}
+           {children}
+           {onCanvas ? null : footer}
+         </>
+       );
+     }
+     ```
+
+     ```tsx
+     // app/layout.tsx — Server Component; stays the one root layout
+     import "./globals.css";                       // CSS and fonts: kept on the canvas
+     import { SiteChrome } from "./site-chrome";
+     import { StudioInit } from "./studio-init";   // from install-studio step 8
+     // Providers, Header, Footer: the app's own, imported as they are today
+
+     export default function RootLayout({ children }: { children: React.ReactNode }) {
+       return (
+         <html lang="en">
+           <body>
+             <Providers>                            {/* kept on the canvas */}
+               <StudioInit />
+               <SiteChrome header={<Header />} footer={<Footer />}>{children}</SiteChrome>
+             </Providers>
+           </body>
+         </html>
+       );
+     }
+     ```
+
+     `Header` and `Footer` are passed as props, so they stay Server Components. Gate analytics and third-party `<Script>`s the same way (render them through `SiteChrome`, or check the pathname in their own client wrapper).
+     - **Heavier alternative: multiple root layouts.** Remove `app/layout.tsx` and give each top-level route group its own root layout with `<html>` and `<body>`, e.g. `app/(site)/layout.tsx` with chrome and `app/(studio)/layout.tsx` without. The studio one must import the same global CSS, fonts and providers itself. Every page moves under a group, and navigating between groups is a full page load. Use it only when the chrome gate can't work.
    - **Next.js Pages Router:** use `_app.tsx` with a pathname guard (`router.pathname === "/canvas" ? <Component/> : <ChromeWrapper><Component/></ChromeWrapper>`).
    - **Vite / React Router / Remix:** the CanvasRoute component sits at the router level, above your app chrome: the chrome only wraps the visitor routes.
 
    **Verify isolation before proceeding.** Open `http://localhost:<port><canvasPath>` in a browser, open DevTools, then the Network tab. You should see **only** the framework's assets + `@contentstack/*`, NO calls to `kit.fontawesome.com`, `c.lytics.io`, GA, chat providers, commerce embeds. If you see any of those, follow the isolation pattern above and re-verify. Skipping this step is fine short-term but every wrong-network-request shows up as a scary overlay to whoever opens Studio next.
 
-   **Next.js App Router** (`app/<canvasPath>/page.tsx`), `<StudioCanvas/>` must load client-only:
+   **Next.js App Router** (`app/<canvasPath>/page.tsx`):
    ```tsx
+   // app/canvas/page.tsx
    "use client";
-   import dynamic from "next/dynamic";
-   import { getSSRStyles } from "@contentstack/studio-react";
+   import { StudioCanvas } from "@contentstack/studio-react";
 
-   // StudioCanvas is client-only: it reads browser-only context (window.location,
-   // post-message channel to Studio's parent frame). Server-rendering it produces
-   // null on the server and a populated tree on the client — a guaranteed
-   // hydration mismatch. Load it client-only.
-   const StudioCanvas = dynamic(
-     () => import("@contentstack/studio-react").then((m) => m.StudioCanvas),
-     { ssr: false },
-   );
-
-   export default function CanvasRoute() {
-     return (<><style>{getSSRStyles(null)}</style><StudioCanvas /></>);
-   }
-   ```
-
-   **Next.js Pages Router** (`pages/<canvasPath>.tsx`), same SSR-mismatch reason, wrap in `dynamic({ ssr: false })`:
-   ```tsx
-   import dynamic from "next/dynamic";
-   const StudioCanvas = dynamic(
-     () => import("@contentstack/studio-react").then((m) => m.StudioCanvas),
-     { ssr: false },
-   );
    export default function CanvasRoute() {
      return <StudioCanvas />;
    }
    ```
+
+   **Next.js Pages Router** (`pages/<canvasPath>.tsx`), same body without the directive:
+   ```tsx
+   import { StudioCanvas } from "@contentstack/studio-react";
+   export default function CanvasRoute() {
+     return <StudioCanvas />;
+   }
+   ```
+
+   No `dynamic({ ssr: false })` needed on studio-react 2.x: `StudioCanvas` is a client component that renders `null` on the server and on the first client render, and builds the canvas only after mount, so there is nothing to mismatch. Older snippets that wrap it in `dynamic()` still work; they're just unnecessary.
 
    **Vite + React Router** (`src/routes/CanvasRoute.tsx` + router config update), Vite is SPA-only, so a plain import is safe:
    ```tsx
@@ -112,7 +150,7 @@ Only once 1 to 3 hold, continue.
    }
    ```
 
-   **Every framework: render `<style>{getSSRStyles(null)}</style>` beside `<StudioCanvas />`.** In studio-react 1.9.0 `StudioCanvas` writes no design-token `:root` variables, so token styles (padding, max-width, colors) resolve to nothing on the canvas.
+   **No token `<style>` on studio-react 2.x.** `StudioCanvas` writes the design-token `:root` variables itself once it mounts. Don't add `<style>{getSSRStyles(null)}</style>` to a client canvas page: the server and the browser hold different token registries, so the string differs between them and React reports a hydration error on every load. Only on studio-react 1.9.x, where `StudioCanvas` wrote no token variables, add them **after mount**: `const [css, setCss] = useState(""); useEffect(() => setCss(getSSRStyles(null)), []);`, then render `{css ? <style>{css}</style> : null}`.
 
    Convert `<canvasPath>` to the framework's expected filename (e.g. `/canvas` becomes `canvas/page.tsx` for App Router, or `canvas.tsx` for Pages Router).
 
@@ -158,7 +196,6 @@ Only once 1 to 3 hold, continue.
        const canvasHeaders = [
          // Studio runs on *.contentstack.com (all regions). Add your own origin if you embed the canvas elsewhere.
          { key: 'Content-Security-Policy', value: "frame-ancestors 'self' https://*.contentstack.com;" },
-         { key: 'Access-Control-Allow-Origin', value: '*' },
        ];
        return [
          { source: '/canvas', headers: canvasHeaders },
@@ -168,7 +205,7 @@ Only once 1 to 3 hold, continue.
    };
    ```
 
-   The Vite blocks above are for local use only and allow framing by Studio's origin, nothing wider. Don't add `frame-ancestors *` or `Access-Control-Allow-Origin: *`, and don't ship a global framing policy to production: scope it to the canvas route.
+   The Vite blocks above are for local use only and allow framing by Studio's origin, nothing wider. Don't add `frame-ancestors *` or `Access-Control-Allow-Origin: *`: framing is governed by `frame-ancestors` alone, and CORS headers on the page play no part in it. Don't ship a global framing policy to production either: scope it to the canvas route.
 
    **Why it matters:** the `frame-ancestors` CSP header tells the browser Studio's origin may embed the page; without it, Studio's iframe stays blank with no console error, a particularly hard failure to diagnose. If you reach the server through a non-localhost hostname (e.g. a tunnel) and Vite returns "host not allowed" (403), list that hostname in `allowedHosts`; never set it to `true`.
 
@@ -187,10 +224,11 @@ Only once 1 to 3 hold, continue.
 
 - [ ] BEFORE creating the route: confirmed the targeted environment has a non-empty per-locale URL equal to the dev origin, AND the Studio project targets that environment
 - [ ] Canvas route file exists in the right location for the detected framework
-- [ ] The file mounts `<StudioCanvas />` and the token `<style>` (nothing else, no required props)
+- [ ] The file mounts `<StudioCanvas />` and nothing else (no required props, no token `<style>` on studio-react 2.x)
+- [ ] Next.js App Router: the canvas path renders without the site header/footer but with the site's CSS, fonts and providers (chrome gate in step 2)
 - [ ] If a dev server was running, the route returns 200
 - [ ] Canvas URL is set in Studio Project Settings, under Configuration, to match the path
-- [ ] For local dev: canvas-app serves over trusted HTTPS (via `setup-local-https-canvas`), AND the framework config sends `frame-ancestors 'self' https://*.contentstack.com` (no wildcard ACAO; `allowedHosts` only lists explicit non-localhost hostnames, never `true`)
+- [ ] The canvas route sends `Content-Security-Policy: frame-ancestors 'self' https://*.contentstack.com`, scoped to the canvas route, with no `Access-Control-Allow-Origin` header added for it. `allowedHosts` (Vite) only lists explicit non-localhost hostnames, never `true`. Plain `http://localhost` is fine; HTTPS is needed only when the app itself requires it (`setup-local-https-canvas`)
 - [ ] Opening a section in Studio loads the canvas iframe without errors (no blank frame, no "host not allowed", no mixed-content block)
 
 If the Studio API call wasn't possible (no auth), the manual step is printed and the skill explicitly tells the user to complete it before claiming success.

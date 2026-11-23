@@ -5,7 +5,7 @@ description: "Model Contentstack content with the simplest reusable structure: w
 
 # Data Modeling Best Practices
 
-**Slug:** `cms-data-modeling-best-practices` · **Product:** CMS · **Type:** Advisory (read-only)
+**Slug:** `cms-data-modeling-best-practices` · **Product:** CMS · **Type:** Advisory (acts through MCP tools on request)
 
 Guides developers to model content using the simplest reusable structure and avoid over-modeling, deep reference chains, and channel-specific schema sprawl.
 
@@ -34,6 +34,7 @@ Core principles:
 - Treat content types as API contracts: avoid deep reference chains, oversized modular blocks, and hiding filterable facts inside rich text.
 - Localize only fields that need translation; keep names clear; avoid channel-specific schema pollution.
 - Explain tradeoffs and include migration cautions when schema changes are implied.
+- Design within the limits: up to 500 fields per content type, plan limits on content types per stack and block types per modular blocks field, and taxonomies up to 10 levels deep.
 
 ## Example prompts
 
@@ -43,9 +44,13 @@ Core principles:
 - "What's the best way to handle localization for shared content?"
 - "How do I model product categories for filtering and reuse?"
 
+## MCP tools
+
+With the Contentstack MCP server connected, the agent can read the existing model (`get_all_content_types`, `get_a_single_content_type`, `get_all_references_of_ct`, global field tools) before reviewing it, and create, update or delete content types (`cma`) and global fields (`cma-extended`) when asked.
+
 ## Safety notes
 
-Read-only advisory. Never performs schema changes, publishing, or destructive actions. Uses placeholders and environment variables for any example credentials.
+Advisory by default; uses the MCP tools only when you ask for the change, preferably on a development branch. Before any schema change it names the stack, branch and schema, explains the impact on existing content and delivery code, and waits for confirmation. Uses placeholders and environment variables for any example credentials.
 
 ## Related
 

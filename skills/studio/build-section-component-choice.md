@@ -12,15 +12,15 @@ Part of the Section-authoring set. Start at [`build-section`](build-section.md).
 
 Studio palettes ship two kinds of nodes you can drop into a Section. **All editing happens in the right panel. Neither kind supports inline-typing in the canvas.** The real tradeoff is shape and styling:
 
-| | **Basic field components** (palette: Basic): `Heading`, `Paragraph`, `Text`, `Image`, `Link`, `RichText`, etc. | **Custom registered components** (palette: Registered Components): your `<Hero>`, `<ProductCard>`, etc. |
+| | **Basic field components** (palette: Basic): `header`, `text`, `image`, `link`, `rich-text`, etc. (SDK type names; see [`plan-studio-architecture`](plan-studio-architecture.md#built-in-names)) | **Custom registered components** (palette: Registered Components): your `<Hero>`, `<ProductCard>`, etc. |
 |---|---|---|
-| Shape | Single value (a string for `Heading` / `Paragraph` / `Text`, a URL for `Image`, a JSON tree for `RichText`). The author sets it via the right panel: either as a **static value** typed inline, or as a **binding** to a CT field. | N props as declared in `registerComponent` schema. Each prop set via the right panel: static value or binding to a CT field. |
+| Shape | Single value (a string for `header` / `text`, a URL for `Image`, a JSON tree for `rich-text`). The author sets it via the right panel: either as a **static value** typed inline, or as a **binding** to a CT field. | N props as declared in `registerComponent` schema. Each prop set via the right panel: static value or binding to a CT field. |
 | Visual styling | Plain HTML by default: `<h1>`, `<p>`, `<img>`. Styling comes from node `styles.default.responsiveStyles.default` set via the Design panel, OR app-side CSS targeting the rendered DOM. RTE embeds use the default serializer unless you register a custom one (see `register-json-rte`). | Whatever your React + CSS produces. Pixel-perfect. Uses your design system. |
 | Layout authoring | Composable via Basic `Box` + node `responsiveStyles` (see pitfall row below). | Owned by the React component code. |
 | Authoring UX | Quick: drop, type a value or bind a field in the right panel, done. Good for editorial copy that lives ONLY in the composition (not modelled in the CMS). | Higher-fidelity: drop a fully-styled block, bind props to CT fields. Right-panel surface is exactly the prop schema you registered. |
 | Best for | Headlines, body copy, captions, CTA labels, RTE blocks, wherever literal copy can live in the composition itself OR map 1:1 to a CT field with no surrounding shell. | Marquee / styled / interactive sections: hero, carousel, 3D viewer, anything pixel-sensitive or with multi-field internal structure. |
 
-**These are two render paths.** The local standalone page (custom `Hero`) and the Studio composition (Basic `Heading` + `Paragraph`) will NOT look identical by default. Treat the gap as design work, not a bug.
+**These are two render paths.** The local standalone page (custom `Hero`) and the Studio composition (Basic `header` + `text`) will NOT look identical by default. Treat the gap as design work, not a bug.
 
 **Recommended pattern: hybrid.** Use both inside one Section:
 
@@ -36,7 +36,7 @@ Decision rule:
 
 ### Migrating an existing component: register it whole, or decompose it?
 
-When a Section is being built from JSX that already exists, there's a prior question the rule above doesn't answer: does the whole `<Hero>` become **one registered component**, or does it get **decomposed into built-ins** (`Box` + `Image` + `Heading` + `Paragraph` + `Link`) that reproduce the same markup?
+When a Section is being built from JSX that already exists, there's a prior question the rule above doesn't answer: does the whole `<Hero>` become **one registered component**, or does it get **decomposed into built-ins** (`box` + `image` + `header` + `text` + `link`) that reproduce the same markup?
 
 A Section made of one registered component is a **black box to authors**: they can re-bind its props and nothing else. No restyling, no reordering its internals, no removing the subtitle. That's often the right trade, but it must be a stated choice, not a default that happens because registering was easier.
 

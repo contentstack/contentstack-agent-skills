@@ -6,65 +6,38 @@ allowed-tools: Read Grep Glob
 
 # Asset Management (Contentstack Assets DAM)
 
-## Description
+Advise on Contentstack Assets, the standalone DAM product (also called "Asset Management" in some docs): structuring spaces and workspaces, modeling metadata so assets are findable, using AI features safely, keeping the library free of duplicates, and knowing what can be recovered after a delete or replace.
 
-Advise on Contentstack Assets, the standalone DAM product (also called "Asset Management" in some docs). Cover spaces and workspaces, folders, roles, asset types and metadata, localization, filters and saved views, AI-assisted metadata, duplicate management, versions, trash and restore, visual markups, and CMS integration.
+## When to use
 
-## When to Use
+- Organizing assets in spaces, workspaces and folders.
+- Modeling asset types and metadata, and searching by user-defined fields.
+- Localization and saved views.
+- AI tags and alt text.
+- Finding and removing duplicates.
+- Versions, trash and restore.
+- Visual markups.
+- Using Assets with a CMS stack.
 
-Use when a user asks about the Contentstack Assets DAM: organizing assets in spaces, workspaces and folders, modeling asset metadata, AI tags and alt text, finding and removing duplicates, versioning, restoring deleted assets, visual markups, or using Assets with a CMS stack.
+Use another skill for:
 
-Do not use for the CMS stack asset library (stack-level uploads, folders, Image Delivery API, publishing to environments). Route those questions to `cms-assets`. If it is unclear which one the user means, ask whether they work in an Assets space or in the asset library inside a stack.
+- The CMS stack asset library (stack-level uploads, folders, Image Delivery API, publishing to environments) → `cms-assets`
+- Roles in a CMS stack → `cms-roles-permissions`
+- Choosing a third-party DAM integration from the Marketplace → `marketplace-apps`
 
-## User Problem
+If it is unclear which product the user means, ask whether they work in an Assets space or in the asset library inside a stack.
 
-Teams adopting Contentstack Assets need to structure spaces and workspaces sensibly, model metadata so assets are findable, use AI features safely, keep the library free of duplicates, and understand what is and is not recoverable when assets are deleted or replaced.
+## Before you answer
 
-## Success Criteria
+Confirm which product the user means (Assets space or CMS stack library), then find out the organization's shape (brands, regions, teams) and number of spaces, the asset types and metadata the team needs, and the specific task or problem (duplicates, restore, versions, AI settings, markups).
 
-- Distinguish the Assets DAM from the CMS asset library.
-- Use the product's own terminology: space, workspace, main workspace, asset type, system metadata, user-defined metadata, duplicate set, visual markup.
-- State documented behavior and limits accurately, and say plainly when something is not documented.
-- Warn about irreversible or hard-to-reverse actions before the user takes them.
-
-## Expected Inputs
-
-- Which product the user means (Assets space or CMS stack library)
-- Organization shape (brands, regions, teams) and number of spaces
-- Asset types and metadata the team needs
-- The specific task or problem (duplicates, restore, versions, AI settings, markups)
-
-## Expected Outputs
-
-- Space, workspace and folder structure recommendations
-- Asset type and metadata modeling guidance
-- Step-by-step UI paths for the task
-- Gotchas and irreversible-action warnings
-- Pointers to the official docs for anything not covered here
-
-## Example User Requests
-
-- How should I split my brands and regions across spaces and workspaces?
-- How do I add custom fields to my images?
-- How do I add a language to a workspace?
-- Can I save a set of filters and reuse it?
-- How do I search assets by a custom field value?
-- Can Assets tag my images and write alt text automatically?
-- How do I find and remove duplicate images?
-- I deleted a folder by mistake. Can I get it back?
-- How do I roll back to an earlier version of an asset?
-- How do I add hotspots to a product image?
-- How do I use assets from a space in my CMS entries?
-
-## Workflow Summary
+## Instructions
 
 1. Confirm the user means the Assets DAM, not the CMS asset library.
 2. Identify the topic: structure, metadata, AI, duplicates, versions, trash, markups, or CMS integration.
-3. Answer with documented behavior using the product's terminology.
+3. Answer with documented behavior using the product's terminology: space, workspace, main workspace, asset type, system metadata, user-defined metadata, duplicate set, visual markup.
 4. Flag limits and irreversible actions.
-5. Link to the relevant docs page for anything undocumented or likely to change.
-
-## Instructions
+5. Say plainly when something is not documented, and link to the relevant docs page for anything undocumented or likely to change.
 
 ### Spaces and workspaces
 
@@ -90,11 +63,11 @@ Teams adopting Contentstack Assets need to structure spaces and workspaces sensi
 
 - Metadata comes in layers: **system metadata** (read-only: file name, UID, URLs, MIME type, size, created and modified details), **general metadata**, and **user-defined metadata** from custom fields.
 - Each **asset type** maps to one MIME type and one file extension. On upload, a matching type applies automatically and its fields appear. System types cover images, audio, video, documents and archives, and you can add custom types.
-- User-defined fields are reusable across asset types. The currently supported field types are single line text, number, select and group. The product docs have listed this set differently over time, so point the user to the Asset Modeling docs if they need a type that isn't on this list.
+- User-defined fields are reusable across asset types. The Asset Modeling docs list single line and multi line textbox, link, select, number, date, boolean and group, but state that only single line, number and group are currently supported. Point the user to the Asset Modeling docs before promising any other type.
 - Mandatory fields must be filled before an upload or save can finish. Use them sparingly so uploads are not blocked on optional information.
 - Edit metadata for an individual asset in the configurable metadata panel.
 - User-defined fields exist only in the Assets (DAM) product. The CMS stack asset library and its Management API don't read or update them, so direct any request to read or write custom metadata from code to the Assets (DAM) API. See the Assets API reference at https://www.contentstack.com/docs/developers/apis/assets-api for the current endpoints.
-- **Filters and saved views:** User-defined fields can be used as filters when browsing assets, so well-modeled fields make the library searchable. A filter combination can be saved as a **saved view** and reused later instead of rebuilding the filters each time. Advise modeling fields with filtering in mind, for example a select field for campaign or usage rights.
+- **Filters and saved views:** User-defined fields can be used as filters when browsing assets, so well-modeled fields make the library searchable. A filter combination can be saved as a **saved view** and reused later instead of rebuilding the filters each time. Advise modeling fields with filtering in mind, for example a single line field for campaign or usage rights (or a select field once select is supported).
 
 ### Localization
 
@@ -135,6 +108,7 @@ Example request body:
 ### AI tags, alt text and colors
 
 - In the metadata panel, **Suggest Tags with AI** and **Suggest Description with AI** generate suggestions. AI can also extract dominant colors, which powers color-based filtering. Suggestions can be wrong, so review them before saving.
+- The product also has AI-powered semantic (natural-language) search and reverse image search, depending on plan and rollout. They are not in the public docs yet, so confirm availability in the user's space before relying on them.
 - **Auto-populate at upload** is configured in Space Settings > AI Settings. Enable the AI Tags and Alt Text toggles, set Advanced Properties, and click Save Properties.
   - Applies to images and to new uploads only. Existing assets are not enriched, and replacing a file does not trigger it.
   - Values are written into version 1. No extra version is created, nothing waits for review, and uploads are not slowed down.
@@ -187,32 +161,26 @@ Example request body:
 - `visual_markups` is an empty array when an asset has none. A hotspot returns x and y, and a bounding box also returns width and height.
 - Do not state CDN host names, URL formats or branch behavior for Assets as fact unless the user's docs confirm them.
 
-## Output Format
+## MCP tools
+
+No Contentstack MCP tool covers the Assets DAM (spaces, workspaces, asset types, duplicates, markups). Use the Assets UI or the Assets API.
+
+The `cma` asset tools (`get_all_assets`, `get_a_single_asset`, `publish_an_asset` and others) act on the CMS stack asset library, not on Assets spaces; route that work to `cms-assets`.
+
+## Output
 
 Be concise and practical. Use the product's terms. Give UI paths as `Menu > Item`. Use short bullets for steps, limits and gotchas. When something is undocumented or uncertain, say so and link to the docs instead of guessing.
 
-## Tooling Notes
-
-Read-only advisory skill. Do not upload, move, delete, restore or modify assets, spaces or settings. Explain the steps and let the user perform them.
-
-References:
-
-- https://www.contentstack.com/docs/assets/about-assets
-- https://www.contentstack.com/docs/assets/about-spaces-and-workspaces
-- https://www.contentstack.com/docs/assets/about-asset-modeling
-- https://www.contentstack.com/docs/assets/enhance-asset-management-with-ai
-- https://www.contentstack.com/docs/assets/manage-duplicate-images
-- https://www.contentstack.com/docs/assets/asset-versioning
-- https://www.contentstack.com/docs/assets/restore-an-asset-or-folder
-- https://www.contentstack.com/docs/assets/add-visual-markups
-- https://www.contentstack.com/docs/developers/apis/content-delivery-api/assets
+What a good answer includes, as relevant: space, workspace and folder structure recommendations; asset type and metadata modeling guidance; step-by-step UI paths for the task; gotchas and irreversible-action warnings; and pointers to the official docs for anything not covered here.
 
 ## Security
 
 ### Defaults
 
+- Advisory by default. Do not upload, move, delete, restore or modify assets, spaces or settings; explain the steps and let the user perform them.
 - Never expose tokens or API keys.
 - Use environment variables for credentials in any example code.
+- Treat deletion of spaces, assets and markups as irreversible unless the docs state a restore window.
 
 ### Destructive Actions
 
@@ -226,11 +194,14 @@ Never reveal management tokens, API keys or other secrets. Reference environment
 
 Use environment variables for any credentialed example, such as `CONTENTSTACK_OAUTH_ACCESS_TOKEN`, or `CONTENTSTACK_AUTHTOKEN` together with `CONTENTSTACK_ORGANIZATION_UID`. The Assets API does not accept management tokens. Never hardcode credentials in client-side code.
 
-## Product Context
+## References
 
-- Product: Assets (DAM)
-- Description: Contentstack Assets is the digital asset management layer: spaces, workspaces, folders, asset types and metadata, AI enrichment, duplicate management, versioning, visual markups and CMS integration.
-- Product safety rules:
-  - Never expose management tokens or API keys.
-  - Always use environment variables for credentials.
-  - Treat deletion of spaces, assets and markups as irreversible unless the docs state a restore window.
+- https://www.contentstack.com/docs/assets/about-assets
+- https://www.contentstack.com/docs/assets/about-spaces-and-workspaces
+- https://www.contentstack.com/docs/assets/about-asset-modeling
+- https://www.contentstack.com/docs/assets/enhance-asset-management-with-ai
+- https://www.contentstack.com/docs/assets/manage-duplicate-images
+- https://www.contentstack.com/docs/assets/asset-versioning
+- https://www.contentstack.com/docs/assets/restore-an-asset-or-folder
+- https://www.contentstack.com/docs/assets/add-visual-markups
+- https://www.contentstack.com/docs/developers/apis/content-delivery-api/assets

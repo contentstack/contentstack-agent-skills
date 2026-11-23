@@ -6,59 +6,31 @@ allowed-tools: Read Grep Glob
 
 # Contentstack Taxonomy
 
-## Description
+Advise on taxonomy for structured, hierarchical classification that is filtered on the delivery side, and on when tags, labels or references fit better.
 
-Advise developers on using Contentstack Taxonomy for structured, hierarchical content classification and delivery-side filtering. Covers taxonomy vs tags, labels, and references; hierarchy design; CDA query operators; localization; and import/export.
+## When to use
 
-## When to Use
+- Choosing between taxonomy, tags, labels and a Category content type with references.
+- Designing a term hierarchy.
+- Filtering entries by term with the Content Delivery API (CDA).
+- Localizing terms, or importing and exporting taxonomies.
 
-Use when developers need help classifying content, designing category hierarchies, choosing between taxonomy and other classification approaches, or querying entries by category on the delivery side.
+Use another skill for:
 
-## User Problem
+- Overall content model design → `cms-data-modeling-best-practices`
+- General entry queries, pagination and references → `cms-entries`
+- Locales and fallback chains → `cms-localization`
 
-Developers need a governed way to classify content so it can be filtered, navigated, and organized in delivery experiences. They also need guidance on when taxonomy is the right mechanism versus tags, labels, or references.
+## Before you answer
 
-## Success Criteria
-
-Recommends taxonomy only when it fits the use case
-Explains hierarchy design and term relationships clearly
-Uses CDA taxonomy operators for filtering examples
-Distinguishes taxonomy from tags, labels, and references
-Covers localization and import/export when relevant
-
-## Expected Inputs
-
-- Classification or filtering requirements
-- Hierarchy depth and structure
-- Delivery-side query needs
-- Localization requirements
-- Migration or import needs
-
-## Expected Outputs
-
-- Taxonomy vs alternatives recommendation
-- Hierarchy design guidance
-- CDA query operator examples
-- Localization guidance
-- Import/export advice
-
-## Example User Requests
-
-- Should I use taxonomy or tags for product categories?
-- How do I query entries by taxonomy term on the CDA?
-- How do I design a taxonomy hierarchy for my site?
-- Can I localize taxonomy terms?
-- Should categories be a separate content type with references or taxonomy?
-
-## Workflow Summary
-
-Understand the classification need and delivery requirements.
-Recommend the right mechanism: taxonomy, tags, labels, or references.
-If taxonomy fits, guide hierarchy design and term modeling.
-Show CDA taxonomy query operators for filtering.
-Cover localization and import/export if relevant.
+Find out what the classification drives (navigation, filtering, internal organization), how deep the hierarchy needs to be, and whether terms must be localized.
 
 ## Instructions
+
+1. Decide whether taxonomy fits.
+2. If it does, design the hierarchy.
+3. Show the CDA query for the filter the user needs.
+4. Cover localization or import/export if they're relevant.
 
 ### Use taxonomy when
 
@@ -70,41 +42,54 @@ Do not use taxonomy for freeform labels, internal CMS organization, or rich cate
 
 ### Hierarchy design
 
-Plan the hierarchy before creating it. Keep it practical, usually 3-4 levels max. Terms are parent-child ordered. Moving a term with children is blocked by default unless the force flag is explicitly used.
+Plan the hierarchy before creating it. Terms can nest up to 10 levels deep, but shallow trees are easier for editors and queries, so keep it as flat as the use case allows. Terms are parent-child ordered. The move-term API takes a `force` flag that cascades the move to child terms.
+
+### Limits
+
+Default limits are plan-dependent: 20 taxonomies per stack, 10,000 terms per taxonomy, 10 levels of depth, and 20 taxonomies per content type. Taxonomy is a global module, so it is shared across branches.
 
 ### CDA filtering
 
-Use taxonomy query operators instead of manual filtering: $taxonomy_exists for any term, $taxonomy_equal for a specific term, $taxonomy_below for a term and descendants, and $taxonomy_above for ancestors.
+Filter entries by taxonomy with the `query` parameter on `/taxonomies/entries` (across content types) or `/content_types/{content_type_uid}/entries`:
+
+- Exact term: `{"taxonomies.material": "wood"}`
+- Any of several terms: `{"taxonomies.material": {"$in": ["wood", "bamboo"]}}`
+- Any term applied: `{"taxonomies.material": {"$exists": true}}`
+- Term and its descendants: `{"taxonomies.color": {"$eq_below": "blue", "levels": 2}}`
+- Descendants only: `$below`. Term and its ancestors: `$eq_above`. Ancestors only: `$above`.
+- Combine conditions with `$and` and `$or`.
+
+`levels` limits the depth for the hierarchical operators and defaults to 10.
 
 ### Localization and import/export
 
-Note that taxonomy localization is plan-dependent. Localized terms share the same UID as the master term. Import/export supports JSON and CSV; invalid CSV rows are skipped while valid rows are processed.
+Taxonomy localization is plan-dependent. Localized terms share the same UID as the master term, so entry links stay valid across locales while the label changes. Taxonomies import and export as JSON or CSV. A localized import needs the master-locale taxonomy and terms to exist first.
 
-## Output Format
+## MCP tools
 
-Be concise and practical.
-State the taxonomy-vs-alternatives decision first.
-Show CDA query operators inline.
-Use examples only when they clarify the recommendation.
+When the Contentstack MCP server is connected, these tools act on the stack (local server group in brackets):
 
-## Tooling Notes
+- Inspect: `get_all_taxonomies`, `get_a_single_taxonomy`, `get_all_terms`, `get_a_single_term`, `get_all_terms_across_all_taxonomies`, `get_all_ancestors_of_a_term`, `get_all_descendants_of_a_term`, `export_a_taxonomy` (`cma`)
+- Change: `create_a_taxonomy`, `update_a_taxonomy`, `create_a_term`, `update_a_term`, `move_a_term` (`cma`)
+- Delete: `delete_a_taxonomy`, `delete_a_term` (`cma`)
 
-Read-only advisory skill.
-Do not create, modify, or delete taxonomies or terms.
-Restrict tool use to read/search tools when possible.
+There is no import tool; use the CMA or `csdx` for imports. To test a CDA filter, use `get_all_entries_cdn` (`cda`) with the `query` above.
+
+## Output
+
+Lead with the taxonomy-vs-alternatives decision, then the hierarchy or the query. Show CDA operators inline and keep examples to the ones that clarify the recommendation.
 
 ## Security
 
 ### Defaults
 
-Never expose tokens or API keys.
-Use environment variables for credentials in example code.
-Do not perform destructive actions.
-Avoid suggesting client-side access to management credentials.
+- Advisory by default. Use the MCP tools above only when the user asks for the change.
+- Never expose tokens or API keys; use environment variables in example code.
+- Keep management credentials out of client-side code.
 
 ### Destructive Actions
 
-Do not create, update, move, delete, or import taxonomy data. Provide guidance only.
+Before creating, moving or deleting taxonomies or terms, name the taxonomy, the terms and the entries affected, and wait for confirmation. Taxonomy is a global module, so a change reaches every branch.
 
 ### Secrets
 
@@ -114,13 +99,7 @@ Never reveal management tokens, API keys, or other secrets. Use placeholders and
 
 Use environment variables for credentials in examples and implementation guidance. Never hardcode secrets in client-side code.
 
-## Product Context
+## References
 
-- - Product: CMS
-- - Description: Contentstack headless CMS: content types, entries, assets, environments, publishing, workflows, webhooks, and the Content Management API (CMA).
-- - Product safety rules: - Never expose management tokens or API keys.
-- Always use environment variables for credentials.
-- Route all CMA calls through server-side proxies in browser apps.
-- Never hardcode stack API keys in client-side code.
-- - Default tools: ["CMA API", "Content Types", "Entries", "Assets", "Workflows", "Webhooks", "Environments", "Releases", "Publish Queue"]
-- - Default connectors: ["CMA Proxy", "Webhooks"]
+- https://www.contentstack.com/docs/developers/taxonomy
+- https://www.contentstack.com/docs/developers/apis/content-delivery-api#taxonomy

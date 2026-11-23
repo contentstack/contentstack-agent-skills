@@ -4,7 +4,7 @@ name: register-component-prop-contracts
 
 ## When to use
 
-The prop-shape contracts a registered component must honour: array and object binding rules, tolerant `imageurl` and link signatures, and why `{{entry.title}}` does not resolve outside a Connected template URL pattern.
+The prop-shape contracts a registered component must honour: array and object binding rules, why the live site fetches only the fields bindings name, image (`<file_field>.url`) and link signatures, and why `{{entry.title}}` does not resolve outside a Connected template URL pattern.
 
 Part of the component-registration set. Start at [`register-component`](register-component.md), which routes here.
 
@@ -27,7 +27,7 @@ Common requirements across all four:
 
 This is the **preferred path** for wrapping an existing production component whose interface already takes an array of items. See `build-repeating-section` § When to skip the Repeater entirely: the array-prop alternative.
 
-**Layout fidelity (not just data shape) decides Repeater vs array-prop.** A Repeater renders items **uniformly in sequence**. It cannot reproduce a bespoke or asymmetric layout (a bento mosaic, a 1-big-plus-3-small grid, a carousel). When the design is fixed and non-uniform, or you simply want the production component's own layout verbatim, bind the whole array/object to the real component (`array` / `object`) and let its own markup + CSS run. The render is pixel-identical to the live site. Reach for a Repeater only when the layout genuinely IS a uniform list, or when items are polymorphic and need per-type rendering (Repeater + Condition Block).
+**Layout fidelity (not just data shape) decides Repeater vs array-prop.** A Repeater renders items **uniformly in sequence**. It cannot reproduce a bespoke or asymmetric layout (a bento mosaic, a 1-big-plus-3-small grid, a carousel). When the list is interactive, or its layout depends on item position or count (the component computes its values), bind the whole array/object to the real component (`array` / `object`) and let its own markup + CSS run; this is the exception the [Section rule](SKILL.md#section-rule) allows, not a default for keeping the production layout verbatim. The render is pixel-identical to the live site, provided every field the component reads reaches it (see § Studio fetches only the fields your bindings name). Reach for a Repeater only when the layout genuinely IS a uniform list, or when items are polymorphic and need per-type rendering (Repeater + Condition Block).
 
 **Bindable: `type: "object"` bound to a matching entry Group / Global Field.** Same idea for a single-entry-object shape (a nested `cta: { label, href }` binding into an entry Group with matching sub-fields). Groups live on the entry, no `resolvedReferences` step.
 
@@ -46,11 +46,33 @@ The narrow non-CMS use for `type: "array"` / `type: "object"` remains: authoring
 
 `build-section` Step 5e enforces this at bind time. Catching it at registration saves a round trip.
 
-## Tolerant image signatures: accept `string | { url }` on every `imageurl` prop
+## Studio fetches only the fields your bindings name
 
-Every `imageurl`-typed prop must accept both a plain URL string AND a Contentstack asset object with a `.url` field. Contentstack stores assets as objects (`{ url, filename, uid, … }`). The picker sometimes binds the object, sometimes the `.url` sub-field, depending on the depth of the picked path.
+On the live site the SDK does not fetch whole entries. It builds the Delivery API query from the composition's bindings: `include[]` for the references they cross, and an `only[]` projection listing the fields they name. **Inside the Studio canvas and Visual Builder it skips the projection and fetches every field.** So a component that reads fields no binding names renders correctly while you author, then receives a stripped object on the published page: a product card bound to a whole referenced entry got `{ uid }` with no title, price or images, and nothing logged an error.
 
-If the component's TypeScript signature demands one shape, the other silently fails: icons "map correctly" but render invisible, or the object gets `.toString()`'d and the URL area shows `[object Object]`. Both bugs ship to production without a warning.
+**Prefer one binding per field.** Register the leaves the component renders (`title`, `price`, `image` → `product.image.url`, `imageAlt`) instead of one `object` prop for the whole entry. Each binding adds its field to the projection, and each field gets its own `$`-twin for Visual Editor.
+
+**When a component genuinely needs the whole entry** (a production card that reads a dozen fields, or a computed price), the options in `@contentstack/studio-react` 2.0.1 are:
+
+| Option | How | Caveat |
+|---|---|---|
+| Name the extra fields in `extendQuery` | Pass `{ extendQuery: { "<content_type_uid>": { only: [["<reference_field>", "title"], ["<reference_field>", "price"]] } } }` as the options argument of `fetchCompositionData` / `useCompositionData`. A plain string means a field on the entry itself (`["BASE", "<field>"]`). The key is the content type of the entry being fetched: the template's connected type, or a pinned entry's type | **Deprecated.** 2.0.1 still merges these `only` pairs into the projection, but logs "`extendQuery` is deprecated and will be removed in the next major". Its "tick the references in Studio" advice covers `include[]`, not field projection. No replacement for per-field projection exists in 2.0.1 that we could confirm |
+| Fetch the data yourself | Fetch the entry in the app and pass it through `data` ([`wire-external-data`](wire-external-data.md), [`render-with-own-data`](render-with-own-data.md)) | The fields are no longer bindable in Studio for that prop |
+
+**Verify outside the editor.** Open the published route in a plain browser tab (not the canvas, not Visual Builder) and check the component's props, or the Delivery API request's `only[...]` parameters in the Network tab. An editor-only check cannot catch this.
+
+## Image props: always bind `<file_field>.url`, alt text separately
+
+**The binding rule.** Bind every `imageurl` prop to the file field's **`.url`** leaf (`hero_image.url`, or `images.0.url` for the first of a multiple file field), never to the file field itself. A file field is an asset object (`{ uid, url, filename, title, description, … }`), and in 2.0.1 `imageurl` accepts **only a string**: a bound asset object is reported as a type mismatch ("Data Mismatch Found" in the editor, a console warning on the live site) and the image renders nothing. **Alt text is a second prop**: a `string` prop (`imageAlt`) bound to the asset's `description` (or `title`), so the image and its alt are each one binding.
+
+```ts
+props: {
+  image:    { type: "imageurl", displayName: "Image" },      // bind → hero_image.url
+  imageAlt: { type: "string",   displayName: "Image alt" },  // bind → hero_image.description
+}
+```
+
+**Defense in depth: still accept `string | { url }`.** Bindings authored before this rule, or by hand through the API, can still point at the object. If the component's TypeScript signature demands one shape, the other silently fails: icons "map correctly" but render invisible, or the object gets `.toString()`'d and the URL area shows `[object Object]`. Both bugs ship to production without a warning.
 
 Contract for every `imageurl` prop:
 
@@ -63,9 +85,7 @@ function coerce(img: ImageProp): string | undefined {
 }
 ```
 
-Every registered component's `imageurl` prop declares its TS type as `string | { url?: string } | null | undefined`, and the component internally calls a coerce helper (or inlines `typeof img === "string" ? img : img?.url`. Never `img?.url ?? img`: an asset object with no `url` falls through to the object itself and renders `[object Object]`). This is a first-class contract, peer of the null-safety and `$`-twin contracts, not a pitfall row.
-
-Rationale: Studio's picker doesn't ship type-aware binding coercion today. Until it does, the component compensates.
+Every registered component's `imageurl` prop declares its TS type as `string | { url?: string } | null | undefined`, and the component internally calls a coerce helper (or inlines `typeof img === "string" ? img : img?.url`. Never `img?.url ?? img`: an asset object with no `url` falls through to the object itself and renders `[object Object]`). This is a first-class contract, peer of the null-safety and `$`-twin contracts, not a pitfall row. The coercion is the safety net. The `.url` binding is the rule.
 
 ## Tolerant link signatures: bind the leaves, not the whole link object
 

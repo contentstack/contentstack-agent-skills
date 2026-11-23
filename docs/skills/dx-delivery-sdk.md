@@ -15,7 +15,7 @@ When you ask for Delivery SDK code, query examples, helper functions, SDK setup,
 
 ## What it covers
 
-- **Stack setup**: `contentstack.stack({...})` with env-based credentials and region, using `@timbenniks/contentstack-endpoints` with `getContentstackEndpoints(region, true)` for region-specific preview hosts when needed.
+- **Stack setup**: `contentstack.stack({...})` with env-based credentials and region, using `@timbenniks/contentstack-endpoints` (a community package the official kickstarts use, not published under `@contentstack/`) with `getContentstackEndpoints(region, true)` for region-specific preview hosts when needed.
 - **Single entry vs collections**: `.contentType(uid).entry(uid).fetch()` for one; `.entry().query().find()` for many.
 - **References**: `includeReference([...])` belongs _before_ `.query()`.
 - **Filtering**: use `QueryOperation` names exactly (e.g. `QueryOperation.EQUALS`, `NOT_EQUALS`).
@@ -46,9 +46,13 @@ When you ask for Delivery SDK code, query examples, helper functions, SDK setup,
 
 Ships the **Delivery SDK Spec** (`references/delivery-sdk-spec.md`), sourced from the official TypeScript Delivery SDK reference. The skill reads it on demand to verify method names, options, and chain order.
 
+## MCP tools
+
+With the MCP server connected, the agent reads the real stack to ground SDK code: content types and global fields from `cma` (`get_all_content_types`, `get_a_single_content_type`) and published entries and assets from `cda` (`get_all_entries_cdn`, `get_a_single_entry_cdn`). It needs no write tools.
+
 ## Safety notes
 
-Prefers TypeScript and current `@contentstack/delivery-sdk` APIs. Never hardcodes credentials; uses `process.env` placeholders. For SSR Live Preview, never reuses a stack across requests.
+Prefers TypeScript and current `@contentstack/delivery-sdk` APIs. Uses MCP tools only to read the stack. Never hardcodes credentials; uses `process.env` placeholders. For SSR Live Preview, never reuses a stack across requests.
 
 ## Related
 

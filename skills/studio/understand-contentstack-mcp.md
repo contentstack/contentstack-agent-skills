@@ -61,9 +61,9 @@ Three signatures mean the stored session is unusable and the command above is th
 
 **Auto-captures `organization_uid` + region.** The OAuth token stores the **org** (your login's default org) and the region, no need to ask for `org_id`. (This corrects the docs' "can't discover" claim: org IS captured. Only the stack isn't.)
 
-**Runs CMA ops as tools** (77 CMA + 22 CMA-extended): `create_a_content_type`, `update_content_type`, `get_all_content_types`, `create_a_global_field`, `update_a_global_field`, `create_an_entry`, `update_an_entry`, `publish_an_entry`, `get_all_entries`, `get_all_environments`, `create_an_environment`, `get_all_assets`, `publish_an_asset`. Covers most of `provision-studio-stack`, the CT-create in `provision-studio-project`, and entry create/publish in `author-composition-via-api`. **Note: asset upload has NO tool** (only get/publish/update/delete of existing assets). Creating a new asset from a binary stays raw multipart `POST /v3/assets`.
+**Runs CMA ops as tools** (77 CMA + 22 CMA-extended). **Content types are snapshotted at server start**: its update, read and publish tools reject a content type created later in the session, so those steps go over HTTP until a restart ([`install-contentstack-mcp`](install-contentstack-mcp.md#cts-created-after-start) Step 6b). Tools: `create_a_content_type`, `update_content_type`, `get_all_content_types`, `create_a_global_field`, `update_a_global_field`, `create_an_entry`, `update_an_entry`, `publish_an_entry`, `get_all_entries`, `get_all_environments`, `create_an_environment`, `get_all_assets`, `publish_an_asset`. Covers most of `provision-studio-stack`, the CT-create in `provision-studio-project`, and entry create/publish in `author-composition-via-api`. **Note: asset upload has NO tool** (only get/publish/update/delete of existing assets). Creating a new asset from a binary stays raw multipart `POST /v3/assets`.
 
-**Does NOT auto-capture the stack `api_key`.** The token's `stack_api_key` is empty, no `list_stacks` tool. Before asking, read `CONTENTSTACK_API_KEY` from the MCP's registration (this project's `mcpServers.contentstack.env` in `~/.claude.json`), else [`install-playwright-mcp`](install-playwright-mcp.md) Step 5b's `CS_RECENT_STACK_API_KEY`. Found one: ask "Use stack `<key>`, or give another key?" None: ask for it. It MUST belong to the OAuth'd org (Step 5 new-vs-existing / 403-recovery loop).
+**Does NOT auto-capture the stack `api_key`.** The token's `stack_api_key` is empty, no `list_stacks` tool. Before asking, read `CONTENTSTACK_API_KEY` from the MCP's registration (`mcpServers.contentstack.env`: under this project's entry in `~/.claude.json` for the default `local` scope, at the top level of `~/.claude.json` for `user` scope, or in the repo's `.mcp.json` for `project` scope), else [`install-playwright-mcp`](install-playwright-mcp.md) Step 5b's `CS_RECENT_STACK_API_KEY`. Found one: ask "Use stack `<key>`, or give another key?" None: ask for it. It MUST belong to the OAuth'd org (Step 5 new-vs-existing / 403-recovery loop).
 
 **Studio API (`/v1/projects`): OAuth FIRST, session authtoken only as fallback.** The MCP has no tool for it, so this is raw HTTP either way. But **attempt OAuth before asking anyone for a session token**, in this order:
 
@@ -80,6 +80,21 @@ Three signatures mean the stored session is unusable and the command above is th
 **Capability can vary by data center**: so don't hardcode an assumption. Attempt OAuth, then branch on the response as above. See [`provision-studio-project`](provision-studio-project.md) step 10.
 
 **No delivery/preview-token tool, no stack-create, no Live-Preview-enable tool.** All stay raw HTTP (`provision-studio-project` steps 3, 5, and stack-create).
+
+### The hosted connector on claude.ai
+
+Everything above describes the **local** server, `@contentstack/mcp`, which `claude mcp add` (or an IDE's MCP config) starts on your machine. claude.ai also lists a **Contentstack connector** under Settings, then Connectors. It is a remote MCP server run for you: you sign in through claude.ai, nothing is installed, no `--auth` runs, and nothing is written to the `ContentstackMCP` store above.
+
+**Does it satisfy the MCP gate?** The gate is the same for any server ([`install-contentstack-mcp`](install-contentstack-mcp.md) § Discovery in the active host): its tools are callable in this session, and a read call on the target stack returns real data. If both hold, it qualifies, for exactly the operations its tools cover. Not being installed locally is not a reason to skip it, and being connected on claude.ai is not proof the tools reach this session.
+
+**Unconfirmed, so check by discovery rather than assume:**
+
+- Which tools it exposes, compared with the local server's `GROUPS=cma,cma-extended` set, in particular content-type create/update and entry publish.
+- How it chooses the stack (no `CONTENTSTACK_API_KEY` registration to read), and its region handling.
+- Whether it has the local server's start-up content-type snapshot (Step 6b).
+- Whether it appears in Claude Code sessions as well as on claude.ai.
+
+**What is certain:** its OAuth session is held by claude.ai, so scripts and `curl` cannot reuse it. HTTP fallbacks still need their own credential: `csdx auth:login --oauth` then [`authenticate-cma`](authenticate-cma.md#export-csdx-token) § Export the `csdx` OAuth token, or the local server's `--auth`.
 
 > **The split:** Contentstack MCP = auth (incl. org) + CMA execution, **standard regions** for the login. Playwright MCP = stack-key discovery from the UI. Raw HTTP = Studio API + tokens + LP-enable + stack-create. A custom / private data center works through the MCP's API calls too, via base-URL overrides (Step 0). No single tool does all of it.
 
