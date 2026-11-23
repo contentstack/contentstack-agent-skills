@@ -72,10 +72,12 @@ def topo_types(starter):
 
 
 def import_content_types(needed, starter, sap_ext=None, verbose=True):
+    """Returns the number of content types that failed to import."""
     # Import the FULL shipped model (topo-ordered) so every reference_to resolves,
     # even for types whose entries we defer (nav). Inject sap_uid on component types,
     # and the SAP app's product picker on the carousel when the app is set up.
     order = topo_types(starter)
+    errors = 0
     for uid in order:
         ct = json.loads(json.dumps(starter[uid]))
         is_component = uid not in PAGE_TYPES and uid != GLOBAL_TYPE
@@ -94,8 +96,10 @@ def import_content_types(needed, starter, sap_ext=None, verbose=True):
         else:
             st2, r = low.cma("POST", "/content_types", body)
             res = "created" if st2 in (200, 201) else f"ERR {st2}:{json.dumps(r)[:200]}"
-        if verbose:
+        if verbose or res.startswith("ERR"):
             print(f"  {uid}: {res}")
+        errors += res.startswith("ERR")
+    return errors
 
 
 def resolve(v, uid_map, asset_cache, sap=None):
@@ -160,6 +164,7 @@ def main():
     stages = set(s.strip() for s in a.stages.split(","))
     plan = json.load(open(a.plan))
     uid_map, asset_cache = {}, {}
+    failures = 0   # per-item errors; exit 3 at the end so the orchestrator reports the stage as warn
     sap_ext, sap = None, None
     if plan.get("carousel_field") == "sap_products":
         if not a.sap_app:
@@ -170,7 +175,7 @@ def main():
     if "types" in stages:
         print("[content types] (starter pack, +sap_uid on components"
               f"{', +sap_products on carousel' if sap_ext else ''})")
-        import_content_types(plan["content_types_needed"], load_starter_types(a.starter_pack), sap_ext)
+        failures += import_content_types(plan["content_types_needed"], load_starter_types(a.starter_pack), sap_ext)
 
     if "assets" in stages:
         print(f"[assets] {len(plan['assets'])}")
@@ -182,6 +187,7 @@ def main():
             if r.startswith("ERR"):
                 print(f"  {asset['code']}: {r}")
         print(f"  assets: {ok} ok, {err} err")
+        failures += err
 
     if "entries" in stages:
         if not asset_cache:                       # resolve existing assets for banner refs
@@ -200,6 +206,7 @@ def main():
                 if err <= 6:
                     print(f"  {e['_key']['value']}: {res}")
         print(f"  components: {ok} ok, {err} err")
+        failures += err
         if sap:
             print(f"  sap_products: {len(sap.cache) - len(sap.missing)} products resolved on the app's SAP server"
                   + (f", NOT FOUND (left out): {[c for c, _ in sap.missing]}" if sap.missing else ""))
@@ -207,6 +214,7 @@ def main():
         if gs:
             res, _ = upsert_entry(gs, uid_map, asset_cache, sap)
             print(f"[global_slots] {res}")
+            failures += res.startswith("ERR")
         pages = plan["entries"]["pages"]
         print(f"[pages] {len(pages)}")
         ok = err = 0
@@ -216,6 +224,10 @@ def main():
             if res.startswith("ERR"):
                 err += 1; print(f"  {e['_key']['value']}: {res}")
         print(f"  pages: {ok} ok, {err} err")
+        failures += err
+    if failures:
+        print(f"[seed] {failures} item(s) failed — see the ERR lines above; re-running is safe")
+        sys.exit(3)
 
 
 if __name__ == "__main__":

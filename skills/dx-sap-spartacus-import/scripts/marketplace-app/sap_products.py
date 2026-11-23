@@ -22,7 +22,7 @@ emits a `{"_sap_products": true, "codes": [...]}` placeholder and the seeders ca
 Env:
   SAP_APP_API_BASE_URL   host of the app's SAP OCC (no scheme), e.g. api.<...>.commerce.ondemand.com
   SAP_APP_API_ROUTE      default /occ/v2/
-  SAP_APP_BASE_SITE      e.g. electronics
+  SAP_APP_BASE_SITE      e.g. electronics (B2C) or powertools-spa (B2B)
   SAP_APP_CONFIG_NAME    the app configuration name stored in cs_metadata, default hti
 Falls back to OCC_BASE_URL + the run's site when SAP_APP_API_BASE_URL is unset.
 """

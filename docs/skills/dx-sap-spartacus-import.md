@@ -21,7 +21,7 @@ When a developer has added the connector to a Spartacus app (`ng add @contentsta
 - **Idempotent seed and publish**: entries upsert by their SAP uid, so re-runs update in place.
 - **Verification**: a round-trip comparison against SAP and a Delivery API read of the home page.
 - **Localization**: localized content and images per language from SAP's own localized responses.
-- **SAP product picker**: optionally installs and configures the SAP Commerce Cloud marketplace app, so editors pick carousel products from SAP instead of typing SKUs. The agent checks the picker, repairs it at most twice, then lets the user fall back to the plain SKU list.
+- **SAP product picker, by default**: installs and configures the SAP Commerce Cloud marketplace app, so editors pick carousel products from SAP instead of typing SKUs. It works for B2C and B2B sites (for example the electronics and powertools demos). When the picker can't be set up (no `SAP_APP_*` settings, a connector that reads only the SKU list such as npm 0.1.0, or an SAP server that fails the preflight on certificate, base site, product search or carousel codes), the carousels fall back to the plain SKU list and the run says why. After the run the agent checks the picker, repairs it at most twice, then lets the user fall back to the plain SKU list.
 - **Your own login**: writes with a management token, or with the user's `csdx auth:login --oauth` session (required for the marketplace app).
 
 ## Example prompts
@@ -31,6 +31,7 @@ When a developer has added the connector to a Spartacus app (`ng add @contentsta
 - "Re-run the SAP import; we changed the homepage banners."
 - "The import says a component type is unknown. What do I do?"
 - "Let our editors pick the carousel products from SAP instead of typing SKUs."
+- "Set up the SAP product picker on our powertools B2B demo stack too."
 
 ## References
 

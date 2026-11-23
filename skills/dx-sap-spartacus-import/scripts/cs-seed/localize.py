@@ -15,10 +15,14 @@ localized. For one target locale it:
 The base (master en-us) entries must already be seeded. Matches entries by their key
 (sap_uid / url / title). Idempotent. Creds from env (CS_API_KEY, CS_MANAGEMENT_TOKEN).
 
+A failed entry update is retried once (the Management API can answer a transient 422, for
+example on global_slots). Exits 3 when an entry or asset still failed, so the orchestrator
+reports the locale instead of marking it ok; re-running the locale is safe.
+
 Usage:
   python3 localize.py --locale de-de --plan <localized-model>/connector-plan.json --env development
 """
-import argparse, json, os, sys, urllib.parse
+import argparse, json, os, sys, time, urllib.parse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "marketplace-app"))
 import cma_seed as low   # cma(), upsert_asset(), asset_lookup(), download_occ
@@ -109,6 +113,7 @@ def main():
                         {"asset": {"environments": [a.env], "locales": [a.master, loc]}})
         pub += 1 if st in (200, 201) else 0
     print(f"[{loc}] assets: {ok} ok, {err} err, {len(asset_cache)} resolved, {pub} published")
+    failures = err
 
     # resolve a reference target's entry uid by sap_uid (shared across locales), cached
     ref_cache = {}
@@ -119,6 +124,7 @@ def main():
         return ref_cache[key]
 
     def do(entries, label):
+        nonlocal failures
         put_ok = pub_ok = miss = e_err = 0
         for e in entries:
             ct = e["_content_type"]; kf = e["_key"]["field"]; kv = e["_key"]["value"]
@@ -126,7 +132,11 @@ def main():
             if not uid:
                 miss += 1; continue
             fields = loc_fields(e, asset_cache, ref_uid, sap)
-            st, r = low.cma("PUT", f"/content_types/{ct}/entries/{uid}?locale={loc}", {"entry": fields})
+            path = f"/content_types/{ct}/entries/{uid}?locale={loc}"
+            st, r = low.cma("PUT", path, {"entry": fields})
+            if st not in (200, 201, 404):          # transient 422/5xx: retry once
+                time.sleep(2)
+                st, r = low.cma("PUT", path, {"entry": fields})
             if st not in (200, 201):
                 e_err += 1
                 if e_err <= 4:
@@ -137,11 +147,15 @@ def main():
                              {"entry": {"environments": [a.env], "locales": [loc]}})
             pub_ok += 1 if st2 in (200, 201) else 0
         print(f"  [{loc}] {label}: localized {put_ok}, published {pub_ok}, missing {miss}, err {e_err}")
+        failures += e_err
 
     do(plan["entries"]["components"], "components+nav")
     if plan["entries"].get("global_slots"):
         do([plan["entries"]["global_slots"]], "global_slots")
     do(plan["entries"]["pages"], "pages")
+    if failures:
+        print(f"[{loc}] {failures} failed after a retry — re-run this locale (safe: it updates in place)")
+        sys.exit(3)
 
 
 if __name__ == "__main__":
